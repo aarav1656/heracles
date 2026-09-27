@@ -1,0 +1,122 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {Test, console} from "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Treaty} from "../src/Treaty.sol";
+import {Capacity} from "../src/Capacity.sol";
+import {Pricer} from "../src/Pricer.sol";
+
+/// Proves the multi-market mechanism (9 real Chainlink equity feeds bound at once) against live
+/// Arbitrum One state: try the RPC, skip cleanly if it is unreachable, warp forward from whatever
+/// the live state actually is rather than assuming a fixed calendar date. Arbitrum Sepolia has
+/// only one live equity feed (SPY), so this fork test is the only place all 9 markets are
+/// exercised together against real oracle state; the Sepolia deploy binds SPY alone.
+contract GapTreatyForkTest is Test {
+    string constant RPC = "https://arb1.arbitrum.io/rpc";
+
+    // Chainlink `<ticker> / USD` proxies on Arbitrum One, from Chainlink's own reference-data
+    // directory (reference-data-directory.vercel.app/feeds-ethereum-mainnet-arbitrum-1.json),
+    // live-verified via cast call decimals()/latestRoundData() before use here.
+    address constant SPY = 0x46306F3795342117721D8DEd50fbcF6DF2b3cc10;
+    address constant NVDA = 0x4881A4418b5F2460B21d6F08CD5aA0678a7f262F;
+    address constant AAPL = 0x8d0CC5f38f9E802475f2CFf4F9fc7000C2E1557c;
+    address constant MSFT = 0xDde33fb9F21739602806580bdd73BAd831DcA867;
+    address constant AMZN = 0xd6a77691f071E98Df7217BED98f38ae6d2313EBA;
+    address constant GOOGL = 0x1D1a83331e9D255EB1Aaf75026B60dFD00A252ba;
+    address constant TSLA = 0x3609baAa0a9b1f0FE4d6CC01884585d0e191C3E3;
+    address constant META = 0xcd1bd86fDc33080DCF1b5715B6FCe04eC6F85845;
+    address constant COIN = 0x950DC95D4E537A14283059bADC2734977C454498;
+
+    IERC20 constant USDG = IERC20(0x004B506865409877C9fA29bfb1ebA929984B9bbC);
+    address constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831; // 6dp, wrong decimals for a feed
+
+    // M2: mainnet must wire the real Arbitrum One L2 Sequencer Uptime Status Feed (verified live
+    // via cast call decimals()/latestRoundData() against arb1.arbitrum.io on 2026-09-26).
+    address constant SEQUENCER_FEED = 0xFdB631F5EE196F0ed6FAa767959853A9F217697D;
+
+    bool forked;
+    Treaty treaty;
+    Capacity capacity;
+    address writer = makeAddr("writer");
+    address buyer = makeAddr("buyer");
+
+    function setUp() public {
+        try vm.createSelectFork(RPC) returns (uint256) {
+            forked = true;
+        } catch {
+            console.log("SKIP: RPC unreachable", RPC);
+            return;
+        }
+
+        address[] memory feeds = new address[](9);
+        (feeds[0], feeds[1], feeds[2], feeds[3], feeds[4]) = (SPY, NVDA, AAPL, MSFT, AMZN);
+        (feeds[5], feeds[6], feeds[7], feeds[8]) = (GOOGL, TSLA, META, COIN);
+        treaty = new Treaty(address(USDG), address(new Pricer()), feeds, 50, SEQUENCER_FEED);
+        capacity = treaty.capacity();
+    }
+
+    function _requireFork() internal {
+        if (!forked) {
+            console.log("SKIP: no fork");
+            vm.skip(true);
+        }
+    }
+
+    function test_fork_allowlistAcceptsAllNineRealFeeds() public {
+        _requireFork();
+        assertEq(treaty.marketsLength(), 9);
+        assertEq(address(treaty.markets(0)), SPY);
+        assertEq(address(treaty.markets(8)), COIN);
+    }
+
+    /// A feed with the wrong decimals (real USDC, 6dp not 8dp) must be refused at construction:
+    /// the same fix this treaty applies ("writer picks the oracle").
+    function test_fork_rejectsNonEightDecimalFeed() public {
+        _requireFork();
+        address[] memory bad = new address[](1);
+        bad[0] = USDC;
+        address pricerAddr = address(new Pricer());
+        vm.expectRevert(Treaty.BadParams.selector);
+        new Treaty(address(USDG), pricerAddr, bad, 50, SEQUENCER_FEED);
+    }
+
+    /// Binds real exposure across all 9 live markets in one layer, reading each market's actual
+    /// current round as the Friday reference and pulling a real premium quote from the Pricer;
+    /// proves the multi-market path end to end against live oracle state. Does not fix/settle:
+    /// that needs a real weekend gap to pass on-chain, which the Sepolia live-cycle run covers
+    /// for the single SPY market instead.
+    function test_fork_bindsRealExposureAcrossAllNineMarkets() public {
+        _requireFork();
+
+        int256[] memory exposure = new int256[](9);
+        for (uint256 i; i < 9; i++) {
+            exposure[i] = i % 2 == 0 ? int256(100_000e6) : -int256(100_000e6);
+        }
+
+        // bind() only accepts binds strictly before this week's Friday 19:30 UTC; land inside
+        // that window regardless of when this fork test actually runs.
+        (uint256 cutoff,) = treaty.weekWindow(block.timestamp);
+        if (block.timestamp >= cutoff) {
+            vm.warp(cutoff + 7 days - 1 hours);
+        }
+
+        deal(address(USDG), buyer, 1_000_000e6);
+        vm.prank(buyer);
+        USDG.approve(address(capacity), type(uint256).max);
+        deal(address(USDG), writer, 1_000_000e6);
+        vm.prank(writer);
+        USDG.approve(address(capacity), type(uint256).max);
+        vm.prank(writer);
+        capacity.deposit(1_000_000e6, writer);
+
+        vm.prank(buyer);
+        uint256 id = treaty.bind(exposure, 10_000e6, 50_000e6);
+
+        (address l_buyer,,,,,,,,, uint256 premium,) = treaty.layers(id);
+        assertEq(l_buyer, buyer);
+        assertGt(premium, 0);
+        assertEq(capacity.locked(), 50_000e6);
+        console.log("live 9-market premium (USDG, 6dp)", premium);
+    }
+}
