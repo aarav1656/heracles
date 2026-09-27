@@ -1,0 +1,14 @@
+node_modules/
+out/
+cache/
+lib/
+.env
+.env.local
+dist/
+*.tsbuildinfo
+.uicraft-read.json
+target/
+broadcast/
+.DS_Store
+__pycache__/
+.vite/

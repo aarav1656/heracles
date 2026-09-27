@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {FixedMath} from "./FixedMath.sol";
+
+/// @notice Weekend-gap cover pricer, Solidity reference implementation.
+/// price() = mean empirical payoff over 504 stored NVDA weekend gaps
+///         + Black-Scholes put term (r = 0) over the same strike/spot/iv/tenor.
+/// Gas and parity spike only: not the product contract.
+contract Pricer {
+    int32[504] internal gaps;
+
+    error BadInput();
+
+    constructor() {
+        gaps = [int32(0),int32(53),int32(-2),int32(68),int32(33),int32(294),int32(14),int32(78),int32(-31),int32(174),int32(-215),int32(-71),int32(208),int32(-219),int32(39),int32(-42),int32(-20),int32(-76),int32(-33),int32(-20),int32(93),int32(73),int32(-150),int32(42),int32(67),int32(-176),int32(2),int32(3),int32(126),int32(42),int32(46),int32(130),int32(130),int32(131),int32(-46),int32(-249),int32(118),int32(86),int32(34),int32(203),int32(84),int32(17),int32(33),int32(70),int32(238),int32(61),int32(47),int32(-122),int32(113),int32(279),int32(-70),int32(113),int32(82),int32(62),int32(45),int32(0),int32(-71),int32(0),int32(30),int32(16),int32(120),int32(30),int32(86),int32(-115),int32(118),int32(232),int32(48),int32(14),int32(-24),int32(-279),int32(141),int32(37),int32(76),int32(-86),int32(68),int32(-92),int32(216),int32(119),int32(12),int32(31),int32(29),int32(177),int32(60),int32(160),int32(-29),int32(54),int32(-20),int32(-67),int32(-171),int32(-119),int32(121),int32(-45),int32(-43),int32(23),int32(-20),int32(14),int32(-67),int32(44),int32(-19),int32(34),int32(-37),int32(-47),int32(112),int32(-125),int32(-22),int32(92),int32(287),int32(-25),int32(-180),int32(-161),int32(337),int32(561),int32(-123),int32(-82),int32(-238),int32(131),int32(170),int32(-142),int32(-78),int32(-1474),int32(44),int32(-120),int32(-27),int32(212),int32(99),int32(63),int32(75),int32(-92),int32(206),int32(-64),int32(-16),int32(18),int32(-410),int32(-315),int32(-254),int32(49),int32(33),int32(155),int32(-5),int32(57),int32(508),int32(-150),int32(51),int32(51),int32(-17),int32(-458),int32(-136),int32(286),int32(195),int32(-175),int32(70),int32(-166),int32(0),int32(61),int32(144),int32(-19),int32(130),int32(86),int32(161),int32(-1),int32(-15),int32(244),int32(-13),int32(-43),int32(85),int32(48),int32(-37),int32(-159),int32(137),int32(-59),int32(-489),int32(-31),int32(36),int32(-143),int32(-812),int32(253),int32(-983),int32(-1181),int32(-2),int32(104),int32(464),int32(-174),int32(187),int32(-67),int32(-6),int32(318),int32(145),int32(-48),int32(-48),int32(-131),int32(42),int32(16),int32(110),int32(71),int32(37),int32(111),int32(120),int32(248),int32(158),int32(27),int32(-704),int32(753),int32(-217),int32(129),int32(133),int32(165),int32(66),int32(-120),int32(99),int32(-7),int32(-94),int32(64),int32(3),int32(32),int32(57),int32(-149),int32(107),int32(122),int32(51),int32(49),int32(100),int32(69),int32(-102),int32(117),int32(-9),int32(7),int32(52),int32(-15),int32(-77),int32(-236),int32(-53),int32(77),int32(-17),int32(-60),int32(147),int32(16),int32(-4),int32(45),int32(-109),int32(174),int32(122),int32(95),int32(-135),int32(-126),int32(103),int32(39),int32(-26),int32(74),int32(86),int32(-4),int32(92),int32(-344),int32(-168),int32(-115),int32(-123),int32(-52),int32(109),int32(32),int32(133),int32(53),int32(161),int32(274),int32(-265),int32(17),int32(-178),int32(137),int32(-244),int32(-253),int32(-447),int32(150),int32(22),int32(-6),int32(-257),int32(-68),int32(-52),int32(-105),int32(20),int32(23),int32(6),int32(-391),int32(-160),int32(-4),int32(-343),int32(-111),int32(-252),int32(90),int32(224),int32(-574),int32(374),int32(109),int32(-240),int32(-197),int32(343),int32(-173),int32(10),int32(-783),int32(-4),int32(-201),int32(-148),int32(62),int32(-13),int32(-141),int32(-20),int32(171),int32(-32),int32(259),int32(34),int32(-40),int32(51),int32(-67),int32(-170),int32(-150),int32(-117),int32(21),int32(1),int32(-87),int32(162),int32(286),int32(0),int32(126),int32(-204),int32(-139),int32(128),int32(-181),int32(165),int32(0),int32(-93),int32(-43),int32(22),int32(-96),int32(-72),int32(-39),int32(33),int32(-55),int32(59),int32(-116),int32(423),int32(-106),int32(111),int32(72),int32(60),int32(51),int32(36),int32(180),int32(95),int32(1),int32(96),int32(-90),int32(276),int32(101),int32(-59),int32(126),int32(-262),int32(-5),int32(122),int32(-201),int32(-88),int32(-38),int32(145),int32(62),int32(-3),int32(3),int32(5),int32(-147),int32(-3),int32(104),int32(28),int32(-56),int32(85),int32(56),int32(94),int32(33),int32(312),int32(65),int32(-92),int32(112),int32(225),int32(-126),int32(290),int32(-37),int32(79),int32(103),int32(250),int32(-16),int32(68),int32(67),int32(137),int32(355),int32(364),int32(-43),int32(84),int32(-263),int32(-6),int32(132),int32(102),int32(205),int32(56),int32(-1418),int32(150),int32(-24),int32(15),int32(-281),int32(199),int32(-194),int32(47),int32(-255),int32(6),int32(124),int32(9),int32(103),int32(134),int32(71),int32(-175),int32(3),int32(42),int32(-244),int32(-5),int32(117),int32(-159),int32(285),int32(-436),int32(105),int32(-1249),int32(-443),int32(19),int32(174),int32(158),int32(-113),int32(-248),int32(88),int32(185),int32(-414),int32(-726),int32(287),int32(-119),int32(-139),int32(456),int32(-222),int32(218),int32(27),int32(104),int32(97),int32(-94),int32(41),int32(27),int32(20),int32(30),int32(83),int32(-36),int32(8),int32(20),int32(-240),int32(32),int32(-121),int32(-78),int32(125),int32(-113),int32(262),int32(-5),int32(200),int32(276),int32(370),int32(-221),int32(34),int32(-127),int32(13),int32(167),int32(162),int32(-148),int32(154),int32(-89),int32(-233),int32(-27),int32(-206),int32(-62),int32(-58),int32(83),int32(-123),int32(-56),int32(151),int32(264),int32(75),int32(-138),int32(-84),int32(66),int32(53),int32(-54),int32(202),int32(56),int32(217),int32(248),int32(182),int32(69),int32(-115),int32(151),int32(66),int32(-152),int32(-25),int32(36),int32(38),int32(61),int32(119),int32(-323),int32(30)];
+    }
+
+    /// @param strikeBps strike as basis points of spot (e.g. 9700 = 97%)
+    /// @param spotE8 spot price, 1e8 fixed point
+    /// @param ivE6 implied vol, parts per 1e6 (e.g. 250000 = 25%)
+    /// @param secondsToExpiry time to fixing, in seconds
+    /// @return premium WAD (1e18) fixed-point premium
+    function price(uint32 strikeBps, uint64 spotE8, uint32 ivE6, uint32 secondsToExpiry)
+        external
+        view
+        returns (uint256 premium)
+    {
+        if (strikeBps == 0 || spotE8 == 0 || ivE6 == 0 || secondsToExpiry == 0) revert BadInput();
+
+        int256 spotWad = int256(uint256(spotE8)) * 1e10;
+        int256 strikeWad = (spotWad * int256(uint256(strikeBps))) / 10000;
+
+        // Mean empirical payoff: max(K - S*(1+g), 0) over the 504 stored weekend gaps.
+        int256 sumPayoff = 0;
+        for (uint256 i = 0; i < 504; i++) {
+            int256 scenarioSpot = (spotWad * (10000 + int256(gaps[i]))) / 10000;
+            int256 payoff = strikeWad - scenarioSpot;
+            if (payoff > 0) sumPayoff += payoff;
+        }
+        int256 meanPayoff = sumPayoff / 504;
+
+        // Black-Scholes put term, r = 0.
+        int256 sigmaWad = int256(uint256(ivE6)) * 1e12;
+        int256 tWad = (int256(uint256(secondsToExpiry)) * 1e18) / 31536000;
+
+        int256 sqrtT = FixedMath.sqrtWad(tWad);
+        int256 sigmaSqrtT = FixedMath.mulWad(sigmaWad, sqrtT);
+        require(sigmaSqrtT > 0, "degenerate vol/tenor");
+
+        int256 lnSK = FixedMath.lnWad(spotWad) - FixedMath.lnWad(strikeWad);
+        int256 halfSigma2T = FixedMath.mulWad(FixedMath.mulWad(sigmaWad, sigmaWad), tWad) / 2;
+        int256 d1 = FixedMath.divWad(lnSK + halfSigma2T, sigmaSqrtT);
+        int256 d2 = d1 - sigmaSqrtT;
+
+        int256 nNegD2 = FixedMath.normalCDF(-d2);
+        int256 nNegD1 = FixedMath.normalCDF(-d1);
+        int256 put = FixedMath.mulWad(strikeWad, nNegD2) - FixedMath.mulWad(spotWad, nNegD1);
+        if (put < 0) put = 0;
+
+        int256 result = meanPayoff + put;
+        premium = uint256(result);
+    }
+}
