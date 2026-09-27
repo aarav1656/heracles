@@ -89,7 +89,7 @@ contract Capacity is ERC4626 {
     }
 
     constructor(IERC20 usdg_, address treaty_)
-        ERC20("Gap Treaty Capacity", "gtUSDG")
+        ERC20("Heracles Capacity", "gtUSDG")
         ERC4626(usdg_)
     {
         treaty = treaty_;

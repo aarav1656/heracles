@@ -144,7 +144,7 @@ scenarios x 40 markets, not this spike's 504 x 1) before being relied on either 
   contract storage array, set in the constructor) + a Black-Scholes put term (r = 0).
 - `spikes/stylus-pricer/rs/src/lib.rs`: the identical algorithm in Rust/Stylus (stylus-sdk
   0.10.9, alloy `I256`/`U256`), with the 504 gaps as a `const [i32; 504]` compiled into the
-  WASM binary (no storage), matching the architecture in `gap-treaty.md` ("scenario table ...
+  WASM binary (no storage), matching the architecture in `heracles.md` ("scenario table ...
   compiled into the WASM binary").
 
 ## Measured, with commands
@@ -201,7 +201,7 @@ optimizer pipeline, not the legacy codegen path.
 
 ## Blocks product
 
-Resolved (superseded by the "Stylus measured" sections above). The gap-treaty pitch's Stylus
+Resolved (superseded by the "Stylus measured" sections above). The Heracles pitch's Stylus
 claim (this product's own win gate ("If Stylus does not beat Solidity by at least 5x ... the
 Stylus claim is dropped") is now measured, live, on Robinhood Chain testnet: REFUTED on the
 total-gas basis (~4.06x average, 3.97x-4.23x range), a near-miss on the intrinsic-excluded

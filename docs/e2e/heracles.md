@@ -1,4 +1,4 @@
-# Gap Treaty end-to-end test, Arbitrum Sepolia (421614)
+# Heracles end-to-end test, Arbitrum Sepolia (421614)
 
 Run date: 2026-09-26 (Saturday), contracts superseded 2026-09-27 (see redeploy section at the
 end of this file). Contracts as tested this run: Treaty `0xEE1374852327Da76Fd04CA5f681C875E3e8e9cf4`,
@@ -32,13 +32,13 @@ chain today.
 | cancel on phase change (grace expiry) | Treaty.cancel | fork | `test_forkLifecycle_cancelAfterGraceRefundsPremium`, line 130-151: premium refunded to buyer, `locked()` -> 0 | PASS (fork) |
 | Sequencer check disabled on testnet | Treaty constructor | live testnet | `sequencerUptimeFeed()` reads `0x0000...0000` live via `cast call`; fork test passes `address(0)` explicitly (line 53) matching the live deploy | PASS |
 | Stylus pricer parity, 5 cases | Pricer.quote (Stylus) vs Pricer.sol (Solidity twin) | live testnet (Stylus side) vs unit (Solidity side) | 5/5 bit-for-bit identical: case1 (28974083332,4641666666,46344000000), case2 (37846626983,7237301587,57600000000), case3 (5039806547,2031845238,5000000000), case4 (62624255951,10699404761,98500000000), case5 (0,0,0) | PASS |
-| Web `/` (Overview / book) | UI | live testnet | renders live pool state, block stamp; screenshot `docs/screenshots/gap-treaty/overview.png` | PASS |
-| Web `/bind`, closed-window message | UI | live testnet | screenshot `docs/screenshots/gap-treaty/bind-closed-window.png`; message read live: "Cover for next week opens Monday 00:00 UTC, in 1d 07h ..." | PASS (bug fixed, see below) |
-| Web `/write` | UI | live testnet | pool state free 45.00 / locked 0.00 / owed 0.00, read at block #312,982,191; screenshot `docs/screenshots/gap-treaty/write.png` | PASS |
+| Web `/` (Overview / book) | UI | live testnet | renders live pool state, block stamp; screenshot `docs/screenshots/heracles/overview.png` | PASS |
+| Web `/bind`, closed-window message | UI | live testnet | screenshot `docs/screenshots/heracles/bind-closed-window.png`; message read live: "Cover for next week opens Monday 00:00 UTC, in 1d 07h ..." | PASS (bug fixed, see below) |
+| Web `/write` | UI | live testnet | pool state free 45.00 / locked 0.00 / owed 0.00, read at block #312,982,191; screenshot `docs/screenshots/heracles/write.png` | PASS |
 | Settlement panel | UI | live testnet | idle state correct (no live layer needs settling, none can exist until Monday); component code (`SettlePanel.tsx`) drives the same fork-proved `fix`/settle path once a layer exists | PASS (idle state only; active-layer rendering unproven live until Monday, proved instead by fork test) |
 | Decoded errors in UI | `lib/revert.ts` explainError/explainReceipt | code-verified | `ERROR_WORDS` maps all 18 custom errors including `BadParams`/`BadTiming`/`SequencerDown`; `explainReceipt` replays a mined-reverted tx at its block and decodes via `decodeErrorResult` against the ABI, the exact mechanism used above to decode the 3 live reverts | PASS |
 | Block numbers shown | UI | live testnet | `/write` shows "read at block #312,982,191"; `/bind` shows "quoted at block #..." | PASS |
-| Mobile width (390px) | UI | live testnet | CDP `Emulation.setDeviceMetricsOverride(390,844)`; `/`, `/bind`, `/write` all `scrollWidth == clientWidth == 390`, no horizontal overflow; screenshot `docs/screenshots/gap-treaty/bind-mobile-390.png` | PASS |
+| Mobile width (390px) | UI | live testnet | CDP `Emulation.setDeviceMetricsOverride(390,844)`; `/`, `/bind`, `/write` all `scrollWidth == clientWidth == 390`, no horizontal overflow; screenshot `docs/screenshots/heracles/bind-mobile-390.png` | PASS |
 | Full Foundry suite | contracts | unit + fork | `forge test --summary`: **50 passed, 0 failed, 0 skipped** across 9 suites (AttackTest 5, AttackReviewTest 11, GapTreatyForkTest 3, GapTreatyForkLifecycleTest 2, PricerTest 6, PricerParityTest 1, SolvencyTest 1 incl. 256-run fuzz, TreatyTest 15, WeekWindowTest 6) | PASS |
 | Full Rust pricer suite | pricer | unit | `cargo test --lib`: **5 passed, 0 failed** | PASS |
 
@@ -97,7 +97,7 @@ Deployer USDG balance before this cycle: 2,072,032 base units (2.072032 USDG), r
 | Sourcify verification, Treaty | `forge verify-contract --verifier sourcify` | matchId 53330627, `exact_match` (creation and runtime), verified 2026-09-27T06:51:35Z, confirmed live via `GET sourcify.dev/server/v2/contract/421614/0x889F1fA08DE3d280511432893A1D7e5DB66d3252` | PASS |
 | Sourcify verification, Capacity | `forge verify-contract --verifier sourcify --creation-transaction-hash 0xf31eb6b7...` | matchId 53330691, `exact_match` (creation and runtime), verified 2026-09-27T06:51:53Z, confirmed live via `GET sourcify.dev/server/v2/contract/421614/0xe645d83EA67ca1ECC7689f48Eb65eB2dE2e8933D` | PASS |
 | Sourcify verification, Pricer (Stylus) | `cargo stylus verify` | needs a running Docker daemon for its reproducible-build container; Docker was not running in this environment and did not come up within 200s after `open -a Docker` | BLOCKED on Docker; substituted live re-confirmation of bytecode (`codesize` 13333) and `quote()` output bit-for-bit identical to the recorded value |
-| Web build against new addresses | `npm run sync-abi` then `npm run build` in `products/gap-treaty/web` | see command output pasted in the commit report | PASS |
+| Web build against new addresses | `npm run sync-abi` then `npm run build` in `web` | see command output pasted in the commit report | PASS |
 
 Remaining deployer USDG after this cycle: 72,032 base units (0.072032 USDG), reserved for a
 future premium payment once bind succeeds after the Monday reopen (the floor premium for the

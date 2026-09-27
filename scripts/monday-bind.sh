@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# One-shot live bind on the Gap Treaty (Arbitrum Sepolia 421614) once the next weekly
+# One-shot live bind on Heracles (Arbitrum Sepolia 421614) once the next weekly
 # window opens (Monday 00:00 UTC). Layer: short 10 USDG SPY exposure, 0.30 USDG retention,
 # 0.40 USDG limit; the premium is re-quoted from the live Pricer and the bind is skipped if the
 # deployer cannot pay it. The key is read from contracts/.env inside this process only and is
-# never printed. Every step is appended to docs/e2e/gap-treaty-bind.log.
+# never printed. Every step is appended to docs/e2e/heracles-bind.log.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.foundry/bin:/opt/homebrew/bin:$PATH" FOUNDRY_DISABLE_NIGHTLY_WARNING=1
-LOG=docs/e2e/gap-treaty-bind.log
+LOG=docs/e2e/heracles-bind.log
 R=https://sepolia-rollup.arbitrum.io/rpc
 TREATY=0x889F1fA08DE3d280511432893A1D7e5DB66d3252
 CAPACITY=0xe645d83EA67ca1ECC7689f48Eb65eB2dE2e8933D

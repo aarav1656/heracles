@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// @notice Minimal WAD (1e18) fixed-point ln/exp/sqrt/normalCDF for the gap-treaty pricer spike.
+/// @notice Minimal WAD (1e18) fixed-point ln/exp/sqrt/normalCDF for the heracles pricer spike.
 /// Not a general-purpose library: exp() only handles exp(-y) for y >= 0, which is all the
 /// Black-Scholes normal CDF needs. Ported line-for-line to Rust so Solidity and Stylus produce
 /// the same premium.

@@ -1,4 +1,4 @@
-# Gap Treaty security review (2026-09-26)
+# Heracles security review (2026-09-26)
 
 Scope: `contracts/src/{Treaty,Capacity,IPricer,Pricer}.sol`, `pricer/src/lib.rs`. Red tests: `contracts/test/AttackReview.t.sol` (each asserts the property the treaty should hold; red now, green once fixed). Live reads: Arbitrum Sepolia block 312940755, Treaty `0x710C…8133`, Capacity `0x0BC0…d44f`, Stylus Pricer `0x5d22…12A8`.
 

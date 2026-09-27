@@ -146,7 +146,7 @@ contract CapacityReReviewTest is Test {
     /// depositWithPermit call it was signed for, so there is nothing left afterward for a third
     /// party to relay. The UX cost the skip was trying to avoid (overwriting a standing allowance)
     /// is instead avoided at the caller: the web app only requests a permit when the standing
-    /// allowance does not already cover the deposit (see gap-treaty web src/hooks).
+    /// allowance does not already cover the deposit (see heracles web src/hooks).
     function test_L1r_permitAlwaysConsumedNoReplayWindow() public {
         PermitUSDG pu = new PermitUSDG();
         Capacity cap = new Capacity(pu, address(this));
