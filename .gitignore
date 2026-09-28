@@ -12,3 +12,6 @@ broadcast/
 .DS_Store
 __pycache__/
 .vite/
+
+# internal status board, never shipped to judges
+.progress/

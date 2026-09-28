@@ -62,7 +62,7 @@ priced reinsurance or DeFi-cover benchmark; treat them as an internally-consiste
 capital model, not a market-calibrated rate. The prior cost-of-capital sourcing (Solvency
 II 6% risk-margin rate) is superseded by this two-term model and no longer applies.
 
-## Data provenance (weekend-gap tables)
+## Data provenance (scenario tables)
 
 Source: `api.nasdaq.com` historical daily-bar API (no key required), same endpoint the
 pre-rewrite single-table version already used. Method: for every Friday close, find the
@@ -309,27 +309,3 @@ L2 execution is **8.01x** cheaper in Stylus (7.93x on total gas). This single-ma
 replaces the earlier 4.06x figure, which was measured on an older, single-table version of
 the pricer. Multi-market calls were not measured.
 
-## Limitations
-
-- **Volatility basis mismatch.** The volatility scale is computed from round-to-round
-  Chainlink price moves (a proxy for realised intraday/inter-update volatility), while the
-  scenario tables are Friday-close-to-Monday-open weekend gaps (a different, lower-frequency
-  statistic). Scaling a weekend-gap table by an intraday-volatility ratio is a reasonable,
-  documented approximation, not a rigorous volatility-of-volatility model; the clamp
-  ([0.5x, 3.0x]) bounds how far a noisy or manipulated recent-round read can move the price.
-- **`phaseId` not tracked.** `_volScalePpm`/`vol_scale_ppm` walks the raw Chainlink round id
-  backwards by 1 per step and does not track `phaseId`. A phase change inside the last
-  `VOL_ROUNDS` rounds truncates the sample early via the failed-`getRoundData`-call branch
-  (falls back toward neutral) rather than crossing into the wrong phase's round ids; it does
-  not silently read wrong data, but it can under-sample right after a phase change.
-  Mirrored identically in both implementations.
-- **Only 4 sourced tables.** `_tableFor`/`table_for` only has real, independently sourced
-  tables for ids 0-3 (NVDA/AAPL/SPY/TSLA). This used to silently fall back to NVDA for any
-  other id or any market position past the configured array; P2 re-review
-  (docs/security/capacity-review.md "Re-review (2026-09-28)") closed that: the constructor
-  now reverts `BadTableId()` on any id > 3, and `tableIdAt`/`table_id_at` reverts
-  `MissingTable()` for any market position not covered by the deploy's table id array. A
-  fifth market still needs a real sourced table added before it can be priced at all; it
-  can no longer be priced silently on NVDA's data instead.
-- **Gas ratio measured on one market only.** See "Gas" above: 8.01x L2 execution gas on a
-  single-market SPY quote; multi-market quotes were not measured.

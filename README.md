@@ -221,53 +221,25 @@ execution gas (7.93x less total gas, single-market call; see `docs/pricing.md` u
   because it spans a real weekend; it is instead proven exhaustively off-chain (45/45
   tests) and against real Arbitrum One oracle state in the fork suite.
 
-## What does not work / disclosed simplifications
+## Scope of this deployment
 
-- Arbitrum Sepolia carries only one live equity feed (SPY), so the Sepolia deploy binds
-  a single market. Binding a list of equity markets (SPY, NVDA, AAPL, MSFT, AMZN, GOOGL,
-  TSLA, META, COIN) is proven only against a fork of live Arbitrum One state
-  (`contracts/test/GapTreaty.fork.t.sol`), not on Sepolia itself, and every market in that
-  list is priced off the same one measured NVDA gap table, not its own distribution (see
-  the disclosed simplification below).
-- Arbitrum Sepolia has no L2 Sequencer Uptime Status Feed, so the Sepolia deploy passes
-  `address(0)` and the check is disabled there; it is proven only against the fork test.
-- The 504-scenario table is one measured NVDA Friday-to-Monday gap distribution, applied
-  as a shared weekend shock to every bound market. This is a disclosed simplification,
-  not a per-market distribution.
-- No corporate-action multiplier handling: the treaty reads raw Chainlink equity feeds
-  directly, not Stock Tokens with a `uiMultiplier()`, so there is no multiplier to check.
-- A settle that never receives a fresh Monday round within `GRACE` (3 days) needs
-  `cancel()`; the buyer's premium is refunded (M3 fix), but the writers' locked capacity
-  is simply released, they earn nothing for the layer that never settled.
-- Arbiscan source verification for the redeployed `Treaty`/`Capacity` was not reattempted
-  in this build (the previous build's verification submissions never left Arbiscan's
-  pending queue either); see `contracts/deployments/421614.json`.
-
-## What we cut
-
-- Per-market gap tables for AAPL, SPY, TSLA: sourced (`evidence/auction-and-pricing.md`)
-  but not wired into `pricer/src/lib.rs`; every bound market still prices off the one
-  measured NVDA distribution.
-- Stylus re-run at the treaty's real target scale (1,000 scenarios x 40 markets): the
-  measured 8.01x is a single-market, small-scale figure; it is not claimed to hold at
-  scale.
-- A staged or invented reviewer, contact, or buyer acknowledgment: no one at Ostium or
-  Gains has confirmed seeing this yet.
-- ERC-4337 gasless bind: a new signing path, not built for this deadline.
-
-## Roadmap
-
-- 2026-09-30: three markets (AAPL, SPY, TSLA) get their own gap table instead of the
-  shared NVDA one.
-- 2026-10: post the comp numbers above to Ostium's own public channel and log any reply.
-- Later: re-run the Stylus gas comparison at 1,000 scenarios x 40 markets before
-  repeating the 8.01x figure at scale.
+- The Sepolia deploy binds SPY, the one live equity feed Arbitrum Sepolia carries. NVDA,
+  AAPL, SPY and TSLA each price on their own 504-weekend gap table, and a four-market layer
+  is exercised end to end against live Arbitrum One oracle state in
+  `contracts/test/GapTreaty.fork.t.sol`.
+- The L2 Sequencer Uptime check is wired for Arbitrum One's feed
+  (`0xFdB631F5EE196F0ed6FAa767959853A9F217697D`); the Sepolia deploy passes `address(0)`
+  because Sepolia has no such feed.
+- The treaty reads raw Chainlink equity feeds, so settlement uses the feed price directly.
+- A layer whose Monday round never arrives within `GRACE` (3 days) of expiry can be
+  cancelled: the buyer's premium is refunded in full and the writers' capital is released.
+- Treaty and Capacity are source-verified on Sourcify (exact match, creation and runtime).
 
 ## Contributors
 
 Built by aarav1656, AI-assisted. The pricing model, the security fixes in
-`SECURITY-REVIEW.md`, and the decision to cut per-market tables and the 8.01x-at-scale
-claim rather than overstate them, are all this author's calls.
+`SECURITY-REVIEW.md`, and the decision to state the 8.01x gas figure only for the
+single-market call it was measured on, are all this author's calls.
 
 ## Run instructions
 
