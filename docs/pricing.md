@@ -227,6 +227,57 @@ re-review's `BadTableId`/`MissingTable` fail-closed constructor and `tableIdAt` 
 wasm size limit, and it still passes with 2 fragments, but the binary no longer fits in
 the single 24 KiB (24,576 byte) fragment the pre-fix build did.
 
+### Attempt to get back to 1 fragment (post-P2)
+
+`cargo stylus check`'s "contract size" figure is the **brotli-compressed** deployed size,
+not the raw `.wasm` (confirmed: `cargo-stylus`'s own pipeline runs `WasmOpt` then
+`AddProjectHash` then `BrotliCompress` before measuring; the 24 KiB/2-fragment gate is
+checked against that compressed output, which is why the raw `.wasm` below is much
+larger than the reported "contract size").
+
+**Before** (this doc's P2 figure above, `[profile.release] opt-level = 3`, `alloy-primitives`/
+`alloy-sol-types` at their default features):
+- `cargo stylus check`: **26.6 KB (26,553 bytes, 2 fragments)**
+- raw `.wasm` (`ls -l target/wasm32-unknown-unknown/release/pricer.wasm`): **83,781 bytes**
+
+Tried, in order:
+1. `opt-level = "z"`: **26.2 KB (26,178 bytes, 2 fragments)** (`cargo stylus check`
+   figure only; raw `.wasm` not separately captured at this intermediate step). Smaller
+   than the `opt-level = 3` baseline.
+2. `opt-level = "s"`: **27.8 KB (27,815 bytes, 2 fragments)**. Bigger than `"z"`, discarded.
+3. `opt-level = "z"` kept, plus `alloy-primitives = { default-features = false }` in both
+   `pricer/Cargo.toml` and `pricer/core/Cargo.toml` (matching what `stylus-sdk` itself
+   requests; our crates only ever use `I256`/`U256`/`Address`/`aliases::U80`, never the
+   `std`/`map`/`map-foldhash` default features that default-features pulled in for the
+   whole unified build) and dropping the unused `alloy-sol-types` dependency (never
+   imported anywhere in `pricer/src/` or `pricer/core/src/`): **26.1 KB (26,119 bytes,
+   2 fragments)**, raw wasm 82,839 bytes.
+4. Manually ran `wasm-opt -Oz --enable-bulk-memory --strip-debug --strip-producers` on the
+   built `.wasm` and fed it back to `cargo stylus check --wasm-file`: identical 26,119
+   bytes. `cargo-stylus` already runs its own `WasmOpt` pass internally, so pre-optimizing
+   changes nothing.
+
+**After** (kept, since it is strictly smaller with no behaviour change, verified by re-
+running `cargo test` in both crates, `cargo stylus check`, and the Solidity/Rust parity
+test after the change): **26.1 KB (26,119 bytes, 2 fragments)**, wasm data fee 0.000142
+ETH, raw `.wasm` **82,839 bytes**. `cargo stylus check` still passes (exit 0).
+
+**1 fragment is not reachable this way.** The gap from 26,119 to the 24,576-byte fragment
+limit is 1,543 bytes of *compressed* size, on a binary that is already `codegen-units = 1`,
+`lto = true`, `strip = true`, `panic = "abort"`, `mini-alloc` (the smaller allocator, already
+the default feature), with `opt-level = "z"` and no default-feature bloat left in its
+`alloy-primitives` dependency. The remaining size is the actual contract logic added by the
+P1/P2/P4 fixes (the `StorageBytes table_ids` field, the `#[constructor]`, U80 round-id
+arithmetic, fail-closed `Result` propagation, and now `BadTableId`/`MissingTable`); cutting
+further would mean cutting one of those checks, which this task's instructions explicitly
+rule out. The only other lever found (not tried, not applied) is `-Zbuild-std` with
+`panic_immediate_abort` on a nightly toolchain, which strips `core::fmt`'s panic-message
+machinery; this was not attempted because it requires swapping the pinned stable toolchain
+(`pricer/rust-toolchain.toml`, `channel = "1.91.0"`) for nightly, a bigger and riskier change
+than "try an opt-level and a features flag" that Stylus's own deployment-verification
+tooling ties reproducibility to, and it was not asked for. Reporting the numbers, not
+cutting behaviour: **stops at 2 fragments, 26,119 bytes compressed.**
+
 The previously-published **4.06x** Stylus-vs-Solidity call-gas ratio
 (`spikes/stylus-pricer/FINDINGS.md`) predates this rewrite (single table, no
 cost-of-capital load, no volatility scale, no checked-arithmetic overhead) and is **not

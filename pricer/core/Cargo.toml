@@ -6,4 +6,4 @@ edition = "2024"
 # Pure math, zero Stylus dependency: see src/lib.rs's module doc for why this is split out of
 # ../Cargo.toml (heracles-pricer)'s cdylib-declaring crate.
 [dependencies]
-alloy-primitives = "1.5.7"
+alloy-primitives = { version = "1.5.7", default-features = false }

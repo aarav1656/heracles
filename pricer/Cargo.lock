@@ -1820,7 +1820,6 @@ name = "heracles-pricer"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
- "alloy-sol-types",
  "pricer-core",
  "stylus-sdk",
 ]

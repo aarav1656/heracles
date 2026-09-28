@@ -4,8 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-alloy-primitives = "1.5.7"
-alloy-sol-types = "1.5.7"
+alloy-primitives = { version = "1.5.7", default-features = false }
 stylus-sdk = "0.10.9"
 pricer-core = { path = "core" }
 
@@ -27,4 +26,4 @@ codegen-units = 1
 strip = true
 lto = true
 panic = "abort"
-opt-level = 3
+opt-level = "z"
