@@ -16,7 +16,7 @@ contract WeekWindowTest is Test {
 
     function setUp() public {
         MockUSDG usdg = new MockUSDG();
-        Pricer pricer = new Pricer();
+        Pricer pricer = new Pricer(new uint8[](0));
         MockFeed feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);

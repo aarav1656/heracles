@@ -62,7 +62,7 @@ contract GapTreatyForkTest is Test {
         address[] memory feeds = new address[](9);
         (feeds[0], feeds[1], feeds[2], feeds[3], feeds[4]) = (SPY, NVDA, AAPL, MSFT, AMZN);
         (feeds[5], feeds[6], feeds[7], feeds[8]) = (GOOGL, TSLA, META, COIN);
-        treaty = new Treaty(address(USDG), address(new Pricer()), feeds, 50, SEQUENCER_FEED);
+        treaty = new Treaty(address(USDG), address(new Pricer(new uint8[](0))), feeds, 50, SEQUENCER_FEED);
         capacity = treaty.capacity();
     }
 
@@ -77,7 +77,7 @@ contract GapTreatyForkTest is Test {
     function test_fork_rejectsNonEightDecimalFeed() public {
         address[] memory bad = new address[](1);
         bad[0] = USDC;
-        address pricerAddr = address(new Pricer());
+        address pricerAddr = address(new Pricer(new uint8[](0)));
         vm.expectRevert(Treaty.BadParams.selector);
         new Treaty(address(USDG), pricerAddr, bad, 50, SEQUENCER_FEED);
     }

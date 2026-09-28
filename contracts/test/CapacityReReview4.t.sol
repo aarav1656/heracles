@@ -31,7 +31,7 @@ contract ReReview4 is Test {
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(new Pricer()), feeds, 50, address(0));
+        treaty = new Treaty(address(usdg), address(new Pricer(new uint8[](0))), feeds, 50, address(0));
         capacity = treaty.capacity();
         vm.warp(MON0 + 1 hours);
         _fund(writer, 1e15);
@@ -145,7 +145,7 @@ contract ReReview4 is Test {
         MockSequencerFeed seq = new MockSequencerFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        Treaty t = new Treaty(address(usdg), address(new Pricer()), feeds, 50, address(seq));
+        Treaty t = new Treaty(address(usdg), address(new Pricer(new uint8[](0))), feeds, 50, address(seq));
         Capacity c = t.capacity();
         vm.prank(writer);
         usdg.approve(address(c), type(uint256).max);

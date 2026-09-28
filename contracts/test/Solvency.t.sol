@@ -34,7 +34,7 @@ contract SolvencyTest is Test {
 
     function setUp() public {
         usdg = new MockUSDG();
-        pricer = new Pricer();
+        pricer = new Pricer(new uint8[](0));
 
         address[] memory feedAddrs = new address[](N_MARKETS);
         for (uint256 i; i < N_MARKETS; i++) {

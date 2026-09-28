@@ -53,7 +53,7 @@ contract GapTreatyForkLifecycleTest is Test {
         feeds[0] = address(feed);
         // sequencerUptimeFeed left at address(0): Sepolia has no equivalent feed (SECURITY-REVIEW.md
         // M2), same disabled-on-testnet posture as the live 421614 deploy.
-        treaty = new Treaty(address(USDG), address(new Pricer()), feeds, 50, address(0));
+        treaty = new Treaty(address(USDG), address(new Pricer(new uint8[](0))), feeds, 50, address(0));
         capacity = treaty.capacity();
 
         deal(address(USDG), writer, 1_000_000e6);

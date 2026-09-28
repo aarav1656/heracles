@@ -38,7 +38,7 @@ contract AttackTest is Test {
 
     function setUp() public {
         usdg = new MockUSDG();
-        pricer = new Pricer();
+        pricer = new Pricer(new uint8[](0));
         feed = new MockFeed();
         feed.set(1, FRIDAY_PRICE, CUTOFF - 1 hours);
 

@@ -268,7 +268,7 @@ contract AdversarialGateInvariant is Test {
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(new Pricer()), feeds, 50, address(0));
+        treaty = new Treaty(address(usdg), address(new Pricer(new uint8[](0))), feeds, 50, address(0));
         cap = treaty.capacity();
 
         // Item 6: setReference now needs its own first-round-after-Friday's-close pair, on top

@@ -37,7 +37,7 @@ contract CapacityC1Test is Test {
         feed.set(1, 100e8, FRI_1900 - 10 minutes);
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(new Pricer()), feeds, 50, address(0));
+        treaty = new Treaty(address(usdg), address(new Pricer(new uint8[](0))), feeds, 50, address(0));
         capacity = treaty.capacity();
         _deposit(writer, 100_000e6);
         _deposit(writerB, 100_000e6);
