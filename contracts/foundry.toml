@@ -10,6 +10,9 @@ remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
 ]
 fs_permissions = [{ access = "read", path = "./" }]
+# ffi: PricerParity.t.sol shells out to the native pricer_cli binary (pricer/pricer_cli) for a
+# real cross-language parity check against the Rust pricer_core. Local/CI only, no deploy path.
+ffi = true
 
 [rpc_endpoints]
 arbitrum_sepolia = "https://sepolia-rollup.arbitrum.io/rpc"

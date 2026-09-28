@@ -268,8 +268,10 @@ contract AttackReviewTest is Test {
     /// silently (fixed in pricer/src/lib.rs via checked_mul/checked_add, see
     /// pricer::test::test_overflow_reverts). This documents the Solidity side of the interface.
     function test_L1_solidityPricerRevertsOnOverflow() public {
+        address[] memory feeds = new address[](1);
+        feeds[0] = address(feed);
         vm.expectRevert();
-        pricer.quote(_one(-(type(int256).max / 1000)), 0, 40e6);
+        pricer.quote(_one(-(type(int256).max / 1000)), feeds, 0, 40e6);
     }
 
     /// L4 (fixed): a buyer can redirect their payout to another address; only the buyer who owns

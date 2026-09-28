@@ -1,0 +1,15 @@
+[package]
+name = "pricer-cli"
+version = "0.1.0"
+edition = "2024"
+
+# Native-only CLI wrapping ../src/lib.rs's feed-independent `price_core`, used by
+# contracts/test/PricerParity.t.sol's `vm.ffi` fuzz test to prove Solidity's `priceCore` and the
+# Rust `price_core` are bit-identical. A separate package (not a `[[bin]]` inside the pricer
+# package itself) deliberately: the pricer package's `[lib] crate-type = ["lib", "cdylib"]`
+# builds the cdylib against WASM-only hostio imports, which fails to link on a native target
+# whenever cargo builds that package directly (`cargo build --bin` from inside pricer/ hits this);
+# depending on it as an external path dependency only pulls the rlib, sidestepping that.
+[dependencies]
+pricer-core = { path = "../core" }
+alloy-primitives = "1.5.7"

@@ -8,11 +8,17 @@ pragma solidity ^0.8.24;
 /// no WAD conversion. exposure[i] is signed: positive is long market i (loses when it falls),
 /// negative is short (loses when it rises).
 interface IPricer {
-    /// @return premium mean(payout)*1.25 + 0.5*TVaR95(payout) over the 504 stored weekend
-    /// scenarios, where payout(s) = min(limit, max(0, portfolioLoss(s) - retention)).
-    /// @return el mean(payout) (expected loss of the layer).
+    /// @param feeds Chainlink AggregatorV3-shaped feed address per exposure index, same order as
+    /// `exposure`, used only to read each market's own recent rounds for the realised-volatility
+    /// scale applied to its scenario table (docs/pricing.md). Reverts if `feeds.length !=
+    /// exposure.length`.
+    /// @return premium el + c*(tvar95 - el), c the annualised cost-of-capital rate prorated to
+    /// one weekend's capital lock (docs/pricing.md).
+    /// @return el mean(payout) (expected loss of the layer) over the 504 stored, per-market,
+    /// volatility-scaled weekend scenarios, where payout(s) = min(limit, max(0, portfolioLoss(s)
+    /// - retention)).
     /// @return tvar95 mean of the worst 5% of payout(s) (25 of 504 scenarios).
-    function quote(int256[] calldata exposure, uint256 retention, uint256 limit)
+    function quote(int256[] calldata exposure, address[] calldata feeds, uint256 retention, uint256 limit)
         external
         view
         returns (uint256 premium, uint256 el, uint256 tvar95);
