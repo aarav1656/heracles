@@ -20,6 +20,7 @@ export type Layer = {
   payout: bigint;
   exposure: bigint[];
   referenceSet: boolean[];
+  referenceVoid: boolean[];
   marketFixed: boolean[];
   fridayPrice: bigint[];
   mondayPrice: bigint[];
@@ -38,14 +39,14 @@ export type BookSnapshot = {
   minRateBps: bigint;
 };
 
-function toLayer(id: bigint, raw: readonly unknown[], exposure: readonly bigint[], refSet: readonly boolean[], fixed: readonly boolean[], fri: readonly bigint[], mon: readonly bigint[]): Layer {
+function toLayer(id: bigint, raw: readonly unknown[], exposure: readonly bigint[], refSet: readonly boolean[], refVoid: readonly boolean[], fixed: readonly boolean[], fri: readonly bigint[], mon: readonly bigint[]): Layer {
   const [buyer, fridayCutoff, expiry, referencedCount, fixedCount, state, buyerClaimed, retention, limit, premium, payout] = raw as unknown as [Address, number, number, number, number, number, boolean, bigint, bigint, bigint, bigint];
   return {
     id, buyer, fridayCutoff: Number(fridayCutoff), expiry: Number(expiry),
     referencedCount: Number(referencedCount),
     fixedCount: Number(fixedCount), state: Number(state), buyerClaimed,
     retention, limit, premium, payout,
-    exposure: [...exposure], referenceSet: [...refSet], marketFixed: [...fixed], fridayPrice: [...fri], mondayPrice: [...mon],
+    exposure: [...exposure], referenceSet: [...refSet], referenceVoid: [...refVoid], marketFixed: [...fixed], fridayPrice: [...fri], mondayPrice: [...mon],
   };
 }
 
@@ -94,22 +95,25 @@ export function useBook(account: Address | undefined) {
         allowFailure: false,
         contracts: Array.from({ length: Number(nMarkets) }, (_, m) => ([
           { address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'referenceSet', args: [id, BigInt(m)] },
+          { address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'referenceVoid', args: [id, BigInt(m)] },
           { address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'marketFixed', args: [id, BigInt(m)] },
           { address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'fridayPrice', args: [id, BigInt(m)] },
           { address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'mondayPrice', args: [id, BigInt(m)] },
         ] as const)).flat(),
       });
       const refSet: boolean[] = [];
+      const refVoid: boolean[] = [];
       const fixed: boolean[] = [];
       const fri: bigint[] = [];
       const mon: bigint[] = [];
       for (let m = 0; m < Number(nMarkets); m++) {
-        refSet.push(perMarket[m * 4] as boolean);
-        fixed.push(perMarket[m * 4 + 1] as boolean);
-        fri.push(BigInt(perMarket[m * 4 + 2] as bigint));
-        mon.push(BigInt(perMarket[m * 4 + 3] as bigint));
+        refSet.push(perMarket[m * 5] as boolean);
+        refVoid.push(perMarket[m * 5 + 1] as boolean);
+        fixed.push(perMarket[m * 5 + 2] as boolean);
+        fri.push(BigInt(perMarket[m * 5 + 3] as bigint));
+        mon.push(BigInt(perMarket[m * 5 + 4] as bigint));
       }
-      layers.push(toLayer(id, raw as unknown as readonly unknown[], exposure as readonly bigint[], refSet, fixed, fri, mon));
+      layers.push(toLayer(id, raw as unknown as readonly unknown[], exposure as readonly bigint[], refSet, refVoid, fixed, fri, mon));
     }
 
     // Owed but unclaimed payouts: settled layers whose buyer has not pulled yet.
@@ -121,7 +125,7 @@ export function useBook(account: Address | undefined) {
 
     return {
       markets,
-      capacity: { totalAssets, locked, free: totalAssets, liabilities, pendingPremium, balance: capBalance, myShares, myUsdg, myAllowance, maxRedeem },
+      capacity: { totalAssets, locked, free: totalAssets > locked ? totalAssets - locked : 0n, liabilities, pendingPremium, balance: capBalance, myShares, myUsdg, myAllowance, maxRedeem },
       layers,
       minRateBps,
     };
@@ -132,6 +136,6 @@ export function useBook(account: Address | undefined) {
 export function quoteLive(client: PublicClient, exposure: bigint[], retention: bigint, limit: bigint) {
   return client.readContract({
     address: PRICER_ADDRESS, abi: pricerAbi,
-    functionName: 'quote', args: [exposure, retention, limit],
+    functionName: 'quote', args: [exposure, FEED_ADDRESSES.slice(0, exposure.length), retention, limit],
   });
 }

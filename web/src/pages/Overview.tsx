@@ -70,7 +70,7 @@ export function Overview() {
                         <span className="cell market">
                           <span className="market-icon" aria-hidden="true">S</span>SPY
                         </span>
-                        <span className="cell note">No layers this week, next window opens Mon 00:00 UTC.</span>
+                        <span className="cell note">{bindWindowNote(now)}</span>
                       </div>
                     </div>
                   ) : (
@@ -100,7 +100,7 @@ export function Overview() {
                 </dl>
                 <p className="prose">
                   Sepolia carries one live equity feed, so this deploy binds a single market.
-                  The nine-market book is proven on a fork of Arbitrum One state.
+                  The four-market book (NVDA, AAPL, SPY, TSLA) is proven on a fork of Arbitrum One state.
                 </p>
               </div>
             </section>
@@ -260,4 +260,14 @@ export function CapacityStrip({ locked, owed, free, balance, pending }: { locked
       </dl>
     </div>
   );
+}
+
+/** Mirrors Treaty.weekWindow: binding is open from Monday 00:00 UTC until Friday 19:30 UTC. */
+function bindWindowNote(now: number): string {
+  const day = (new Date(now * 1000).getUTCDay() + 6) % 7;
+  const monday = Math.floor(now / 86400 - day) * 86400;
+  const cutoff = monday + 4 * 86400 + 19.5 * 3600;
+  return now < cutoff
+    ? 'No layers yet this week. Binding is open until Fri 19:30 UTC.'
+    : 'No layers this week. Binding reopens Mon 00:00 UTC.';
 }

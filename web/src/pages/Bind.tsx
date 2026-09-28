@@ -15,19 +15,23 @@ import { explainError } from '../lib/revert';
 import { useConnection } from 'wagmi';
 
 type Quote = { premium: bigint; el: bigint; tvar: bigint; block: bigint };
-type Window = { cutoff: number; expiry: number };
+type Window = { cutoff: number; expiry: number; ref: number };
 
-/** The week's take cutoff and Monday fixing, read from the contract's own calendar. */
+/**
+ * The week's take cutoff, Friday reference (`fridayCloseOf`), and Monday fixing, all read from
+ * the contract's own calendar so the DST-aware close/expiry math is never duplicated here.
+ */
 function useWeekWindow(client: PublicClient | undefined, now: number): Window | undefined {
   const [win, setWin] = useState<Window>();
   useEffect(() => {
     if (!client) return;
     let live = true;
     client.readContract({ address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'weekWindow', args: [BigInt(now)] })
-      .then((r) => {
-        if (!live) return;
+      .then(async (r) => {
         const [cutoff, expiry] = r as unknown as [bigint, bigint];
-        setWin({ cutoff: Number(cutoff), expiry: Number(expiry) });
+        const ref = await client.readContract({ address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'fridayCloseOf', args: [cutoff] });
+        if (!live) return;
+        setWin({ cutoff: Number(cutoff), expiry: Number(expiry), ref: Number(ref as bigint) });
       })
       .catch(() => { if (live) setWin(undefined); });
     return () => { live = false; };
@@ -227,12 +231,12 @@ export function Bind() {
               </div>
               <p className="fine">
                 Pricer <a className="tx" href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>,
-                priced on-chain by the Rust (Stylus) pricer, measured 4.06x less gas than the Solidity twin.
+                priced on-chain by the Rust (Stylus) pricer, measured at 8.01x less L2 execution gas
+                than its Solidity twin on the same call.
               </p>
               <p className="prose">
-                Sherlock's DeFi covers price 1-4%/yr (up to 4-8%/yr for higher-risk protocols);
-                this layer's floor is 0.5% rate on line on the limit, excess-of-loss tail cover,
-                not full smart-contract cover.
+                The premium never falls below 0.5% of the limit. This is excess-of-loss tail cover on
+                a weekend gap, not smart-contract cover.
               </p>
             </div>
           </section>
@@ -331,15 +335,14 @@ export function Bind() {
 function WeekClock({ win, now }: { win: Window; now: number }) {
   const from = win.cutoff;
   const to = win.expiry + 2 * 86400;
-  const ref = win.cutoff + 4 * 3600 + 30 * 60;
   const span = to - from || 1;
   const at = (t: number) => `${Math.min(100, Math.max(0, ((t - from) / span) * 100)).toFixed(2)}%`;
   const showNow = now >= from && now <= to;
   return (
     <div className="clock">
-      <div className="clock-plot" role="img" aria-label={`Take closes ${fmtClock(win.cutoff)} UTC, reference opens Saturday 00:00 UTC, fixing ${fmtClock(win.expiry)} UTC.`}>
+      <div className="clock-plot" role="img" aria-label={`Take closes ${fmtClock(win.cutoff)} UTC, reference opens at Friday's close ${fmtClock(win.ref)} UTC, fixing ${fmtClock(win.expiry)} UTC.`}>
         <i className="cut" style={{ left: at(win.cutoff) }} />
-        <i className="ref" style={{ left: at(ref) }} />
+        <i className="ref" style={{ left: at(win.ref) }} />
         <i className="fix" style={{ left: at(win.expiry) }} />
         {showNow && <i className="now" style={{ left: at(now) }} />}
       </div>
@@ -350,7 +353,7 @@ function WeekClock({ win, now }: { win: Window; now: number }) {
         </div>
         <div>
           <dt>reference opens</dt>
-          <dd className="num">{fmtClock(ref)} UTC</dd>
+          <dd className="num">{fmtClock(win.ref)} UTC</dd>
         </div>
         <div>
           <dt>fixing</dt>
