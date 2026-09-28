@@ -21,13 +21,22 @@
 //! 504-scenario Friday-close-to-Monday-open weekend gap tables (basis points), one each for
 //! NVDA, AAPL, SPY and TSLA, fetched from api.nasdaq.com's free historical-bars endpoint and
 //! re-derivable with `scripts/generate_gap_tables.py` (evidence/gap-tables/{TICKER}.json holds
-//! the full detail). `exposure[i]` at position 0 prices against the NVDA table, 1 AAPL, 2 SPY,
-//! 3 TSLA; any further market (index >= 4) still shares the NVDA table (a disclosed
-//! simplification, see docs/pricing.md Limitations).
+//! the full detail). Table id 0 is NVDA, 1 AAPL, 2 SPY, 3 TSLA; any other id falls back to NVDA.
+//! `table_ids[i]` (a caller-supplied, per-deployment array; docs/security/capacity-review.md
+//! "Re-review (2026-09-28)" P2) picks market i's table explicitly, so the market a table prices
+//! no longer depends on `exposure[i]`'s array position. When `table_ids` is shorter than
+//! `exposure` (including empty), the missing entries fall back to `default_table_id`, which
+//! reproduces the old position-only mapping (0 NVDA, 1 AAPL, 2 SPY, 3 TSLA, else NVDA) exactly,
+//! so existing callers that never pass table ids keep their old (buggy for a non-canonical feed
+//! order) behaviour unchanged rather than silently repricing.
 //!
-//! Pricing formula: `premium = el + c * (tvar95 - el)`, c an annualised cost-of-capital rate
-//! (COST_OF_CAPITAL_ANNUAL_PPM) prorated to one weekend's capital lock (WEEKEND_HOURS / 8760),
-//! see docs/pricing.md for sourcing and the before/after numbers.
+//! Pricing formula: `premium = el + RISK_LOAD_PPM * (tvar95 - el) + CAPITAL_CHARGE_ANNUAL_PPM *
+//! limit * LOCK_DAYS / DAYS_PER_YEAR` (docs/security/capacity-review.md "Re-review
+//! (2026-09-28)" item 2 / docs/pricing.md): a per-weekend tail-risk load (not prorated, since
+//! a weekend gap is a discrete per-bind event, not a continuous-time process) plus the
+//! risk-free rate on the fully collateralised limit for the real 7-day lock. Replaces the
+//! prior `el + c * (tvar95 - el)` cost-of-capital-only load, which priced writers a Sharpe
+//! ratio near zero (docs/security/capacity-review.md "Pricing (item 2)").
 use alloy_primitives::{I256, U256};
 
 extern crate alloc;
@@ -42,19 +51,41 @@ pub const SCENARIOS: usize = 504;
 pub const TAIL: usize = 25; // ceil(504 * 0.05), the worst 5% of scenarios
 pub const PPM: i128 = 1_000_000;
 
-/// See contracts/src/Pricer.sol's doc comment for the full sourcing of this rate (Solvency II
-/// 6% CoC, cross-checked against Sherlock/Nexus DeFi cover yields); docs/pricing.md restates it.
-pub const COST_OF_CAPITAL_ANNUAL_PPM: i128 = 60_000; // 6.00%
-pub const WEEKEND_HOURS: i128 = 66; // Friday 19:30 UTC cutoff to Monday 13:30 UTC expiry
-pub const HOURS_PER_YEAR: i128 = 8_760;
+/// Per-weekend tail-risk load, see contracts/src/Pricer.sol's doc comment and
+/// docs/security/capacity-review.md "Pricing (item 2)" for the full derivation: a flat 3% of
+/// (TVaR95 - EL), not prorated by time, since a weekend gap prices as a discrete per-bind event.
+pub const RISK_LOAD_PPM: i128 = 30_000; // 3.00%
+/// Risk-free rate on the fully collateralised limit for the real capital-lock duration
+/// (LOCK_DAYS / DAYS_PER_YEAR), replacing the old cost-of-capital-only load.
+pub const CAPITAL_CHARGE_ANNUAL_PPM: i128 = 40_000; // 4.00%
+pub const LOCK_DAYS: i128 = 7;
+pub const DAYS_PER_YEAR: i128 = 365;
 
 pub const VOL_ROUNDS: u64 = 8;
 pub const NORMAL_ROUND_MOVE_BPS: u64 = 50;
-pub const MIN_SCALE_PPM: u64 = 500_000;
+/// Floor at 1.0x (docs/security/capacity-review.md P4): the vol scale may only raise a quote
+/// above the static historical table, never cut it below, closing the buyer's bind-timing
+/// option (a heartbeat-quiet weekday priced a materially cheaper premium than a livelier one).
+pub const MIN_SCALE_PPM: u64 = 1_000_000;
 pub const MAX_SCALE_PPM: u64 = 3_000_000;
 
-pub fn table_for(i: usize) -> &'static [i32; 504] {
+/// Reproduces the old position-only market-to-table mapping (index 0 NVDA, 1 AAPL, 2 SPY, 3
+/// TSLA, else NVDA), used as the fallback for any market index `table_ids` does not cover.
+pub fn default_table_id(i: usize) -> u8 {
     match i {
+        1 => 1,
+        2 => 2,
+        3 => 3,
+        _ => 0,
+    }
+}
+
+/// Table id 0 NVDA, 1 AAPL, 2 SPY, 3 TSLA, any other id falls back to NVDA. `table_ids[i]`
+/// selects market i's table explicitly; if `table_ids` has no entry at `i`, falls back to
+/// `default_table_id(i)` (docs/security/capacity-review.md P2).
+pub fn table_for(i: usize, table_ids: &[u8]) -> &'static [i32; 504] {
+    let id = table_ids.get(i).copied().unwrap_or_else(|| default_table_id(i));
+    match id {
         1 => &AAPL_GAPS,
         2 => &SPY_GAPS,
         3 => &TSLA_GAPS,
@@ -74,6 +105,7 @@ pub fn price_core(
     vol_scale_ppm: &[U256],
     retention: U256,
     limit: U256,
+    table_ids: &[u8],
 ) -> Result<(U256, U256, U256), Vec<u8>> {
     if exposure.is_empty() {
         return Err(b"EmptyExposure".to_vec());
@@ -92,7 +124,7 @@ pub fn price_core(
     for s in 0..SCENARIOS {
         let mut loss = I256::ZERO;
         for (i, e) in exposure.iter().enumerate() {
-            let raw_gap = c(table_for(i)[s] as i128);
+            let raw_gap = c(table_for(i, table_ids)[s] as i128);
             let scale = I256::from_raw(vol_scale_ppm[i]);
             // L1-style checked arithmetic throughout (SECURITY-REVIEW.md): a pathological
             // exposure or scale reverts here instead of silently wrapping.
@@ -136,17 +168,23 @@ pub fn price_core(
     }
     let tvar95 = tail_sum / c(TAIL as i128);
 
-    // premium = el + c * (tvar95 - el); full multiplication before the single final division.
-    let load = tvar95
+    // premium = el + RISK_LOAD_PPM * (tvar95 - el) + CAPITAL_CHARGE_ANNUAL_PPM * limit *
+    // LOCK_DAYS / DAYS_PER_YEAR; each term fully multiplied before its single final division.
+    let risk_load = tvar95
         .checked_sub(el)
         .ok_or_else(overflow)?
-        .checked_mul(c(COST_OF_CAPITAL_ANNUAL_PPM))
+        .checked_mul(c(RISK_LOAD_PPM))
         .ok_or_else(overflow)?
-        .checked_mul(c(WEEKEND_HOURS))
-        .ok_or_else(overflow)?
-        .checked_div(c(HOURS_PER_YEAR * PPM))
+        .checked_div(ppm)
         .ok_or_else(overflow)?;
-    let premium = el.checked_add(load).ok_or_else(overflow)?;
+    let capital_charge = limit
+        .checked_mul(c(CAPITAL_CHARGE_ANNUAL_PPM))
+        .ok_or_else(overflow)?
+        .checked_mul(c(LOCK_DAYS))
+        .ok_or_else(overflow)?
+        .checked_div(c(DAYS_PER_YEAR * PPM))
+        .ok_or_else(overflow)?;
+    let premium = el.checked_add(risk_load).ok_or_else(overflow)?.checked_add(capital_charge).ok_or_else(overflow)?;
 
     let premium = U256::try_from(premium).map_err(|_| b"NegativePremium".to_vec())?;
     let el = U256::try_from(el).map_err(|_| b"NegativeEl".to_vec())?;
@@ -163,58 +201,108 @@ mod test {
     }
 
     #[test]
-    fn test_zero_exposure_quotes_zero() {
+    fn test_zero_exposure_quotes_capital_charge_only() {
+        // EL and TVaR95 are both zero with no exposure, but the capital charge is a function of
+        // `limit` alone (rent on the fully collateralised capital, not of realised loss), so the
+        // premium is no longer zero: it floors at the capital charge on a $60,000 limit for a
+        // 7-day lock, 40,000/1e6 annual rate (docs/security/capacity-review.md "Pricing (item
+        // 2)"): 60_000e6 * 40_000 * 7 / (365 * 1e6) = 46_027_397 (46.027397 USDG).
         let (premium, el, tvar95) = price_core(
             &[I256::ZERO],
             &neutral(1),
             U256::from(20_000_000_000u64),
             U256::from(60_000_000_000u64),
+            &[],
         )
         .unwrap();
-        assert_eq!(premium, U256::ZERO);
         assert_eq!(el, U256::ZERO);
         assert_eq!(tvar95, U256::ZERO);
+        assert_eq!(premium, U256::from(46_027_397u64));
     }
 
     #[test]
     fn test_empty_exposure_reverts() {
-        let result = price_core(&[], &[], U256::from(0u64), U256::from(1u64));
+        let result = price_core(&[], &[], U256::from(0u64), U256::from(1u64), &[]);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_bad_feeds_length_reverts() {
-        let result = price_core(&[I256::ZERO], &neutral(2), U256::from(0u64), U256::from(1u64));
+        let result = price_core(&[I256::ZERO], &neutral(2), U256::from(0u64), U256::from(1u64), &[]);
         assert!(result.is_err());
     }
 
     /// L1: an exposure large enough that exposure*gap overflows I256 must revert, not wrap.
     #[test]
     fn test_overflow_reverts() {
-        let result = price_core(&[I256::MIN], &neutral(1), U256::from(0u64), U256::from(40_000_000u64));
+        let result = price_core(&[I256::MIN], &neutral(1), U256::from(0u64), U256::from(40_000_000u64), &[]);
         assert!(result.is_err(), "overflowing exposure must revert, not wrap");
     }
 
+    /// Acceptance number (docs/security/capacity-review.md "Pricing (item 2)" README example:
+    /// long $2M, NVDA table, retention $20k, limit $60k, 1.0x scale). The reviewer's rounded
+    /// figure (5,040.08 + 1,490.64 + 46.03 = 6,576.75) sums three components independently
+    /// rounded to cents; this integer-exact computation is 6,576.744381 (displays 6,576.74), a
+    /// benign $0.01 rounding-accumulation artifact, not a formula error (the SPY case below
+    /// matches the reviewer's rounded figure exactly, with zero discrepancy).
     #[test]
-    fn test_short_spy_prices_nonzero_premium() {
-        let exposure = [-I256::try_from(2_000_000_000_000i128).unwrap()];
+    fn test_nvda_premium_matches_reviewer_acceptance_number() {
+        let exposure = [I256::try_from(2_000_000_000_000i128).unwrap()];
         let (premium, el, tvar95) = price_core(
             &exposure,
             &neutral(1),
             U256::from(20_000_000_000u64),
             U256::from(60_000_000_000u64),
+            &[], // table id defaults to 0 (NVDA) at index 0
         )
         .unwrap();
-        assert!(premium > U256::ZERO);
-        assert!(tvar95 >= el);
-        // CoC load must sit strictly below the old 1.25*el+0.5*tvar95 load on any layer where
-        // tvar95 > el (the new formula charges rent on locked capital for 66 hours, not a full
-        // year's worth of tail risk): the old formula priced this exact case's premium far above
-        // el, the new one keeps premium close to el.
-        assert!(
-            premium < el + (el / U256::from(10u64)),
-            "CoC-loaded premium should stay close to EL, not multiples of it"
-        );
+        assert_eq!(el, U256::from(5_040_079_365u64));
+        assert_eq!(tvar95, U256::from(54_728_000_000u64));
+        assert_eq!(premium, U256::from(6_576_744_381u64));
+    }
+
+    /// Same layer, SPY table: matches the reviewer's rounded figure exactly (1,051.19 + 579.50 +
+    /// 46.03 = 1,676.72).
+    #[test]
+    fn test_spy_premium_matches_reviewer_acceptance_number() {
+        let exposure = [I256::try_from(2_000_000_000_000i128).unwrap()];
+        let (premium, el, tvar95) = price_core(
+            &exposure,
+            &neutral(1),
+            U256::from(20_000_000_000u64),
+            U256::from(60_000_000_000u64),
+            &[2], // explicit table id: SPY
+        )
+        .unwrap();
+        assert_eq!(el, U256::from(1_051_190_476u64));
+        assert_eq!(tvar95, U256::from(20_368_000_000u64));
+        assert_eq!(premium, U256::from(1_676_722_158u64));
+    }
+
+    /// P2 (docs/security/capacity-review.md "Re-review (2026-09-28)"): a single SPY feed
+    /// configured with an explicit table id must price on the SPY table, matching a 3-market
+    /// exposure that places the same notional at index 2 (SPY) with the other two markets flat.
+    /// Without an explicit table id, a single feed at position 0 would wrongly default to the
+    /// NVDA table (`test_RR3_singleSpyFeedMustPriceOnSpyTable` in the reviewer's scratch suite).
+    #[test]
+    fn test_rr3_single_spy_feed_must_price_on_spy_table() {
+        let exposure1 = [I256::try_from(2_000_000_000_000i128).unwrap()];
+        let quote_single =
+            price_core(&exposure1, &neutral(1), U256::from(20_000_000_000u64), U256::from(60_000_000_000u64), &[2])
+                .unwrap();
+
+        let exposure3 = [I256::ZERO, I256::ZERO, I256::try_from(2_000_000_000_000i128).unwrap()];
+        let quote_multi = price_core(
+            &exposure3,
+            &neutral(3),
+            U256::from(20_000_000_000u64),
+            U256::from(60_000_000_000u64),
+            &[0, 1, 2],
+        )
+        .unwrap();
+
+        assert_eq!(quote_single, quote_multi, "single SPY feed with table id 2 must match a 3-market SPY-at-index-2 quote");
+        assert_eq!(quote_single.0, U256::from(1_676_722_158u64), "must be the SPY acceptance number, not NVDA's");
     }
 
     #[test]
@@ -223,15 +311,22 @@ mod test {
         // materially calmer historical table (evidence/auction-and-pricing.md: SPY std 0.93% vs
         // NVDA 2.12%) must price a lower premium, proving the table selection is actually wired
         // in and not silently falling back to one shared table for every index.
-        let exposure = [-I256::try_from(2_000_000_000_000i128).unwrap()];
-        let (premium_nvda, ..) =
-            price_core(&exposure, &neutral(1), U256::from(20_000_000_000u64), U256::from(60_000_000_000u64)).unwrap();
-        let exposure3 = [I256::ZERO, I256::ZERO, -I256::try_from(2_000_000_000_000i128).unwrap()];
+        let exposure = [I256::try_from(2_000_000_000_000i128).unwrap()];
+        let (premium_nvda, ..) = price_core(
+            &exposure,
+            &neutral(1),
+            U256::from(20_000_000_000u64),
+            U256::from(60_000_000_000u64),
+            &[],
+        )
+        .unwrap();
+        let exposure3 = [I256::ZERO, I256::ZERO, I256::try_from(2_000_000_000_000i128).unwrap()];
         let (premium_spy, ..) = price_core(
             &exposure3,
             &neutral(3),
             U256::from(20_000_000_000u64),
             U256::from(60_000_000_000u64),
+            &[],
         )
         .unwrap();
         assert!(premium_spy < premium_nvda, "SPY's calmer table must price lower than NVDA's at the same exposure");
@@ -239,12 +334,19 @@ mod test {
 
     #[test]
     fn test_vol_scale_up_increases_premium() {
-        let exposure = [-I256::try_from(2_000_000_000_000i128).unwrap()];
+        let exposure = [I256::try_from(2_000_000_000_000i128).unwrap()];
         let (premium_neutral, ..) =
-            price_core(&exposure, &neutral(1), U256::from(0u64), U256::from(1_000_000_000_000u64)).unwrap();
+            price_core(&exposure, &neutral(1), U256::from(0u64), U256::from(1_000_000_000_000u64), &[]).unwrap();
         let scaled_up = alloc::vec![U256::from(MAX_SCALE_PPM)];
         let (premium_scaled, ..) =
-            price_core(&exposure, &scaled_up, U256::from(0u64), U256::from(1_000_000_000_000u64)).unwrap();
+            price_core(&exposure, &scaled_up, U256::from(0u64), U256::from(1_000_000_000_000u64), &[]).unwrap();
         assert!(premium_scaled > premium_neutral, "3x volatility scale must price a higher premium");
+    }
+
+    /// P4 (docs/security/capacity-review.md): MIN_SCALE_PPM floors at 1.0x, so scale may only
+    /// raise a quote above the static table, never cut it below.
+    #[test]
+    fn test_min_scale_floors_at_one() {
+        assert_eq!(MIN_SCALE_PPM, PPM as u64);
     }
 }
