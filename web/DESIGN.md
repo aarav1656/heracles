@@ -255,3 +255,29 @@ inside `prefers-reduced-motion: reduce`. The gap chart is keyboard-operable (a s
 arrows step a weekend, PageUp/PageDown a year, Home/End the ends) with the readout in an
 `aria-live` line. No italic headings, no emoji icons,
 no em dashes.
+
+## Gate record (2026-09-29)
+
+- `uicraft read` lock written before any TSX/CSS edit (`web/.uicraft-read.json`, git-ignored).
+- `uicraft gate --cwd web/src`: 0 high findings; the same gate exits 1 on a slop fixture
+  (7 high: transition-all, text-8xl, rainbow gradient, filler verbs).
+- Hallmark slop test, gates checked on the rendered pages: no Inter/Roboto display face,
+  no gradient text, no three-card grid, no nested cards, no transition-all, reduced-motion
+  covers every transition, no horizontal scroll at 320/375/1920 on any route (measured
+  `scrollWidth === innerWidth` over CDP), no two-line button labels, three font families,
+  every chart figure has an accessible name, no invented metric (every figure is a chain
+  read or a named repo file).
+- `lib/gaps.test.ts`: 3 pass; flipping the loss sign in `gaps-core.ts` turns 2 red.
+- Console: zero app errors on `/`, `/bind`, `/write`; the only exception seen is a browser
+  wallet extension's `evmAsk.js` redefining `window.ethereum`.
+
+**demo-judge verdict, round 3 (final):** "VERDICT: PASS. Nothing on these six screens
+reads as templated or AI-generated. The GMX-style sidebar and market bar read as a
+deliberate family resemblance, not a stock layout. Every figure on screen carries a
+block number or a source file, and the empty pool is shown honestly without being the
+hero." Per route: Weekend gaps PASS, Price a layer PASS, Write capacity PASS, Mobile 390
+PASS. Round 1 was "PASS" with named templated tells (identical page openings, uppercase
+stat-tile rows, five zero tiles, invisible paid bars, an unlabelled in-sample curve) and
+round 2 "PASS" with one leftover label; each was fixed before the next round. The judge's
+remaining highest-leverage item is product, not design: deposit and bind once on
+Sepolia so the book shows a real layer.
