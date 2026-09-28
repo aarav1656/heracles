@@ -93,11 +93,14 @@ Sequencer Uptime feed and settles in real Paxos USDG on testnet
    zero exposure or zero limit reverts outright. The reference price is not the caller's
    spot: it is set after the cutoff via `setReference(id, marketIdx, roundId)`, which only
    accepts the last round before Saturday 00:00 UTC, within a 24h window.
-2. The Stylus `Pricer` runs the same 504-scenario table used by the Solidity twin,
-   computes `payout(s) = min(limit, max(0, loss(s) - retention))` per scenario, and
-   returns `premium = mean(payout) * 1.25 + 0.5 * TVaR95(payout)`, floored at
+2. The Stylus `Pricer` runs each market's own 504-weekend gap table (chosen by an explicit
+   per-market table id fixed at deploy; an unconfigured market reverts), scales it by that
+   feed's realised volatility (never below 1.0x), computes
+   `payout(s) = min(limit, max(0, loss(s) - retention))` per scenario, and returns
+   `premium = EL + 0.03 * (TVaR95 - EL) + 0.04 * limit * 7/365`, floored at
    `minRateOnLineBps * limit / 1e4` (50 bps, immutable) so a zero quote can never bind.
-   Deterministic, no owner-set price.
+   The Solidity twin computes the same quote bit for bit (`PricerParity.t.sol`).
+   Deterministic, no owner-set price. Derivation: `docs/pricing.md`.
 3. Writers deposit USDG into an ERC-4626 `Capacity` vault. A bind locks `limit` out of
    free capacity and pulls the premium into `Capacity` in the same transaction, but the
    premium sits in `pendingPremium` (excluded from share pricing) until the layer
