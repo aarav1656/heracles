@@ -66,22 +66,27 @@ contract ReReview4 is Test {
             // reference round (setReference must consume round 2, not round 1).
             (uint256 cutoff,) = treaty.weekWindow(MON0);
             uint256 refTime = treaty.fridayCloseOf(cutoff);
-            feed.set(1, 100e8, MON0 + 4 days + 19 hours);
-            feed.set(2, 100e8, refTime);
-            feed.set(3, 100e8, MON0 + EXP + 1);
             if (state == 3) {
+                feed.set(1, 100e8, MON0 + 4 days + 19 hours);
+                feed.set(2, 100e8, refTime);
+                feed.set(3, 100e8, MON0 + EXP + 1);
                 vm.warp(refTime + 1);
                 treaty.setReference(id, 0, 2);
                 vm.warp(MON0 + EXP + 1);
                 treaty.fix(id, 0, 3);
             } else {
+                // L1 (docs/security/capacity-review.md re-review): the feed used to keep posting a
+                // round past `refTime` here, so cancel legitimately reverted StillFixable on every
+                // draw (a live feed with an unset reference is no longer treated as dead) and the
+                // try/catch plus the fuzz tests' `vm.assume` below discarded every state-4 draw,
+                // leaving state 4 ("after cancel") never actually exercised. Drive the feed to
+                // genuinely die before `refTime` instead -- its only round is the pre-close
+                // predecessor, so `_isMarketDead` finds the reference boundary itself unreached and
+                // cancel succeeds for real, exercising the post-cancel state the fuzz tests assert
+                // against.
+                feed.set(1, 100e8, MON0 + 4 days + 19 hours);
                 vm.warp(MON0 + EXP + 3 days);
-                // P3 (re-review 2026-09-28): an unset reference on a still-live feed no longer
-                // reads as dead, so cancel can legitimately revert StillFixable here (the feed has
-                // a genuine post-close round waiting for setReference); this is a fuzz seeding
-                // helper, not an assertion that cancel must succeed, so treat it the same as the
-                // other try/catch state transitions in this file (e.g. `test_G3_cancelIgnoresSequencerGrace`).
-                try treaty.cancel(id) {} catch {}
+                treaty.cancel(id);
             }
         } catch {}
     }
@@ -89,10 +94,10 @@ contract ReReview4 is Test {
     function testFuzz_depositRedeemRoundTrip(uint8 s, uint256 seed, uint256 lf, uint256 a) public {
         uint8 state = uint8(bound(s, 0, 4));
         _enter(state, seed, lf);
-        // P3 (re-review 2026-09-28): state 4's cancel can now legitimately revert StillFixable
-        // (a live feed with an unset reference is no longer treated as dead), leaving the layer
-        // Bound and the epoch gate closed. Skip that fuzz draw instead of asserting a deposit the
-        // fixed contract correctly refuses.
+        // States 0/1/2 never lock past this cutoff yet (gate inactive); states 3/4 always drive
+        // the layer to a terminal state that unlocks its own cutoff bucket before returning here
+        // (L1 fix above), so this never actually discards a draw -- kept as a defensive guard, not
+        // a skip.
         vm.assume(capacity.maxDeposit(att) != 0);
         a = bound(a, 1, 1e14);
         vm.startPrank(att);
@@ -111,8 +116,7 @@ contract ReReview4 is Test {
     function testFuzz_mintRedeemRoundTrip(uint8 s, uint256 seed, uint256 lf, uint256 sh) public {
         uint8 state = uint8(bound(s, 0, 4));
         _enter(state, seed, lf);
-        // P3: same as testFuzz_depositRedeemRoundTrip above, cancel at state 4 can now
-        // legitimately revert and leave the gate closed.
+        // Same as testFuzz_depositRedeemRoundTrip above: defensive guard, not a skip (L1 fix).
         vm.assume(capacity.maxMint(att) != 0);
         sh = bound(sh, 1, 1e14);
         vm.startPrank(att);
