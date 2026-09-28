@@ -12,7 +12,7 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 /// Orchestrator Item 3 / judging doc B.4 (Slither divide-before-multiply, Treaty.sol:357-358
 /// pre-fix): proves the old two-step formula (`gapBps = diff * 10000 / friday; pnl = exposure *
 /// gapBps / 10000;`) and the fixed single-division formula (`pnl = exposure * diff / friday;`,
-/// now live in `Treaty._settle`) are NOT the same function -- the old one truncates the gap to
+/// now live in `Treaty._settle`) are NOT the same function, the old one truncates the gap to
 /// whole basis points before ever touching `exposure`, always rounding the loss down (i.e.
 /// toward the writers, away from the buyer). This test computes both formulas over the exact
 /// same inputs and shows they diverge by a nonzero, non-rounding-noise amount; it then drives the
@@ -106,7 +106,7 @@ contract TreatyPrecisionTest is Test {
 
     /// Drives the real, deployed contract through the same inputs and shows the live `_settle`
     /// payout equals the new formula's loss (less RETENTION=0, unclamped by LIMIT), never the old
-    /// one -- proof this isn't just an offline math exercise, the fix is what actually executes.
+    /// one, proof this isn't just an offline math exercise, the fix is what actually executes.
     function test_livePayoutMatchesNewFormulaNotOld() public {
         vm.prank(buyer);
         int256[] memory exposure = new int256[](1);

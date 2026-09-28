@@ -161,7 +161,7 @@ function LayerRow({ layer, book, now }: { layer: Layer; book: BookSnapshot; now:
   const stateName = LAYER_STATES[layer.state];
   const exp = layer.exposure[0] ?? 0n;
   const dir = exp < 0n ? 'short' : 'long';
-  const fixing = layer.state === 1 ? (now >= layer.expiry ? 'fixing open' : fmtCountdown(layer.expiry - now)) : '—';
+  const fixing = layer.state === 1 ? (now >= layer.expiry ? 'fixing open' : fmtCountdown(layer.expiry - now)) : '-';
 
   return (
     <div className="ltable-row">

@@ -13,7 +13,7 @@ import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
 /// point, had zero test references and all three hand mutants in the judging review survived the
 /// full suite (73/73 green with the check deleted). Each test below is written to go red the
 /// moment its named guard is deleted, and mutation-proven by hand (delete the line, run this
-/// file's matching test, confirm red; restore, confirm green) -- see the final report for the
+/// file's matching test, confirm red; restore, confirm green), see the final report for the
 /// transcript of that run. `WrongState`, which the judging doc also flags at zero references, gets
 /// its own guard tests at the bottom.
 contract GuardMutationTest is Test {
@@ -95,7 +95,7 @@ contract GuardMutationTest is Test {
         vm.prank(buyer);
         uint256 id = treaty.bind(_exposure(), RETENTION, LIMIT);
         // round 2 is itself already at/after REF_TIME, so it is not a valid "previous round"
-        // for round 3 -- passing round 3 with round 2 as predecessor must revert.
+        // for round 3, passing round 3 with round 2 as predecessor must revert.
         feed.set(2, FRIDAY_PRICE, REF_TIME);
         feed.set(3, FRIDAY_PRICE + 1e8, REF_TIME + 1 hours);
         vm.warp(REF_TIME + 2 hours);
@@ -148,7 +148,7 @@ contract GuardMutationTest is Test {
 
     // --- Guard #3: Capacity.payOut `onlyTreaty` (judging doc Mutant C, named guard) -------------
     // Setting up real `owed` capital first (via a full settle) means a deleted modifier does not
-    // just change which error fires -- it lets `attacker` actually walk away with writer capital,
+    // just change which error fires, it lets `attacker` actually walk away with writer capital,
     // which is the exploit the judging doc describes, not just a different revert selector.
     function test_capacity_payOut_onlyTreaty_guard() public {
         uint256 id = _bindReferenceAndFix();

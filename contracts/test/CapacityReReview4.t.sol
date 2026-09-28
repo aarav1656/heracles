@@ -80,7 +80,7 @@ contract ReReview4 is Test {
                 // draw (a live feed with an unset reference is no longer treated as dead) and the
                 // try/catch plus the fuzz tests' `vm.assume` below discarded every state-4 draw,
                 // leaving state 4 ("after cancel") never actually exercised. Drive the feed to
-                // genuinely die before `refTime` instead -- its only round is the pre-close
+                // genuinely die before `refTime` instead, its only round is the pre-close
                 // predecessor, so `_isMarketDead` finds the reference boundary itself unreached and
                 // cancel succeeds for real, exercising the post-cancel state the fuzz tests assert
                 // against.
@@ -96,7 +96,7 @@ contract ReReview4 is Test {
         _enter(state, seed, lf);
         // States 0/1/2 never lock past this cutoff yet (gate inactive); states 3/4 always drive
         // the layer to a terminal state that unlocks its own cutoff bucket before returning here
-        // (L1 fix above), so this never actually discards a draw -- kept as a defensive guard, not
+        // (L1 fix above), so this never actually discards a draw, kept as a defensive guard, not
         // a skip.
         vm.assume(capacity.maxDeposit(att) != 0);
         a = bound(a, 1, 1e14);

@@ -57,7 +57,7 @@ contract CapacityReReviewTest is Test {
         // Round 3 (the Monday fix round) is timestamped from `expiry` itself, not a hardcoded
         // "13:30 UTC" offset: WEEKS=10 from a late-September MON0 runs past the first Sunday of
         // November, so mid-run `expiry`'s time-of-day shifts from 13:30 UTC (EDT) to 14:30 UTC
-        // (EST) -- a fixed offset would seed a round that is `EarlyFix` (or `BadRound`, once the
+        // (EST), a fixed offset would seed a round that is `EarlyFix` (or `BadRound`, once the
         // round predates the real DST-shifted expiry) for every EST week.
         for (uint256 w; w < WEEKS; w++) {
             uint256 monday = MON0 + w * 7 days;

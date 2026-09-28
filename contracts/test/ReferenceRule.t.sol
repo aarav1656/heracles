@@ -68,8 +68,8 @@ contract ReferenceRuleTest is Test {
     /// heartbeat is the first fresh round after expiry, republishing the same 770.09 at
     /// 14:51:00 UTC rather than a genuine new print. `setReference`/`fix`'s "first round with
     /// updatedAt >= the boundary, predecessor strictly before it" rule has no way to tell a
-    /// genuine price print apart from a heartbeat republish -- Chainlink's `AggregatorV3Interface`
-    /// carries no such flag -- so `fix` accepts this round exactly as B.2 describes. This is a
+    /// genuine price print apart from a heartbeat republish, Chainlink's `AggregatorV3Interface`
+    /// carries no such flag, so `fix` accepts this round exactly as B.2 describes. This is a
     /// documented, honest limitation (see README/SECURITY-REVIEW.md), not something this
     /// contract can close without a data source Chainlink's feed does not expose; the test exists
     /// so the behaviour is proven and visible, not silently assumed away.

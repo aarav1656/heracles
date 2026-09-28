@@ -11,7 +11,7 @@ import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
 
 /// Port of the reviewer's DR1/DR2 PoCs (docs/security/capacity-review.md "Re-review (2026-09-28)",
 /// findings H1/H2; original scratch suite at /tmp/heracles-dr/proj/contracts/test/DR.t.sol). H1/H2
-/// locked a Bound layer -- and the whole Capacity vault's deposit/withdraw/redeem gate -- forever,
+/// locked a Bound layer, and the whole Capacity vault's deposit/withdraw/redeem gate, forever,
 /// with no admin path out, whenever a market's Friday reference could never be set (a live feed
 /// whose genuine crossing round lands later than `REFERENCE_MAX_DELAY`, or a feed that dies before
 /// Friday's close entirely on a multi-market layer). Fixed by `Treaty.voidReference` plus the
@@ -56,7 +56,7 @@ contract DRTest is Test {
     /// extended weekend pause, not just one missed heartbeat): `setReference` reverts `BadRound`
     /// forever on that round, `fix` reverts `ReferenceNotSet` forever, and before the fix `cancel`
     /// reverted `StillFixable` forever because the feed is alive with a crossing round in its
-    /// current phase -- the Capacity gate never reopens. `voidReference` records the permissionless
+    /// current phase, the Capacity gate never reopens. `voidReference` records the permissionless
     /// proof that this is the genuine, provably-late crossing round, after which `cancel` succeeds.
     function test_DR1_lateHeartbeatReferenceLocksVaultForever() public {
         (Treaty t, Capacity c) = _deploy(1);
@@ -68,7 +68,7 @@ contract DRTest is Test {
         uint256 id = t.bind(e, 0, 60_000e6);
 
         feed.set(P1 | 2, 771e8, CLOSE - 4); // last intraday update 4s before close
-        // Heartbeat, 1s past the (widened) 36h bound -- an extended weekend pause.
+        // Heartbeat, 1s past the (widened) 36h bound, an extended weekend pause.
         feed.set(P1 | 3, 771e8, CLOSE - 4 + 36 hours + 5);
         feed.set(P1 | 4, 771e8, CLOSE - 4 + 60 hours + 10);
         feed.set(P1 | 5, 790e8, EXPIRY + 5 minutes);
@@ -88,7 +88,7 @@ contract DRTest is Test {
 
         // Fixed behaviour: record the proof that the genuine first post-close round is late, then
         // cancel. Unpatched Treaty (no `voidReference`, old `_anyMarketFixable`): this call
-        // reverts, and so does the `cancel` below with `StillFixable` -- the vault stays frozen
+        // reverts, and so does the `cancel` below with `StillFixable`, the vault stays frozen
         // forever. Patched Treaty: both succeed and the gate reopens.
         t.voidReference(id, 0, P1 | 3);
         t.cancel(id);
@@ -100,7 +100,7 @@ contract DRTest is Test {
     /// DR2 (H2, multi-market): market B's feed dies before Friday's close (so its reference can
     /// never be set), market A is healthy and gets its reference. `fix(A)` reverts `ReferenceNotSet`
     /// (fix needs every reference), and before the fix `cancel` reverted `StillFixable` because A
-    /// alone still looked fixable against expiry -- permanent lock, even though B can never be
+    /// alone still looked fixable against expiry, permanent lock, even though B can never be
     /// referenced and `fix` can therefore never succeed for this layer again. Fixed
     /// `_anyMarketFixable` returns false the instant it finds an unreferenced, dead market,
     /// regardless of any other market's own state.
@@ -157,7 +157,7 @@ contract DRTest is Test {
     }
 
     /// Liveness property (H1/H2): whatever the timing of the first post-close round on a
-    /// single-market layer -- on time, late-but-under-the-bound, or arbitrarily late -- a
+    /// single-market layer, on time, late-but-under-the-bound, or arbitrarily late, a
     /// permissionless call sequence from `Bound` always reaches a terminal state (`Settled` or
     /// `Cancelled`); it never gets stuck. Fuzzes the delay between the last pre-close update and
     /// the first post-close round from 1 second to 60 days.

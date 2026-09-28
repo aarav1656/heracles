@@ -26,7 +26,7 @@ contract WeekWindowTest is Test {
 
     /// `fridayCutoff`'s own time-of-day (19:30 UTC) is DST-independent by design, but `expiry`'s
     /// time-of-day flips with the *Monday's* own DST regime (13:30 UTC EDT vs 14:30 UTC EST), so
-    /// the fixed cutoff->expiry gap is only ever 2d18h (EDT Monday) or 2d19h (EST Monday) -- never
+    /// the fixed cutoff->expiry gap is only ever 2d18h (EDT Monday) or 2d19h (EST Monday), never
     /// a third value, and never dependent on Friday's own regime. Callers pass which one they
     /// expect so this stays a real assertion, not a tautology restating the two `expectX` args.
     function _check(uint256 ts, uint256 expectCutoff, uint256 expectExpiry, bool mondayIsEdt) internal {
@@ -55,7 +55,7 @@ contract WeekWindowTest is Test {
 
     /// Item 6 / judging doc B.2: the week actually containing the March 2026 DST switch (Sunday
     /// 2026-03-08 07:00 UTC). Friday 2026-03-06 is still EST (`fridayCloseOf` = 21:00 UTC close);
-    /// the following Monday 2026-03-09 is already EDT (13:30 UTC open) -- `fridayCutoff` itself
+    /// the following Monday 2026-03-09 is already EDT (13:30 UTC open), `fridayCutoff` itself
     /// stays DST-independent at 19:30 UTC either way, only `expiry`'s time-of-day flips.
     function test_weekWindow_marchSwitchWeek_fridayEstMondayEdt() public {
         uint256 t = 1_772_452_800; // Monday 2026-03-02, the week before the switch week

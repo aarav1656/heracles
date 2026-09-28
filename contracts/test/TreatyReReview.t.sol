@@ -55,7 +55,7 @@ contract TreatyReReviewTest is Test {
     /// P3: on a live 24h-heartbeat feed, by `expiry + GRACE` the feed has printed about three
     /// rounds past expiry, so the latest round's own predecessor is also past expiry and the old
     /// "just the latest round and its predecessor" check never finds the genuine first
-    /// post-expiry round -- a perfectly fixable, out-of-the-money layer reads as dead and cancel
+    /// post-expiry round, a perfectly fixable, out-of-the-money layer reads as dead and cancel
     /// refunds the buyer's premium in full, a free option. Fixed `_isMarketDead` finds the real
     /// first round (round 4 here) via the phase's own first round, so cancel must revert
     /// StillFixable instead.
@@ -77,7 +77,7 @@ contract TreatyReReviewTest is Test {
     }
 
     /// P3, unset-reference branch: `!referenceSet[i]` used to be treated as unconditionally dead.
-    /// Same live feed, reference never set (permissionless, anyone could have called it) -- the
+    /// Same live feed, reference never set (permissionless, anyone could have called it), the
     /// fixed rule checks the reference boundary with the same `_isMarketDead` logic instead of
     /// assuming absence of a reference means a dead feed.
     function test_RR1b_cancelWithUnsetReferenceOnLiveFeedMustRevert() public {
@@ -93,7 +93,7 @@ contract TreatyReReviewTest is Test {
 
     /// P5: `setReference` used to accept the first fresh round at or after Friday's close with no
     /// upper bound. A feed whose heartbeat pauses over the weekend (no round between close and the
-    /// next live session) let that next print -- here, Monday's post-news open -- stand in for
+    /// next live session) let that next print, here, Monday's post-news open, stand in for
     /// Friday's close, silently absorbing the weekend gap this treaty exists to cover. Fixed
     /// `setReference` now reverts `BadRound` when the candidate round is later than
     /// `close + REFERENCE_MAX_DELAY` (24h), so the stale round can no longer be used as the

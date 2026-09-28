@@ -17,7 +17,7 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 /// static fork cannot contain: Monday's not-yet-real oracle round.
 ///
 /// Pricer: revm (Foundry's local EVM) cannot execute the live Stylus WASM program
-/// (0x0202D849Dc7CC7b643ff62Cf3E81130EA30D95da) under a fork -- calling it here reverted
+/// (address in contracts/deployments/421614.json) under a fork: calling it here reverted
 /// `OpcodeNotFound`, since Stylus bytecode needs a real Nitro node's WASM runtime, not a plain
 /// EVM interpreter. This test therefore deploys a fresh `Pricer.sol` (the Solidity twin) on the
 /// fork instead; `test/PricerParity.t.sol` plus a live `cast call` comparison already establish
@@ -43,7 +43,7 @@ contract GapTreatyForkLifecycleTest is Test {
     uint256 constant LIMIT = 60_000e6;
     int256 constant EXPOSURE = 2_000_000e6; // long: loses when Monday prints below Friday
 
-    // Judging doc B.1.3 / orchestrator Item 3: same fix as GapTreaty.fork.t.sol -- no try/catch,
+    // Judging doc B.1.3 / orchestrator Item 3: same fix as GapTreaty.fork.t.sol, no try/catch,
     // no `vm.skip`. An unreachable RPC fails `setUp` and every test in this contract, instead of
     // silently reporting SKIP with zero fork coverage.
     function setUp() public {

@@ -277,7 +277,7 @@ contract AdversarialGateInvariant is Test {
         // two: 3w+1 (pre-close predecessor), 3w+2 (the actual Friday reference round, at
         // `fridayCloseOf`, DST-aware and queried live since this 20-week run spans the Nov 2026
         // switch), 3w+3 (Monday fix round, written lazily by the handler, or never for dead
-        // weeks -- seeded far in the future and overwritten on first settle, unchanged from
+        // weeks, seeded far in the future and overwritten on first settle, unchanged from
         // before).
         for (uint256 w; w < AWEEKS; w++) {
             uint256 monday = AMON0 + w * 7 days;

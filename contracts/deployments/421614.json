@@ -1,36 +1,49 @@
 {
   "chainId": 421614,
   "chainName": "Arbitrum Sepolia",
-  "deployedAt": "2026-09-27",
-  "note": "Redeployed for the Capacity permit fix (commit 3f19b79, 76/76 tests). Treaty and Capacity are new; the Stylus Pricer is reused unchanged from the prior deploy.",
+  "deployedAt": "2026-09-28",
+  "deployer": "0x39ef83fbB0BA61A5b4169fF5ce21Fd89e25aab37",
+  "note": "Full redeploy after the 2026-09-28 security and economics re-review (P1 to P5, H1/H2, repricing). All three contracts are new.",
   "contracts": {
     "Treaty": {
-      "address": "0x889F1fA08DE3d280511432893A1D7e5DB66d3252",
-      "role": "bind, fix, settle, claim",
+      "address": "0x222AFa24403d8118a66C5b2F0f26Aa0ea91Dd794",
+      "role": "bind, setReference, voidReference, fix, cancel, claim",
+      "deployTx": "0xa3583c8b74f8fd3b0a5d51491893e14a2e3b888e5b4491eb115c4e2dba3eb423",
+      "block": 313708353,
       "verification": {
         "method": "sourcify",
-        "matchId": "53330627",
-        "matchType": "exact_match",
-        "verifiedAt": "2026-09-27T06:51:35Z"
+        "matchId": "53784936",
+        "matchType": "exact_match (creation and runtime)",
+        "verifiedAt": "2026-09-28T19:39:52Z"
       }
     },
     "Capacity": {
-      "address": "0xe645d83EA67ca1ECC7689f48Eb65eB2dE2e8933D",
-      "role": "ERC-4626 USDG writer vault, depositWithPermit",
+      "address": "0x29750a2018934f1Ca52d1F6940d89AAE8E34bd3D",
+      "role": "ERC-4626 USDG writer vault, depositWithPermit (deployed by the Treaty constructor)",
+      "deployTx": "0xa3583c8b74f8fd3b0a5d51491893e14a2e3b888e5b4491eb115c4e2dba3eb423",
+      "block": 313708353,
       "verification": {
         "method": "sourcify",
-        "matchId": "53330691",
-        "matchType": "exact_match",
-        "verifiedAt": "2026-09-27T06:51:53Z"
+        "matchId": "53784937",
+        "matchType": "exact_match (creation and runtime)",
+        "verifiedAt": "2026-09-28T19:39:53Z"
       }
     },
     "Pricer": {
-      "address": "0x0202D849Dc7CC7b643ff62Cf3E81130EA30D95da",
-      "role": "on-chain premium (Rust/Stylus)",
+      "address": "0xbe99217180a5fcb83372375b0928c971dfa71f88",
+      "role": "on-chain premium (Rust/Stylus), table ids [2] (SPY)",
+      "deployTx": "0x01a37192c882dc7f856baf81bbee70679267b983723ca20e7b9460b4ee945e7d",
+      "block": 313689917,
+      "size": "25,765 bytes compressed, 2 fragments behind a 48-byte root",
       "verification": {
         "method": "unverified",
-        "reason": "Sourcify's Solidity route does not take Stylus/WASM bytecode; cargo stylus verify's reproducible-build route needs a Docker daemon unavailable in this deploy run."
+        "reason": "Sourcify's Solidity route does not take Stylus/WASM bytecode; cargo stylus verify needs a reproducible Docker build, and no Docker daemon was available for this deploy."
       }
+    },
+    "PricerSolidityTwin": {
+      "address": "0x6aAf1b58939d55d1142a34aE02903bB788E9e771",
+      "role": "Solidity twin of the pricer, deployed only for the gas comparison in docs/pricing.md; Treaty does not use it",
+      "deployTx": "0x157c3491890058fdc6a5db002fbb0391d0c256a861c8a50fbaf41131c4a49a9a"
     },
     "USDG": {
       "address": "0xFFC95faa3d63Cde504a05B567C600B78C0b41892",
@@ -44,5 +57,5 @@
     "feeds": ["0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06"],
     "feedsNote": "SPY/USD, the one live equity feed Arbitrum Sepolia carries."
   },
-  "sourceOfTruth": "README.md ('Deployed, Arbitrum Sepolia' section) and docs/e2e/heracles.md; addresses re-confirmed live via `cast code` against https://sepolia-rollup.arbitrum.io/rpc on 2026-09-28 (all four return non-empty bytecode)."
+  "sourceOfTruth": "Read live on 2026-09-28 against https://sepolia-rollup.arbitrum.io/rpc: Treaty.pricer() = Pricer, Treaty.capacity() = Capacity, Treaty.usdg() = USDG, Treaty.minRateOnLineBps() = 50; Pricer.tableIdAt(0) = 2, tableIdAt(1) reverts MissingTable; Sourcify v2 API for the two verifications."
 }

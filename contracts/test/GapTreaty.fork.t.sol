@@ -15,7 +15,7 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 ///
 /// L2 (re-review of 23e632f, docs/security/capacity-review.md "Re-review (2026-09-28)"): this
 /// suite used to bind all 9 real Chainlink equity feeds through `nTableIds(9)`, which assigns
-/// table id 0 (NVDA) to every market, including SPY -- the exact P2 mapping error, just written
+/// table id 0 (NVDA) to every market, including SPY, the exact P2 mapping error, just written
 /// explicitly instead of relying on position. `evidence/gap-tables/` only sources four tables
 /// (NVDA 0, AAPL 1, SPY 2, TSLA 3); MSFT, AMZN, GOOGL, META and COIN have no table at all. Since
 /// `Pricer`'s constructor now requires an explicit, valid table id per market (P2 fix, `BadTableId`
@@ -33,8 +33,8 @@ contract GapTreatyForkTest is Test {
     // (509,707,336), 2,000 blocks back for safety margin against reorgs at the tip. Kept close to
     // the tip deliberately: `arb1.arbitrum.io`'s public RPC is not a full archive node and
     // returns `missing trie node`/`historical state is not available` for account state much
-    // further back than this (confirmed empirically -- ~16,000 blocks back already fails, ~2,000
-    // blocks back is reliable) -- a pin has to be both fixed and within what the RPC actually
+    // further back than this (confirmed empirically, ~16,000 blocks back already fails, ~2,000
+    // blocks back is reliable), a pin has to be both fixed and within what the RPC actually
     // still serves.
     uint256 constant FORK_BLOCK = 509_705_336;
 
@@ -76,7 +76,7 @@ contract GapTreatyForkTest is Test {
         vm.createSelectFork(RPC, FORK_BLOCK);
 
         // L2: only the 4 markets `evidence/gap-tables/` actually sources, each on its own table
-        // id (NVDA 0, AAPL 1, SPY 2, TSLA 3) -- matching feed order to table id order, not the old
+        // id (NVDA 0, AAPL 1, SPY 2, TSLA 3), matching feed order to table id order, not the old
         // "table 0 for everyone" bug.
         address[] memory feeds = new address[](4);
         (feeds[0], feeds[1], feeds[2], feeds[3]) = (NVDA, AAPL, SPY, TSLA);

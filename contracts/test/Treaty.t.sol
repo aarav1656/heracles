@@ -123,7 +123,7 @@ contract TreatyTest is Test {
     }
 
     /// Item 6: a round whose `updatedAt` predates Friday's close (`REF_TIME`) is too old to serve
-    /// as the reference round, even once we're well past close -- `setReference` must reject it
+    /// as the reference round, even once we're well past close, `setReference` must reject it
     /// (`BadRound`), not silently accept whatever round number is passed.
     function test_setReferenceRevertsIfFridayRoundTooOld() public {
         vm.prank(buyer);
