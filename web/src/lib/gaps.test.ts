@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 
-const spy = JSON.parse(readFileSync(new URL('../../../evidence/gap-tables/SPY.json', import.meta.url), 'utf8'));
+const spy = JSON.parse(readFileSync(new URL('../data/gap-tables/SPY.json', import.meta.url), 'utf8'));
 const weekends = spy.gaps.map((g: { friday: string; monday: string; gap_bps: number }) => ({ friday: g.friday, monday: g.monday, gap: g.gap_bps }));
 
 const { backtest, extremes } = await import('./gaps-core.ts');

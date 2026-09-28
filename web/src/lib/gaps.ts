@@ -2,10 +2,10 @@
 // evidence files (docs/pricing.md "Data provenance"), and the pricer's own payout rule run over
 // them in the browser. Nothing here is a new number: every figure is one of these rows, or the
 // Pricer.priceCore formula applied to them at the neutral 1.0x volatility scale.
-import spy from '../../../evidence/gap-tables/SPY.json';
-import nvda from '../../../evidence/gap-tables/NVDA.json';
-import aapl from '../../../evidence/gap-tables/AAPL.json';
-import tsla from '../../../evidence/gap-tables/TSLA.json';
+import spy from '../data/gap-tables/SPY.json';
+import nvda from '../data/gap-tables/NVDA.json';
+import aapl from '../data/gap-tables/AAPL.json';
+import tsla from '../data/gap-tables/TSLA.json';
 
 import type { Weekend } from './gaps-core';
 export * from './gaps-core';

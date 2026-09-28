@@ -62,3 +62,12 @@ writeFileSync(dest, body);
 console.log(
   `wrote src/abi/generated.ts (chain ${chainId}, treaty ${treatyAbi.length} + capacity ${capacityAbi.length} + pricer ${pricerAbi.length} ABI entries, ${feeds.length} feed(s))`,
 );
+
+// The four weekend-gap tables the first screen charts, copied in so web/ builds on its own.
+const gapSrc = join(root, 'evidence', 'gap-tables');
+const gapDest = join(here, '..', 'src', 'data', 'gap-tables');
+mkdirSync(gapDest, { recursive: true });
+for (const t of ['SPY', 'NVDA', 'AAPL', 'TSLA']) {
+  writeFileSync(join(gapDest, `${t}.json`), readFileSync(join(gapSrc, `${t}.json`), 'utf8'));
+}
+console.log('copied gap tables SPY, NVDA, AAPL, TSLA into src/data/gap-tables');

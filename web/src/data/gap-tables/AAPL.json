@@ -1,0 +1,3537 @@
+{
+  "ticker": "AAPL",
+  "fetch_date": "2026-09-28",
+  "source": "https://api.nasdaq.com/api/quote/AAPL/historical?assetclass=stocks&fromdate=2016-09-26&todate=2026-09-26&limit=9999",
+  "method": "gap_bps = round((next_open - friday_close) / friday_close * 10000); Friday last close to next trading day open (Monday, or later on a holiday Monday)",
+  "count": 504,
+  "gaps": [
+    {
+      "friday": "2016-09-30",
+      "monday": "2016-10-03",
+      "friday_close": 28.2625,
+      "monday_open": 28.1775,
+      "gap_bps": -30
+    },
+    {
+      "friday": "2016-10-07",
+      "monday": "2016-10-10",
+      "friday_close": 28.515,
+      "monday_open": 28.755,
+      "gap_bps": 84
+    },
+    {
+      "friday": "2016-10-14",
+      "monday": "2016-10-17",
+      "friday_close": 29.4075,
+      "monday_open": 29.3325,
+      "gap_bps": -26
+    },
+    {
+      "friday": "2016-10-21",
+      "monday": "2016-10-24",
+      "friday_close": 29.15,
+      "monday_open": 29.275,
+      "gap_bps": 43
+    },
+    {
+      "friday": "2016-10-28",
+      "monday": "2016-10-31",
+      "friday_close": 28.43,
+      "monday_open": 28.4125,
+      "gap_bps": -6
+    },
+    {
+      "friday": "2016-11-04",
+      "monday": "2016-11-07",
+      "friday_close": 27.21,
+      "monday_open": 27.52,
+      "gap_bps": 114
+    },
+    {
+      "friday": "2016-11-11",
+      "monday": "2016-11-14",
+      "friday_close": 27.1075,
+      "monday_open": 26.9275,
+      "gap_bps": -66
+    },
+    {
+      "friday": "2016-11-18",
+      "monday": "2016-11-21",
+      "friday_close": 27.515,
+      "monday_open": 27.53,
+      "gap_bps": 5
+    },
+    {
+      "friday": "2016-11-25",
+      "monday": "2016-11-28",
+      "friday_close": 27.9475,
+      "monday_open": 27.8575,
+      "gap_bps": -32
+    },
+    {
+      "friday": "2016-12-02",
+      "monday": "2016-12-05",
+      "friday_close": 27.475,
+      "monday_open": 27.5,
+      "gap_bps": 9
+    },
+    {
+      "friday": "2016-12-09",
+      "monday": "2016-12-12",
+      "friday_close": 28.4875,
+      "monday_open": 28.3225,
+      "gap_bps": -58
+    },
+    {
+      "friday": "2016-12-16",
+      "monday": "2016-12-19",
+      "friday_close": 28.9925,
+      "monday_open": 28.95,
+      "gap_bps": -15
+    },
+    {
+      "friday": "2016-12-23",
+      "monday": "2016-12-27",
+      "friday_close": 29.13,
+      "monday_open": 29.13,
+      "gap_bps": 0
+    },
+    {
+      "friday": "2016-12-30",
+      "monday": "2017-01-03",
+      "friday_close": 28.955,
+      "monday_open": 28.95,
+      "gap_bps": -2
+    },
+    {
+      "friday": "2017-01-06",
+      "monday": "2017-01-09",
+      "friday_close": 29.4775,
+      "monday_open": 29.4875,
+      "gap_bps": 3
+    },
+    {
+      "friday": "2017-01-13",
+      "monday": "2017-01-17",
+      "friday_close": 29.76,
+      "monday_open": 29.585,
+      "gap_bps": -59
+    },
+    {
+      "friday": "2017-01-20",
+      "monday": "2017-01-23",
+      "friday_close": 30.0,
+      "monday_open": 30.0,
+      "gap_bps": 0
+    },
+    {
+      "friday": "2017-01-27",
+      "monday": "2017-01-30",
+      "friday_close": 30.4875,
+      "monday_open": 30.2325,
+      "gap_bps": -84
+    },
+    {
+      "friday": "2017-02-03",
+      "monday": "2017-02-06",
+      "friday_close": 32.27,
+      "monday_open": 32.2825,
+      "gap_bps": 4
+    },
+    {
+      "friday": "2017-02-10",
+      "monday": "2017-02-13",
+      "friday_close": 33.03,
+      "monday_open": 33.27,
+      "gap_bps": 73
+    },
+    {
+      "friday": "2017-02-17",
+      "monday": "2017-02-21",
+      "friday_close": 33.93,
+      "monday_open": 34.0575,
+      "gap_bps": 38
+    },
+    {
+      "friday": "2017-02-24",
+      "monday": "2017-02-27",
+      "friday_close": 34.165,
+      "monday_open": 34.285,
+      "gap_bps": 35
+    },
+    {
+      "friday": "2017-03-03",
+      "monday": "2017-03-06",
+      "friday_close": 34.945,
+      "monday_open": 34.8413,
+      "gap_bps": -30
+    },
+    {
+      "friday": "2017-03-10",
+      "monday": "2017-03-13",
+      "friday_close": 34.785,
+      "monday_open": 34.7125,
+      "gap_bps": -21
+    },
+    {
+      "friday": "2017-03-17",
+      "monday": "2017-03-20",
+      "friday_close": 34.9975,
+      "monday_open": 35.1,
+      "gap_bps": 29
+    },
+    {
+      "friday": "2017-03-24",
+      "monday": "2017-03-27",
+      "friday_close": 35.16,
+      "monday_open": 34.8475,
+      "gap_bps": -89
+    },
+    {
+      "friday": "2017-03-31",
+      "monday": "2017-04-03",
+      "friday_close": 35.915,
+      "monday_open": 35.9275,
+      "gap_bps": 3
+    },
+    {
+      "friday": "2017-04-07",
+      "monday": "2017-04-10",
+      "friday_close": 35.835,
+      "monday_open": 35.9,
+      "gap_bps": 18
+    },
+    {
+      "friday": "2017-04-21",
+      "monday": "2017-04-24",
+      "friday_close": 35.5675,
+      "monday_open": 35.875,
+      "gap_bps": 86
+    },
+    {
+      "friday": "2017-04-28",
+      "monday": "2017-05-01",
+      "friday_close": 35.9125,
+      "monday_open": 36.275,
+      "gap_bps": 101
+    },
+    {
+      "friday": "2017-05-05",
+      "monday": "2017-05-08",
+      "friday_close": 37.24,
+      "monday_open": 37.2575,
+      "gap_bps": 5
+    },
+    {
+      "friday": "2017-05-12",
+      "monday": "2017-05-15",
+      "friday_close": 39.025,
+      "monday_open": 39.0025,
+      "gap_bps": -6
+    },
+    {
+      "friday": "2017-05-19",
+      "monday": "2017-05-22",
+      "friday_close": 38.265,
+      "monday_open": 38.5,
+      "gap_bps": 61
+    },
+    {
+      "friday": "2017-05-26",
+      "monday": "2017-05-30",
+      "friday_close": 38.4025,
+      "monday_open": 38.355,
+      "gap_bps": -12
+    },
+    {
+      "friday": "2017-06-02",
+      "monday": "2017-06-05",
+      "friday_close": 38.8625,
+      "monday_open": 38.585,
+      "gap_bps": -71
+    },
+    {
+      "friday": "2017-06-09",
+      "monday": "2017-06-12",
+      "friday_close": 37.245,
+      "monday_open": 36.435,
+      "gap_bps": -217
+    },
+    {
+      "friday": "2017-06-16",
+      "monday": "2017-06-19",
+      "friday_close": 35.5675,
+      "monday_open": 35.915,
+      "gap_bps": 98
+    },
+    {
+      "friday": "2017-06-23",
+      "monday": "2017-06-26",
+      "friday_close": 36.57,
+      "monday_open": 36.7925,
+      "gap_bps": 61
+    },
+    {
+      "friday": "2017-06-30",
+      "monday": "2017-07-03",
+      "friday_close": 36.005,
+      "monday_open": 36.22,
+      "gap_bps": 60
+    },
+    {
+      "friday": "2017-07-07",
+      "monday": "2017-07-10",
+      "friday_close": 36.045,
+      "monday_open": 36.0275,
+      "gap_bps": -5
+    },
+    {
+      "friday": "2017-07-14",
+      "monday": "2017-07-17",
+      "friday_close": 37.26,
+      "monday_open": 37.205,
+      "gap_bps": -15
+    },
+    {
+      "friday": "2017-07-21",
+      "monday": "2017-07-24",
+      "friday_close": 37.5675,
+      "monday_open": 37.645,
+      "gap_bps": 21
+    },
+    {
+      "friday": "2017-07-28",
+      "monday": "2017-07-31",
+      "friday_close": 37.375,
+      "monday_open": 37.475,
+      "gap_bps": 27
+    },
+    {
+      "friday": "2017-08-04",
+      "monday": "2017-08-07",
+      "friday_close": 39.0975,
+      "monday_open": 39.265,
+      "gap_bps": 43
+    },
+    {
+      "friday": "2017-08-11",
+      "monday": "2017-08-14",
+      "friday_close": 39.37,
+      "monday_open": 39.83,
+      "gap_bps": 117
+    },
+    {
+      "friday": "2017-08-18",
+      "monday": "2017-08-21",
+      "friday_close": 39.375,
+      "monday_open": 39.375,
+      "gap_bps": 0
+    },
+    {
+      "friday": "2017-08-25",
+      "monday": "2017-08-28",
+      "friday_close": 39.965,
+      "monday_open": 40.035,
+      "gap_bps": 18
+    },
+    {
+      "friday": "2017-09-01",
+      "monday": "2017-09-05",
+      "friday_close": 41.0125,
+      "monday_open": 40.9375,
+      "gap_bps": -18
+    },
+    {
+      "friday": "2017-09-08",
+      "monday": "2017-09-11",
+      "friday_close": 39.6575,
+      "monday_open": 40.125,
+      "gap_bps": 118
+    },
+    {
+      "friday": "2017-09-15",
+      "monday": "2017-09-18",
+      "friday_close": 39.97,
+      "monday_open": 40.0275,
+      "gap_bps": 14
+    },
+    {
+      "friday": "2017-09-22",
+      "monday": "2017-09-25",
+      "friday_close": 37.9725,
+      "monday_open": 37.4975,
+      "gap_bps": -125
+    },
+    {
+      "friday": "2017-09-29",
+      "monday": "2017-10-02",
+      "friday_close": 38.53,
+      "monday_open": 38.565,
+      "gap_bps": 9
+    },
+    {
+      "friday": "2017-10-06",
+      "monday": "2017-10-09",
+      "friday_close": 38.825,
+      "monday_open": 38.9525,
+      "gap_bps": 33
+    },
+    {
+      "friday": "2017-10-13",
+      "monday": "2017-10-16",
+      "friday_close": 39.2475,
+      "monday_open": 39.475,
+      "gap_bps": 58
+    },
+    {
+      "friday": "2017-10-20",
+      "monday": "2017-10-23",
+      "friday_close": 39.0625,
+      "monday_open": 39.2225,
+      "gap_bps": 41
+    },
+    {
+      "friday": "2017-10-27",
+      "monday": "2017-10-30",
+      "friday_close": 40.7625,
+      "monday_open": 40.9725,
+      "gap_bps": 52
+    },
+    {
+      "friday": "2017-11-03",
+      "monday": "2017-11-06",
+      "friday_close": 43.125,
+      "monday_open": 43.0913,
+      "gap_bps": -8
+    },
+    {
+      "friday": "2017-11-10",
+      "monday": "2017-11-13",
+      "friday_close": 43.6675,
+      "monday_open": 43.375,
+      "gap_bps": -67
+    },
+    {
+      "friday": "2017-11-17",
+      "monday": "2017-11-20",
+      "friday_close": 42.5375,
+      "monday_open": 42.5725,
+      "gap_bps": 8
+    },
+    {
+      "friday": "2017-11-24",
+      "monday": "2017-11-27",
+      "friday_close": 43.7425,
+      "monday_open": 43.7625,
+      "gap_bps": 5
+    },
+    {
+      "friday": "2017-12-01",
+      "monday": "2017-12-04",
+      "friday_close": 42.7625,
+      "monday_open": 43.12,
+      "gap_bps": 84
+    },
+    {
+      "friday": "2017-12-08",
+      "monday": "2017-12-11",
+      "friday_close": 42.3425,
+      "monday_open": 42.3,
+      "gap_bps": -10
+    },
+    {
+      "friday": "2017-12-15",
+      "monday": "2017-12-18",
+      "friday_close": 43.4925,
+      "monday_open": 43.72,
+      "gap_bps": 52
+    },
+    {
+      "friday": "2017-12-22",
+      "monday": "2017-12-26",
+      "friday_close": 43.7525,
+      "monday_open": 42.7,
+      "gap_bps": -241
+    },
+    {
+      "friday": "2017-12-29",
+      "monday": "2018-01-02",
+      "friday_close": 42.3075,
+      "monday_open": 42.54,
+      "gap_bps": 55
+    },
+    {
+      "friday": "2018-01-05",
+      "monday": "2018-01-08",
+      "friday_close": 43.75,
+      "monday_open": 43.5875,
+      "gap_bps": -37
+    },
+    {
+      "friday": "2018-01-12",
+      "monday": "2018-01-16",
+      "friday_close": 44.2725,
+      "monday_open": 44.475,
+      "gap_bps": 46
+    },
+    {
+      "friday": "2018-01-19",
+      "monday": "2018-01-22",
+      "friday_close": 44.615,
+      "monday_open": 44.325,
+      "gap_bps": -65
+    },
+    {
+      "friday": "2018-01-26",
+      "monday": "2018-01-29",
+      "friday_close": 42.8775,
+      "monday_open": 42.54,
+      "gap_bps": -79
+    },
+    {
+      "friday": "2018-02-02",
+      "monday": "2018-02-05",
+      "friday_close": 40.125,
+      "monday_open": 39.775,
+      "gap_bps": -87
+    },
+    {
+      "friday": "2018-02-09",
+      "monday": "2018-02-12",
+      "friday_close": 39.1025,
+      "monday_open": 39.625,
+      "gap_bps": 134
+    },
+    {
+      "friday": "2018-02-16",
+      "monday": "2018-02-20",
+      "friday_close": 43.1075,
+      "monday_open": 43.0125,
+      "gap_bps": -22
+    },
+    {
+      "friday": "2018-02-23",
+      "monday": "2018-02-26",
+      "friday_close": 43.875,
+      "monday_open": 44.0875,
+      "gap_bps": 48
+    },
+    {
+      "friday": "2018-03-02",
+      "monday": "2018-03-05",
+      "friday_close": 44.0525,
+      "monday_open": 43.8025,
+      "gap_bps": -57
+    },
+    {
+      "friday": "2018-03-09",
+      "monday": "2018-03-12",
+      "friday_close": 44.995,
+      "monday_open": 45.0725,
+      "gap_bps": 17
+    },
+    {
+      "friday": "2018-03-16",
+      "monday": "2018-03-19",
+      "friday_close": 44.505,
+      "monday_open": 44.33,
+      "gap_bps": -39
+    },
+    {
+      "friday": "2018-03-23",
+      "monday": "2018-03-26",
+      "friday_close": 41.235,
+      "monday_open": 42.0175,
+      "gap_bps": 190
+    },
+    {
+      "friday": "2018-04-06",
+      "monday": "2018-04-09",
+      "friday_close": 42.095,
+      "monday_open": 42.47,
+      "gap_bps": 89
+    },
+    {
+      "friday": "2018-04-13",
+      "monday": "2018-04-16",
+      "friday_close": 43.6825,
+      "monday_open": 43.7575,
+      "gap_bps": 17
+    },
+    {
+      "friday": "2018-04-20",
+      "monday": "2018-04-23",
+      "friday_close": 41.43,
+      "monday_open": 41.7088,
+      "gap_bps": 67
+    },
+    {
+      "friday": "2018-04-27",
+      "monday": "2018-04-30",
+      "friday_close": 40.58,
+      "monday_open": 40.5325,
+      "gap_bps": -12
+    },
+    {
+      "friday": "2018-05-04",
+      "monday": "2018-05-07",
+      "friday_close": 45.9575,
+      "monday_open": 46.295,
+      "gap_bps": 73
+    },
+    {
+      "friday": "2018-05-11",
+      "monday": "2018-05-14",
+      "friday_close": 47.1475,
+      "monday_open": 47.2525,
+      "gap_bps": 22
+    },
+    {
+      "friday": "2018-05-18",
+      "monday": "2018-05-21",
+      "friday_close": 46.5775,
+      "monday_open": 47.0,
+      "gap_bps": 91
+    },
+    {
+      "friday": "2018-05-25",
+      "monday": "2018-05-29",
+      "friday_close": 47.145,
+      "monday_open": 46.9,
+      "gap_bps": -52
+    },
+    {
+      "friday": "2018-06-01",
+      "monday": "2018-06-04",
+      "friday_close": 47.56,
+      "monday_open": 47.9087,
+      "gap_bps": 73
+    },
+    {
+      "friday": "2018-06-08",
+      "monday": "2018-06-11",
+      "friday_close": 47.925,
+      "monday_open": 47.8375,
+      "gap_bps": -18
+    },
+    {
+      "friday": "2018-06-15",
+      "monday": "2018-06-18",
+      "friday_close": 47.21,
+      "monday_open": 46.97,
+      "gap_bps": -51
+    },
+    {
+      "friday": "2018-06-22",
+      "monday": "2018-06-25",
+      "friday_close": 46.23,
+      "monday_open": 45.85,
+      "gap_bps": -82
+    },
+    {
+      "friday": "2018-06-29",
+      "monday": "2018-07-02",
+      "friday_close": 46.2775,
+      "monday_open": 45.955,
+      "gap_bps": -70
+    },
+    {
+      "friday": "2018-07-06",
+      "monday": "2018-07-09",
+      "friday_close": 46.9925,
+      "monday_open": 47.375,
+      "gap_bps": 81
+    },
+    {
+      "friday": "2018-07-13",
+      "monday": "2018-07-16",
+      "friday_close": 47.8325,
+      "monday_open": 47.88,
+      "gap_bps": 10
+    },
+    {
+      "friday": "2018-07-20",
+      "monday": "2018-07-23",
+      "friday_close": 47.86,
+      "monday_open": 47.67,
+      "gap_bps": -40
+    },
+    {
+      "friday": "2018-07-27",
+      "monday": "2018-07-30",
+      "friday_close": 47.745,
+      "monday_open": 47.975,
+      "gap_bps": 48
+    },
+    {
+      "friday": "2018-08-03",
+      "monday": "2018-08-06",
+      "friday_close": 51.9975,
+      "monday_open": 52.0,
+      "gap_bps": 0
+    },
+    {
+      "friday": "2018-08-10",
+      "monday": "2018-08-13",
+      "friday_close": 51.8825,
+      "monday_open": 51.925,
+      "gap_bps": 8
+    },
+    {
+      "friday": "2018-08-17",
+      "monday": "2018-08-20",
+      "friday_close": 54.395,
+      "monday_open": 54.525,
+      "gap_bps": 24
+    },
+    {
+      "friday": "2018-08-24",
+      "monday": "2018-08-27",
+      "friday_close": 54.04,
+      "monday_open": 54.2875,
+      "gap_bps": 46
+    },
+    {
+      "friday": "2018-08-31",
+      "monday": "2018-09-04",
+      "friday_close": 56.9075,
+      "monday_open": 57.1025,
+      "gap_bps": 34
+    },
+    {
+      "friday": "2018-09-07",
+      "monday": "2018-09-10",
+      "friday_close": 55.325,
+      "monday_open": 55.2375,
+      "gap_bps": -16
+    },
+    {
+      "friday": "2018-09-14",
+      "monday": "2018-09-17",
+      "friday_close": 55.96,
+      "monday_open": 55.5375,
+      "gap_bps": -76
+    },
+    {
+      "friday": "2018-09-21",
+      "monday": "2018-09-24",
+      "friday_close": 54.415,
+      "monday_open": 54.205,
+      "gap_bps": -39
+    },
+    {
+      "friday": "2018-09-28",
+      "monday": "2018-10-01",
+      "friday_close": 56.435,
+      "monday_open": 56.9875,
+      "gap_bps": 98
+    },
+    {
+      "friday": "2018-10-05",
+      "monday": "2018-10-08",
+      "friday_close": 56.0725,
+      "monday_open": 55.5525,
+      "gap_bps": -93
+    },
+    {
+      "friday": "2018-10-12",
+      "monday": "2018-10-15",
+      "friday_close": 55.5275,
+      "monday_open": 55.29,
+      "gap_bps": -43
+    },
+    {
+      "friday": "2018-10-19",
+      "monday": "2018-10-22",
+      "friday_close": 54.8275,
+      "monday_open": 54.9475,
+      "gap_bps": 22
+    },
+    {
+      "friday": "2018-10-26",
+      "monday": "2018-10-29",
+      "friday_close": 54.075,
+      "monday_open": 54.7975,
+      "gap_bps": 134
+    },
+    {
+      "friday": "2018-11-02",
+      "monday": "2018-11-05",
+      "friday_close": 51.87,
+      "monday_open": 51.075,
+      "gap_bps": -153
+    },
+    {
+      "friday": "2018-11-09",
+      "monday": "2018-11-12",
+      "friday_close": 51.1175,
+      "monday_open": 49.75,
+      "gap_bps": -268
+    },
+    {
+      "friday": "2018-11-16",
+      "monday": "2018-11-19",
+      "friday_close": 48.3825,
+      "monday_open": 47.5,
+      "gap_bps": -182
+    },
+    {
+      "friday": "2018-11-23",
+      "monday": "2018-11-26",
+      "friday_close": 43.0725,
+      "monday_open": 43.56,
+      "gap_bps": 113
+    },
+    {
+      "friday": "2018-11-30",
+      "monday": "2018-12-03",
+      "friday_close": 44.645,
+      "monday_open": 46.115,
+      "gap_bps": 329
+    },
+    {
+      "friday": "2018-12-07",
+      "monday": "2018-12-10",
+      "friday_close": 42.1225,
+      "monday_open": 41.25,
+      "gap_bps": -207
+    },
+    {
+      "friday": "2018-12-14",
+      "monday": "2018-12-17",
+      "friday_close": 41.37,
+      "monday_open": 41.3625,
+      "gap_bps": -2
+    },
+    {
+      "friday": "2018-12-21",
+      "monday": "2018-12-24",
+      "friday_close": 37.6825,
+      "monday_open": 37.0375,
+      "gap_bps": -171
+    },
+    {
+      "friday": "2018-12-28",
+      "monday": "2018-12-31",
+      "friday_close": 39.0575,
+      "monday_open": 39.6325,
+      "gap_bps": 147
+    },
+    {
+      "friday": "2019-01-04",
+      "monday": "2019-01-07",
+      "friday_close": 37.065,
+      "monday_open": 37.175,
+      "gap_bps": 30
+    },
+    {
+      "friday": "2019-01-11",
+      "monday": "2019-01-14",
+      "friday_close": 38.0725,
+      "monday_open": 37.7125,
+      "gap_bps": -95
+    },
+    {
+      "friday": "2019-01-18",
+      "monday": "2019-01-22",
+      "friday_close": 39.205,
+      "monday_open": 39.1025,
+      "gap_bps": -26
+    },
+    {
+      "friday": "2019-01-25",
+      "monday": "2019-01-28",
+      "friday_close": 39.44,
+      "monday_open": 38.9475,
+      "gap_bps": -125
+    },
+    {
+      "friday": "2019-02-01",
+      "monday": "2019-02-04",
+      "friday_close": 41.63,
+      "monday_open": 41.8525,
+      "gap_bps": 53
+    },
+    {
+      "friday": "2019-02-08",
+      "monday": "2019-02-11",
+      "friday_close": 42.6025,
+      "monday_open": 42.7625,
+      "gap_bps": 38
+    },
+    {
+      "friday": "2019-02-15",
+      "monday": "2019-02-19",
+      "friday_close": 42.605,
+      "monday_open": 42.4275,
+      "gap_bps": -42
+    },
+    {
+      "friday": "2019-02-22",
+      "monday": "2019-02-25",
+      "friday_close": 43.2425,
+      "monday_open": 43.54,
+      "gap_bps": 69
+    },
+    {
+      "friday": "2019-03-01",
+      "monday": "2019-03-04",
+      "friday_close": 43.7425,
+      "monday_open": 43.9225,
+      "gap_bps": 41
+    },
+    {
+      "friday": "2019-03-08",
+      "monday": "2019-03-11",
+      "friday_close": 43.2275,
+      "monday_open": 43.8725,
+      "gap_bps": 149
+    },
+    {
+      "friday": "2019-03-15",
+      "monday": "2019-03-18",
+      "friday_close": 46.53,
+      "monday_open": 46.45,
+      "gap_bps": -17
+    },
+    {
+      "friday": "2019-03-22",
+      "monday": "2019-03-25",
+      "friday_close": 47.7625,
+      "monday_open": 47.8775,
+      "gap_bps": 24
+    },
+    {
+      "friday": "2019-03-29",
+      "monday": "2019-04-01",
+      "friday_close": 47.4875,
+      "monday_open": 47.91,
+      "gap_bps": 89
+    },
+    {
+      "friday": "2019-04-05",
+      "monday": "2019-04-08",
+      "friday_close": 49.25,
+      "monday_open": 49.105,
+      "gap_bps": -29
+    },
+    {
+      "friday": "2019-04-12",
+      "monday": "2019-04-15",
+      "friday_close": 49.7175,
+      "monday_open": 49.645,
+      "gap_bps": -15
+    },
+    {
+      "friday": "2019-04-26",
+      "monday": "2019-04-29",
+      "friday_close": 51.075,
+      "monday_open": 51.1,
+      "gap_bps": 5
+    },
+    {
+      "friday": "2019-05-03",
+      "monday": "2019-05-06",
+      "friday_close": 52.9375,
+      "monday_open": 51.0725,
+      "gap_bps": -352
+    },
+    {
+      "friday": "2019-05-10",
+      "monday": "2019-05-13",
+      "friday_close": 49.295,
+      "monday_open": 46.9275,
+      "gap_bps": -480
+    },
+    {
+      "friday": "2019-05-17",
+      "monday": "2019-05-20",
+      "friday_close": 47.25,
+      "monday_open": 45.88,
+      "gap_bps": -290
+    },
+    {
+      "friday": "2019-05-24",
+      "monday": "2019-05-28",
+      "friday_close": 44.7425,
+      "monday_open": 44.73,
+      "gap_bps": -3
+    },
+    {
+      "friday": "2019-05-31",
+      "monday": "2019-06-03",
+      "friday_close": 43.7675,
+      "monday_open": 43.9,
+      "gap_bps": 30
+    },
+    {
+      "friday": "2019-06-07",
+      "monday": "2019-06-10",
+      "friday_close": 47.5375,
+      "monday_open": 47.9525,
+      "gap_bps": 87
+    },
+    {
+      "friday": "2019-06-14",
+      "monday": "2019-06-17",
+      "friday_close": 48.185,
+      "monday_open": 48.225,
+      "gap_bps": 8
+    },
+    {
+      "friday": "2019-06-21",
+      "monday": "2019-06-24",
+      "friday_close": 49.695,
+      "monday_open": 49.635,
+      "gap_bps": -12
+    },
+    {
+      "friday": "2019-06-28",
+      "monday": "2019-07-01",
+      "friday_close": 49.48,
+      "monday_open": 50.7925,
+      "gap_bps": 265
+    },
+    {
+      "friday": "2019-07-05",
+      "monday": "2019-07-08",
+      "friday_close": 51.0575,
+      "monday_open": 50.2025,
+      "gap_bps": -167
+    },
+    {
+      "friday": "2019-07-12",
+      "monday": "2019-07-15",
+      "friday_close": 50.825,
+      "monday_open": 51.0225,
+      "gap_bps": 39
+    },
+    {
+      "friday": "2019-07-19",
+      "monday": "2019-07-22",
+      "friday_close": 50.6475,
+      "monday_open": 50.9125,
+      "gap_bps": 52
+    },
+    {
+      "friday": "2019-07-26",
+      "monday": "2019-07-29",
+      "friday_close": 51.935,
+      "monday_open": 52.115,
+      "gap_bps": 35
+    },
+    {
+      "friday": "2019-08-02",
+      "monday": "2019-08-05",
+      "friday_close": 51.005,
+      "monday_open": 49.4975,
+      "gap_bps": -296
+    },
+    {
+      "friday": "2019-08-09",
+      "monday": "2019-08-12",
+      "friday_close": 50.2475,
+      "monday_open": 49.905,
+      "gap_bps": -68
+    },
+    {
+      "friday": "2019-08-16",
+      "monday": "2019-08-19",
+      "friday_close": 51.625,
+      "monday_open": 52.655,
+      "gap_bps": 200
+    },
+    {
+      "friday": "2019-08-23",
+      "monday": "2019-08-26",
+      "friday_close": 50.66,
+      "monday_open": 51.465,
+      "gap_bps": 159
+    },
+    {
+      "friday": "2019-08-30",
+      "monday": "2019-09-03",
+      "friday_close": 52.185,
+      "monday_open": 51.6075,
+      "gap_bps": -111
+    },
+    {
+      "friday": "2019-09-06",
+      "monday": "2019-09-09",
+      "friday_close": 53.315,
+      "monday_open": 53.71,
+      "gap_bps": 74
+    },
+    {
+      "friday": "2019-09-13",
+      "monday": "2019-09-16",
+      "friday_close": 54.6875,
+      "monday_open": 54.4325,
+      "gap_bps": -47
+    },
+    {
+      "friday": "2019-09-20",
+      "monday": "2019-09-23",
+      "friday_close": 54.4325,
+      "monday_open": 54.7375,
+      "gap_bps": 56
+    },
+    {
+      "friday": "2019-09-27",
+      "monday": "2019-09-30",
+      "friday_close": 54.705,
+      "monday_open": 55.225,
+      "gap_bps": 95
+    },
+    {
+      "friday": "2019-10-04",
+      "monday": "2019-10-07",
+      "friday_close": 56.7525,
+      "monday_open": 56.5675,
+      "gap_bps": -33
+    },
+    {
+      "friday": "2019-10-11",
+      "monday": "2019-10-14",
+      "friday_close": 59.0525,
+      "monday_open": 58.725,
+      "gap_bps": -55
+    },
+    {
+      "friday": "2019-10-18",
+      "monday": "2019-10-21",
+      "friday_close": 59.1025,
+      "monday_open": 59.38,
+      "gap_bps": 47
+    },
+    {
+      "friday": "2019-10-25",
+      "monday": "2019-10-28",
+      "friday_close": 61.645,
+      "monday_open": 61.855,
+      "gap_bps": 34
+    },
+    {
+      "friday": "2019-11-01",
+      "monday": "2019-11-04",
+      "friday_close": 63.955,
+      "monday_open": 64.3325,
+      "gap_bps": 59
+    },
+    {
+      "friday": "2019-11-08",
+      "monday": "2019-11-11",
+      "friday_close": 65.035,
+      "monday_open": 64.575,
+      "gap_bps": -71
+    },
+    {
+      "friday": "2019-11-15",
+      "monday": "2019-11-18",
+      "friday_close": 66.44,
+      "monday_open": 66.45,
+      "gap_bps": 2
+    },
+    {
+      "friday": "2019-11-22",
+      "monday": "2019-11-25",
+      "friday_close": 65.445,
+      "monday_open": 65.6775,
+      "gap_bps": 36
+    },
+    {
+      "friday": "2019-11-29",
+      "monday": "2019-12-02",
+      "friday_close": 66.8125,
+      "monday_open": 66.8175,
+      "gap_bps": 1
+    },
+    {
+      "friday": "2019-12-06",
+      "monday": "2019-12-09",
+      "friday_close": 67.6775,
+      "monday_open": 67.5,
+      "gap_bps": -26
+    },
+    {
+      "friday": "2019-12-13",
+      "monday": "2019-12-16",
+      "friday_close": 68.7875,
+      "monday_open": 69.25,
+      "gap_bps": 67
+    },
+    {
+      "friday": "2019-12-20",
+      "monday": "2019-12-23",
+      "friday_close": 69.86,
+      "monday_open": 70.1325,
+      "gap_bps": 39
+    },
+    {
+      "friday": "2019-12-27",
+      "monday": "2019-12-30",
+      "friday_close": 72.45,
+      "monday_open": 72.365,
+      "gap_bps": -12
+    },
+    {
+      "friday": "2020-01-03",
+      "monday": "2020-01-06",
+      "friday_close": 74.3575,
+      "monday_open": 73.4475,
+      "gap_bps": -122
+    },
+    {
+      "friday": "2020-01-10",
+      "monday": "2020-01-13",
+      "friday_close": 77.5825,
+      "monday_open": 77.91,
+      "gap_bps": 42
+    },
+    {
+      "friday": "2020-01-17",
+      "monday": "2020-01-21",
+      "friday_close": 79.6825,
+      "monday_open": 79.2975,
+      "gap_bps": -48
+    },
+    {
+      "friday": "2020-01-24",
+      "monday": "2020-01-27",
+      "friday_close": 79.5775,
+      "monday_open": 77.515,
+      "gap_bps": -259
+    },
+    {
+      "friday": "2020-01-31",
+      "monday": "2020-02-03",
+      "friday_close": 77.3775,
+      "monday_open": 76.075,
+      "gap_bps": -168
+    },
+    {
+      "friday": "2020-02-07",
+      "monday": "2020-02-10",
+      "friday_close": 80.0075,
+      "monday_open": 78.545,
+      "gap_bps": -183
+    },
+    {
+      "friday": "2020-02-14",
+      "monday": "2020-02-18",
+      "friday_close": 81.2375,
+      "monday_open": 78.84,
+      "gap_bps": -295
+    },
+    {
+      "friday": "2020-02-21",
+      "monday": "2020-02-24",
+      "friday_close": 78.2625,
+      "monday_open": 74.315,
+      "gap_bps": -504
+    },
+    {
+      "friday": "2020-02-28",
+      "monday": "2020-03-02",
+      "friday_close": 68.34,
+      "monday_open": 70.57,
+      "gap_bps": 326
+    },
+    {
+      "friday": "2020-03-06",
+      "monday": "2020-03-09",
+      "friday_close": 72.2575,
+      "monday_open": 65.9375,
+      "gap_bps": -875
+    },
+    {
+      "friday": "2020-03-13",
+      "monday": "2020-03-16",
+      "friday_close": 69.4925,
+      "monday_open": 60.4875,
+      "gap_bps": -1296
+    },
+    {
+      "friday": "2020-03-20",
+      "monday": "2020-03-23",
+      "friday_close": 57.31,
+      "monday_open": 57.02,
+      "gap_bps": -51
+    },
+    {
+      "friday": "2020-03-27",
+      "monday": "2020-03-30",
+      "friday_close": 61.935,
+      "monday_open": 62.685,
+      "gap_bps": 121
+    },
+    {
+      "friday": "2020-04-03",
+      "monday": "2020-04-06",
+      "friday_close": 60.3525,
+      "monday_open": 62.725,
+      "gap_bps": 393
+    },
+    {
+      "friday": "2020-04-17",
+      "monday": "2020-04-20",
+      "friday_close": 70.7,
+      "monday_open": 69.4875,
+      "gap_bps": -171
+    },
+    {
+      "friday": "2020-04-24",
+      "monday": "2020-04-27",
+      "friday_close": 70.7425,
+      "monday_open": 70.45,
+      "gap_bps": -41
+    },
+    {
+      "friday": "2020-05-01",
+      "monday": "2020-05-04",
+      "friday_close": 72.2675,
+      "monday_open": 72.2925,
+      "gap_bps": 3
+    },
+    {
+      "friday": "2020-05-08",
+      "monday": "2020-05-11",
+      "friday_close": 77.5325,
+      "monday_open": 77.025,
+      "gap_bps": -65
+    },
+    {
+      "friday": "2020-05-15",
+      "monday": "2020-05-18",
+      "friday_close": 76.9275,
+      "monday_open": 78.2925,
+      "gap_bps": 177
+    },
+    {
+      "friday": "2020-05-22",
+      "monday": "2020-05-26",
+      "friday_close": 79.7225,
+      "monday_open": 80.875,
+      "gap_bps": 145
+    },
+    {
+      "friday": "2020-05-29",
+      "monday": "2020-06-01",
+      "friday_close": 79.485,
+      "monday_open": 79.4375,
+      "gap_bps": -6
+    },
+    {
+      "friday": "2020-06-05",
+      "monday": "2020-06-08",
+      "friday_close": 82.875,
+      "monday_open": 82.5625,
+      "gap_bps": -38
+    },
+    {
+      "friday": "2020-06-12",
+      "monday": "2020-06-15",
+      "friday_close": 84.7,
+      "monday_open": 83.3125,
+      "gap_bps": -164
+    },
+    {
+      "friday": "2020-06-19",
+      "monday": "2020-06-22",
+      "friday_close": 87.43,
+      "monday_open": 87.835,
+      "gap_bps": 46
+    },
+    {
+      "friday": "2020-06-26",
+      "monday": "2020-06-29",
+      "friday_close": 88.4075,
+      "monday_open": 88.3125,
+      "gap_bps": -11
+    },
+    {
+      "friday": "2020-07-10",
+      "monday": "2020-07-13",
+      "friday_close": 95.92,
+      "monday_open": 97.265,
+      "gap_bps": 140
+    },
+    {
+      "friday": "2020-07-17",
+      "monday": "2020-07-20",
+      "friday_close": 96.3275,
+      "monday_open": 96.4163,
+      "gap_bps": 9
+    },
+    {
+      "friday": "2020-07-24",
+      "monday": "2020-07-27",
+      "friday_close": 92.615,
+      "monday_open": 93.71,
+      "gap_bps": 118
+    },
+    {
+      "friday": "2020-07-31",
+      "monday": "2020-08-03",
+      "friday_close": 106.26,
+      "monday_open": 108.2,
+      "gap_bps": 183
+    },
+    {
+      "friday": "2020-08-07",
+      "monday": "2020-08-10",
+      "friday_close": 111.1125,
+      "monday_open": 112.6,
+      "gap_bps": 134
+    },
+    {
+      "friday": "2020-08-14",
+      "monday": "2020-08-17",
+      "friday_close": 114.9075,
+      "monday_open": 116.0625,
+      "gap_bps": 101
+    },
+    {
+      "friday": "2020-08-21",
+      "monday": "2020-08-24",
+      "friday_close": 124.37,
+      "monday_open": 128.6975,
+      "gap_bps": 348
+    },
+    {
+      "friday": "2020-08-28",
+      "monday": "2020-08-31",
+      "friday_close": 124.8075,
+      "monday_open": 127.58,
+      "gap_bps": 222
+    },
+    {
+      "friday": "2020-09-04",
+      "monday": "2020-09-08",
+      "friday_close": 120.96,
+      "monday_open": 113.95,
+      "gap_bps": -580
+    },
+    {
+      "friday": "2020-09-11",
+      "monday": "2020-09-14",
+      "friday_close": 112.0,
+      "monday_open": 114.72,
+      "gap_bps": 243
+    },
+    {
+      "friday": "2020-09-18",
+      "monday": "2020-09-21",
+      "friday_close": 106.84,
+      "monday_open": 104.54,
+      "gap_bps": -215
+    },
+    {
+      "friday": "2020-09-25",
+      "monday": "2020-09-28",
+      "friday_close": 112.28,
+      "monday_open": 115.01,
+      "gap_bps": 243
+    },
+    {
+      "friday": "2020-10-02",
+      "monday": "2020-10-05",
+      "friday_close": 113.02,
+      "monday_open": 113.91,
+      "gap_bps": 79
+    },
+    {
+      "friday": "2020-10-09",
+      "monday": "2020-10-12",
+      "friday_close": 116.97,
+      "monday_open": 120.06,
+      "gap_bps": 264
+    },
+    {
+      "friday": "2020-10-16",
+      "monday": "2020-10-19",
+      "friday_close": 119.02,
+      "monday_open": 119.96,
+      "gap_bps": 79
+    },
+    {
+      "friday": "2020-10-23",
+      "monday": "2020-10-26",
+      "friday_close": 115.04,
+      "monday_open": 114.01,
+      "gap_bps": -90
+    },
+    {
+      "friday": "2020-10-30",
+      "monday": "2020-11-02",
+      "friday_close": 108.86,
+      "monday_open": 109.11,
+      "gap_bps": 23
+    },
+    {
+      "friday": "2020-11-06",
+      "monday": "2020-11-09",
+      "friday_close": 118.69,
+      "monday_open": 120.5,
+      "gap_bps": 152
+    },
+    {
+      "friday": "2020-11-13",
+      "monday": "2020-11-16",
+      "friday_close": 119.26,
+      "monday_open": 118.92,
+      "gap_bps": -29
+    },
+    {
+      "friday": "2020-11-20",
+      "monday": "2020-11-23",
+      "friday_close": 117.34,
+      "monday_open": 117.18,
+      "gap_bps": -14
+    },
+    {
+      "friday": "2020-11-27",
+      "monday": "2020-11-30",
+      "friday_close": 116.59,
+      "monday_open": 116.97,
+      "gap_bps": 33
+    },
+    {
+      "friday": "2020-12-04",
+      "monday": "2020-12-07",
+      "friday_close": 122.25,
+      "monday_open": 122.31,
+      "gap_bps": 5
+    },
+    {
+      "friday": "2020-12-11",
+      "monday": "2020-12-14",
+      "friday_close": 122.41,
+      "monday_open": 122.6,
+      "gap_bps": 16
+    },
+    {
+      "friday": "2020-12-18",
+      "monday": "2020-12-21",
+      "friday_close": 126.655,
+      "monday_open": 125.02,
+      "gap_bps": -129
+    },
+    {
+      "friday": "2021-01-08",
+      "monday": "2021-01-11",
+      "friday_close": 132.05,
+      "monday_open": 129.19,
+      "gap_bps": -217
+    },
+    {
+      "friday": "2021-01-15",
+      "monday": "2021-01-19",
+      "friday_close": 127.14,
+      "monday_open": 127.78,
+      "gap_bps": 50
+    },
+    {
+      "friday": "2021-01-22",
+      "monday": "2021-01-25",
+      "friday_close": 139.07,
+      "monday_open": 143.07,
+      "gap_bps": 288
+    },
+    {
+      "friday": "2021-01-29",
+      "monday": "2021-02-01",
+      "friday_close": 131.96,
+      "monday_open": 133.75,
+      "gap_bps": 136
+    },
+    {
+      "friday": "2021-02-05",
+      "monday": "2021-02-08",
+      "friday_close": 136.76,
+      "monday_open": 136.03,
+      "gap_bps": -53
+    },
+    {
+      "friday": "2021-02-12",
+      "monday": "2021-02-16",
+      "friday_close": 135.37,
+      "monday_open": 135.49,
+      "gap_bps": 9
+    },
+    {
+      "friday": "2021-02-19",
+      "monday": "2021-02-22",
+      "friday_close": 129.87,
+      "monday_open": 128.01,
+      "gap_bps": -143
+    },
+    {
+      "friday": "2021-02-26",
+      "monday": "2021-03-01",
+      "friday_close": 121.26,
+      "monday_open": 123.75,
+      "gap_bps": 205
+    },
+    {
+      "friday": "2021-03-05",
+      "monday": "2021-03-08",
+      "friday_close": 121.42,
+      "monday_open": 120.93,
+      "gap_bps": -40
+    },
+    {
+      "friday": "2021-03-12",
+      "monday": "2021-03-15",
+      "friday_close": 121.03,
+      "monday_open": 121.41,
+      "gap_bps": 31
+    },
+    {
+      "friday": "2021-03-19",
+      "monday": "2021-03-22",
+      "friday_close": 119.99,
+      "monday_open": 120.33,
+      "gap_bps": 28
+    },
+    {
+      "friday": "2021-03-26",
+      "monday": "2021-03-29",
+      "friday_close": 121.21,
+      "monday_open": 121.65,
+      "gap_bps": 36
+    },
+    {
+      "friday": "2021-04-09",
+      "monday": "2021-04-12",
+      "friday_close": 132.995,
+      "monday_open": 132.52,
+      "gap_bps": -36
+    },
+    {
+      "friday": "2021-04-16",
+      "monday": "2021-04-19",
+      "friday_close": 134.16,
+      "monday_open": 133.51,
+      "gap_bps": -48
+    },
+    {
+      "friday": "2021-04-23",
+      "monday": "2021-04-26",
+      "friday_close": 134.32,
+      "monday_open": 134.83,
+      "gap_bps": 38
+    },
+    {
+      "friday": "2021-04-30",
+      "monday": "2021-05-03",
+      "friday_close": 131.46,
+      "monday_open": 132.04,
+      "gap_bps": 44
+    },
+    {
+      "friday": "2021-05-07",
+      "monday": "2021-05-10",
+      "friday_close": 130.21,
+      "monday_open": 129.41,
+      "gap_bps": -61
+    },
+    {
+      "friday": "2021-05-14",
+      "monday": "2021-05-17",
+      "friday_close": 127.45,
+      "monday_open": 126.82,
+      "gap_bps": -49
+    },
+    {
+      "friday": "2021-05-21",
+      "monday": "2021-05-24",
+      "friday_close": 125.43,
+      "monday_open": 126.01,
+      "gap_bps": 46
+    },
+    {
+      "friday": "2021-05-28",
+      "monday": "2021-06-01",
+      "friday_close": 124.61,
+      "monday_open": 125.08,
+      "gap_bps": 38
+    },
+    {
+      "friday": "2021-06-04",
+      "monday": "2021-06-07",
+      "friday_close": 125.89,
+      "monday_open": 126.17,
+      "gap_bps": 22
+    },
+    {
+      "friday": "2021-06-11",
+      "monday": "2021-06-14",
+      "friday_close": 127.35,
+      "monday_open": 127.82,
+      "gap_bps": 37
+    },
+    {
+      "friday": "2021-06-18",
+      "monday": "2021-06-21",
+      "friday_close": 130.46,
+      "monday_open": 130.3,
+      "gap_bps": -12
+    },
+    {
+      "friday": "2021-06-25",
+      "monday": "2021-06-28",
+      "friday_close": 133.11,
+      "monday_open": 133.41,
+      "gap_bps": 23
+    },
+    {
+      "friday": "2021-07-02",
+      "monday": "2021-07-06",
+      "friday_close": 139.96,
+      "monday_open": 140.07,
+      "gap_bps": 8
+    },
+    {
+      "friday": "2021-07-09",
+      "monday": "2021-07-12",
+      "friday_close": 145.11,
+      "monday_open": 146.21,
+      "gap_bps": 76
+    },
+    {
+      "friday": "2021-07-16",
+      "monday": "2021-07-19",
+      "friday_close": 146.39,
+      "monday_open": 143.75,
+      "gap_bps": -180
+    },
+    {
+      "friday": "2021-07-23",
+      "monday": "2021-07-26",
+      "friday_close": 148.56,
+      "monday_open": 148.27,
+      "gap_bps": -20
+    },
+    {
+      "friday": "2021-07-30",
+      "monday": "2021-08-02",
+      "friday_close": 145.86,
+      "monday_open": 146.36,
+      "gap_bps": 34
+    },
+    {
+      "friday": "2021-08-06",
+      "monday": "2021-08-09",
+      "friday_close": 146.14,
+      "monday_open": 146.2,
+      "gap_bps": 4
+    },
+    {
+      "friday": "2021-08-13",
+      "monday": "2021-08-16",
+      "friday_close": 149.1,
+      "monday_open": 148.535,
+      "gap_bps": -38
+    },
+    {
+      "friday": "2021-08-20",
+      "monday": "2021-08-23",
+      "friday_close": 148.19,
+      "monday_open": 148.31,
+      "gap_bps": 8
+    },
+    {
+      "friday": "2021-08-27",
+      "monday": "2021-08-30",
+      "friday_close": 148.6,
+      "monday_open": 149.0,
+      "gap_bps": 27
+    },
+    {
+      "friday": "2021-09-03",
+      "monday": "2021-09-07",
+      "friday_close": 154.3,
+      "monday_open": 154.97,
+      "gap_bps": 43
+    },
+    {
+      "friday": "2021-09-10",
+      "monday": "2021-09-13",
+      "friday_close": 148.97,
+      "monday_open": 150.63,
+      "gap_bps": 111
+    },
+    {
+      "friday": "2021-09-17",
+      "monday": "2021-09-20",
+      "friday_close": 146.06,
+      "monday_open": 143.8,
+      "gap_bps": -155
+    },
+    {
+      "friday": "2021-09-24",
+      "monday": "2021-09-27",
+      "friday_close": 146.92,
+      "monday_open": 145.47,
+      "gap_bps": -99
+    },
+    {
+      "friday": "2021-10-01",
+      "monday": "2021-10-04",
+      "friday_close": 142.65,
+      "monday_open": 141.76,
+      "gap_bps": -62
+    },
+    {
+      "friday": "2021-10-08",
+      "monday": "2021-10-11",
+      "friday_close": 142.9,
+      "monday_open": 142.27,
+      "gap_bps": -44
+    },
+    {
+      "friday": "2021-10-15",
+      "monday": "2021-10-18",
+      "friday_close": 144.84,
+      "monday_open": 143.445,
+      "gap_bps": -96
+    },
+    {
+      "friday": "2021-10-22",
+      "monday": "2021-10-25",
+      "friday_close": 148.69,
+      "monday_open": 148.68,
+      "gap_bps": -1
+    },
+    {
+      "friday": "2021-10-29",
+      "monday": "2021-11-01",
+      "friday_close": 149.8,
+      "monday_open": 148.985,
+      "gap_bps": -54
+    },
+    {
+      "friday": "2021-11-05",
+      "monday": "2021-11-08",
+      "friday_close": 151.28,
+      "monday_open": 151.41,
+      "gap_bps": 9
+    },
+    {
+      "friday": "2021-11-12",
+      "monday": "2021-11-15",
+      "friday_close": 149.99,
+      "monday_open": 150.37,
+      "gap_bps": 25
+    },
+    {
+      "friday": "2021-11-19",
+      "monday": "2021-11-22",
+      "friday_close": 160.55,
+      "monday_open": 161.68,
+      "gap_bps": 70
+    },
+    {
+      "friday": "2021-11-26",
+      "monday": "2021-11-29",
+      "friday_close": 156.81,
+      "monday_open": 159.37,
+      "gap_bps": 163
+    },
+    {
+      "friday": "2021-12-03",
+      "monday": "2021-12-06",
+      "friday_close": 161.84,
+      "monday_open": 164.29,
+      "gap_bps": 151
+    },
+    {
+      "friday": "2021-12-10",
+      "monday": "2021-12-13",
+      "friday_close": 179.45,
+      "monday_open": 181.115,
+      "gap_bps": 93
+    },
+    {
+      "friday": "2021-12-17",
+      "monday": "2021-12-20",
+      "friday_close": 171.14,
+      "monday_open": 168.28,
+      "gap_bps": -167
+    },
+    {
+      "friday": "2021-12-31",
+      "monday": "2022-01-03",
+      "friday_close": 177.57,
+      "monday_open": 177.83,
+      "gap_bps": 15
+    },
+    {
+      "friday": "2022-01-07",
+      "monday": "2022-01-10",
+      "friday_close": 172.17,
+      "monday_open": 169.08,
+      "gap_bps": -179
+    },
+    {
+      "friday": "2022-01-14",
+      "monday": "2022-01-18",
+      "friday_close": 173.07,
+      "monday_open": 171.51,
+      "gap_bps": -90
+    },
+    {
+      "friday": "2022-01-21",
+      "monday": "2022-01-24",
+      "friday_close": 162.41,
+      "monday_open": 160.02,
+      "gap_bps": -147
+    },
+    {
+      "friday": "2022-01-28",
+      "monday": "2022-01-31",
+      "friday_close": 170.33,
+      "monday_open": 170.16,
+      "gap_bps": -10
+    },
+    {
+      "friday": "2022-02-04",
+      "monday": "2022-02-07",
+      "friday_close": 172.39,
+      "monday_open": 172.86,
+      "gap_bps": 27
+    },
+    {
+      "friday": "2022-02-11",
+      "monday": "2022-02-14",
+      "friday_close": 168.64,
+      "monday_open": 167.37,
+      "gap_bps": -75
+    },
+    {
+      "friday": "2022-02-18",
+      "monday": "2022-02-22",
+      "friday_close": 167.3,
+      "monday_open": 164.98,
+      "gap_bps": -139
+    },
+    {
+      "friday": "2022-02-25",
+      "monday": "2022-02-28",
+      "friday_close": 164.85,
+      "monday_open": 163.06,
+      "gap_bps": -109
+    },
+    {
+      "friday": "2022-03-04",
+      "monday": "2022-03-07",
+      "friday_close": 163.17,
+      "monday_open": 163.36,
+      "gap_bps": 12
+    },
+    {
+      "friday": "2022-03-11",
+      "monday": "2022-03-14",
+      "friday_close": 154.73,
+      "monday_open": 151.45,
+      "gap_bps": -212
+    },
+    {
+      "friday": "2022-03-18",
+      "monday": "2022-03-21",
+      "friday_close": 163.98,
+      "monday_open": 163.51,
+      "gap_bps": -29
+    },
+    {
+      "friday": "2022-03-25",
+      "monday": "2022-03-28",
+      "friday_close": 174.72,
+      "monday_open": 172.17,
+      "gap_bps": -146
+    },
+    {
+      "friday": "2022-04-01",
+      "monday": "2022-04-04",
+      "friday_close": 174.31,
+      "monday_open": 174.57,
+      "gap_bps": 15
+    },
+    {
+      "friday": "2022-04-08",
+      "monday": "2022-04-11",
+      "friday_close": 170.09,
+      "monday_open": 168.71,
+      "gap_bps": -81
+    },
+    {
+      "friday": "2022-04-22",
+      "monday": "2022-04-25",
+      "friday_close": 161.79,
+      "monday_open": 161.12,
+      "gap_bps": -41
+    },
+    {
+      "friday": "2022-04-29",
+      "monday": "2022-05-02",
+      "friday_close": 157.65,
+      "monday_open": 156.71,
+      "gap_bps": -60
+    },
+    {
+      "friday": "2022-05-06",
+      "monday": "2022-05-09",
+      "friday_close": 157.28,
+      "monday_open": 154.925,
+      "gap_bps": -150
+    },
+    {
+      "friday": "2022-05-13",
+      "monday": "2022-05-16",
+      "friday_close": 147.11,
+      "monday_open": 145.55,
+      "gap_bps": -106
+    },
+    {
+      "friday": "2022-05-20",
+      "monday": "2022-05-23",
+      "friday_close": 137.59,
+      "monday_open": 137.79,
+      "gap_bps": 15
+    },
+    {
+      "friday": "2022-05-27",
+      "monday": "2022-05-31",
+      "friday_close": 149.64,
+      "monday_open": 149.07,
+      "gap_bps": -38
+    },
+    {
+      "friday": "2022-06-03",
+      "monday": "2022-06-06",
+      "friday_close": 145.38,
+      "monday_open": 147.03,
+      "gap_bps": 113
+    },
+    {
+      "friday": "2022-06-10",
+      "monday": "2022-06-13",
+      "friday_close": 137.13,
+      "monday_open": 132.87,
+      "gap_bps": -311
+    },
+    {
+      "friday": "2022-06-17",
+      "monday": "2022-06-21",
+      "friday_close": 131.56,
+      "monday_open": 133.42,
+      "gap_bps": 141
+    },
+    {
+      "friday": "2022-06-24",
+      "monday": "2022-06-27",
+      "friday_close": 141.66,
+      "monday_open": 142.695,
+      "gap_bps": 73
+    },
+    {
+      "friday": "2022-07-01",
+      "monday": "2022-07-05",
+      "friday_close": 138.93,
+      "monday_open": 137.77,
+      "gap_bps": -83
+    },
+    {
+      "friday": "2022-07-08",
+      "monday": "2022-07-11",
+      "friday_close": 147.04,
+      "monday_open": 145.67,
+      "gap_bps": -93
+    },
+    {
+      "friday": "2022-07-15",
+      "monday": "2022-07-18",
+      "friday_close": 150.17,
+      "monday_open": 150.74,
+      "gap_bps": 38
+    },
+    {
+      "friday": "2022-07-22",
+      "monday": "2022-07-25",
+      "friday_close": 154.09,
+      "monday_open": 154.01,
+      "gap_bps": -5
+    },
+    {
+      "friday": "2022-07-29",
+      "monday": "2022-08-01",
+      "friday_close": 162.51,
+      "monday_open": 161.01,
+      "gap_bps": -92
+    },
+    {
+      "friday": "2022-08-05",
+      "monday": "2022-08-08",
+      "friday_close": 165.35,
+      "monday_open": 166.37,
+      "gap_bps": 62
+    },
+    {
+      "friday": "2022-08-12",
+      "monday": "2022-08-15",
+      "friday_close": 172.1,
+      "monday_open": 171.52,
+      "gap_bps": -34
+    },
+    {
+      "friday": "2022-08-19",
+      "monday": "2022-08-22",
+      "friday_close": 171.52,
+      "monday_open": 169.69,
+      "gap_bps": -107
+    },
+    {
+      "friday": "2022-08-26",
+      "monday": "2022-08-29",
+      "friday_close": 163.62,
+      "monday_open": 161.145,
+      "gap_bps": -151
+    },
+    {
+      "friday": "2022-09-02",
+      "monday": "2022-09-06",
+      "friday_close": 155.81,
+      "monday_open": 156.47,
+      "gap_bps": 42
+    },
+    {
+      "friday": "2022-09-09",
+      "monday": "2022-09-12",
+      "friday_close": 157.37,
+      "monday_open": 159.59,
+      "gap_bps": 141
+    },
+    {
+      "friday": "2022-09-16",
+      "monday": "2022-09-19",
+      "friday_close": 150.7,
+      "monday_open": 149.31,
+      "gap_bps": -92
+    },
+    {
+      "friday": "2022-09-23",
+      "monday": "2022-09-26",
+      "friday_close": 150.43,
+      "monday_open": 149.66,
+      "gap_bps": -51
+    },
+    {
+      "friday": "2022-09-30",
+      "monday": "2022-10-03",
+      "friday_close": 138.2,
+      "monday_open": 138.21,
+      "gap_bps": 1
+    },
+    {
+      "friday": "2022-10-07",
+      "monday": "2022-10-10",
+      "friday_close": 140.09,
+      "monday_open": 140.42,
+      "gap_bps": 24
+    },
+    {
+      "friday": "2022-10-14",
+      "monday": "2022-10-17",
+      "friday_close": 138.38,
+      "monday_open": 141.065,
+      "gap_bps": 194
+    },
+    {
+      "friday": "2022-10-21",
+      "monday": "2022-10-24",
+      "friday_close": 147.27,
+      "monday_open": 147.185,
+      "gap_bps": -6
+    },
+    {
+      "friday": "2022-10-28",
+      "monday": "2022-10-31",
+      "friday_close": 155.74,
+      "monday_open": 153.155,
+      "gap_bps": -166
+    },
+    {
+      "friday": "2022-11-04",
+      "monday": "2022-11-07",
+      "friday_close": 138.38,
+      "monday_open": 137.11,
+      "gap_bps": -92
+    },
+    {
+      "friday": "2022-11-11",
+      "monday": "2022-11-14",
+      "friday_close": 149.7,
+      "monday_open": 148.97,
+      "gap_bps": -49
+    },
+    {
+      "friday": "2022-11-18",
+      "monday": "2022-11-21",
+      "friday_close": 151.29,
+      "monday_open": 150.16,
+      "gap_bps": -75
+    },
+    {
+      "friday": "2022-11-25",
+      "monday": "2022-11-28",
+      "friday_close": 148.11,
+      "monday_open": 145.14,
+      "gap_bps": -201
+    },
+    {
+      "friday": "2022-12-02",
+      "monday": "2022-12-05",
+      "friday_close": 147.81,
+      "monday_open": 147.77,
+      "gap_bps": -3
+    },
+    {
+      "friday": "2022-12-09",
+      "monday": "2022-12-12",
+      "friday_close": 142.16,
+      "monday_open": 142.7,
+      "gap_bps": 38
+    },
+    {
+      "friday": "2022-12-16",
+      "monday": "2022-12-19",
+      "friday_close": 134.51,
+      "monday_open": 135.11,
+      "gap_bps": 45
+    },
+    {
+      "friday": "2022-12-23",
+      "monday": "2022-12-27",
+      "friday_close": 131.86,
+      "monday_open": 131.38,
+      "gap_bps": -36
+    },
+    {
+      "friday": "2022-12-30",
+      "monday": "2023-01-03",
+      "friday_close": 129.93,
+      "monday_open": 130.28,
+      "gap_bps": 27
+    },
+    {
+      "friday": "2023-01-06",
+      "monday": "2023-01-09",
+      "friday_close": 129.62,
+      "monday_open": 130.465,
+      "gap_bps": 65
+    },
+    {
+      "friday": "2023-01-13",
+      "monday": "2023-01-17",
+      "friday_close": 134.76,
+      "monday_open": 134.83,
+      "gap_bps": 5
+    },
+    {
+      "friday": "2023-01-20",
+      "monday": "2023-01-23",
+      "friday_close": 137.87,
+      "monday_open": 138.12,
+      "gap_bps": 18
+    },
+    {
+      "friday": "2023-01-27",
+      "monday": "2023-01-30",
+      "friday_close": 145.93,
+      "monday_open": 144.955,
+      "gap_bps": -67
+    },
+    {
+      "friday": "2023-02-03",
+      "monday": "2023-02-06",
+      "friday_close": 154.5,
+      "monday_open": 152.575,
+      "gap_bps": -125
+    },
+    {
+      "friday": "2023-02-10",
+      "monday": "2023-02-13",
+      "friday_close": 151.01,
+      "monday_open": 150.952,
+      "gap_bps": -4
+    },
+    {
+      "friday": "2023-02-17",
+      "monday": "2023-02-21",
+      "friday_close": 152.55,
+      "monday_open": 150.2,
+      "gap_bps": -154
+    },
+    {
+      "friday": "2023-02-24",
+      "monday": "2023-02-27",
+      "friday_close": 146.71,
+      "monday_open": 147.71,
+      "gap_bps": 68
+    },
+    {
+      "friday": "2023-03-03",
+      "monday": "2023-03-06",
+      "friday_close": 151.03,
+      "monday_open": 153.785,
+      "gap_bps": 182
+    },
+    {
+      "friday": "2023-03-10",
+      "monday": "2023-03-13",
+      "friday_close": 148.5,
+      "monday_open": 147.805,
+      "gap_bps": -47
+    },
+    {
+      "friday": "2023-03-17",
+      "monday": "2023-03-20",
+      "friday_close": 155.0,
+      "monday_open": 155.07,
+      "gap_bps": 5
+    },
+    {
+      "friday": "2023-03-24",
+      "monday": "2023-03-27",
+      "friday_close": 160.25,
+      "monday_open": 159.94,
+      "gap_bps": -19
+    },
+    {
+      "friday": "2023-03-31",
+      "monday": "2023-04-03",
+      "friday_close": 164.9,
+      "monday_open": 164.27,
+      "gap_bps": -38
+    },
+    {
+      "friday": "2023-04-14",
+      "monday": "2023-04-17",
+      "friday_close": 165.21,
+      "monday_open": 165.09,
+      "gap_bps": -7
+    },
+    {
+      "friday": "2023-04-21",
+      "monday": "2023-04-24",
+      "friday_close": 165.02,
+      "monday_open": 165.0,
+      "gap_bps": -1
+    },
+    {
+      "friday": "2023-04-28",
+      "monday": "2023-05-01",
+      "friday_close": 169.68,
+      "monday_open": 169.28,
+      "gap_bps": -24
+    },
+    {
+      "friday": "2023-05-05",
+      "monday": "2023-05-08",
+      "friday_close": 173.57,
+      "monday_open": 172.48,
+      "gap_bps": -63
+    },
+    {
+      "friday": "2023-05-12",
+      "monday": "2023-05-15",
+      "friday_close": 172.57,
+      "monday_open": 173.16,
+      "gap_bps": 34
+    },
+    {
+      "friday": "2023-05-19",
+      "monday": "2023-05-22",
+      "friday_close": 175.16,
+      "monday_open": 173.98,
+      "gap_bps": -67
+    },
+    {
+      "friday": "2023-05-26",
+      "monday": "2023-05-30",
+      "friday_close": 175.43,
+      "monday_open": 176.96,
+      "gap_bps": 87
+    },
+    {
+      "friday": "2023-06-02",
+      "monday": "2023-06-05",
+      "friday_close": 180.95,
+      "monday_open": 182.63,
+      "gap_bps": 93
+    },
+    {
+      "friday": "2023-06-09",
+      "monday": "2023-06-12",
+      "friday_close": 180.96,
+      "monday_open": 181.27,
+      "gap_bps": 17
+    },
+    {
+      "friday": "2023-06-16",
+      "monday": "2023-06-20",
+      "friday_close": 184.92,
+      "monday_open": 184.41,
+      "gap_bps": -28
+    },
+    {
+      "friday": "2023-06-23",
+      "monday": "2023-06-26",
+      "friday_close": 186.68,
+      "monday_open": 186.83,
+      "gap_bps": 8
+    },
+    {
+      "friday": "2023-06-30",
+      "monday": "2023-07-03",
+      "friday_close": 193.97,
+      "monday_open": 193.78,
+      "gap_bps": -10
+    },
+    {
+      "friday": "2023-07-07",
+      "monday": "2023-07-10",
+      "friday_close": 190.68,
+      "monday_open": 189.26,
+      "gap_bps": -74
+    },
+    {
+      "friday": "2023-07-14",
+      "monday": "2023-07-17",
+      "friday_close": 190.69,
+      "monday_open": 191.9,
+      "gap_bps": 63
+    },
+    {
+      "friday": "2023-07-21",
+      "monday": "2023-07-24",
+      "friday_close": 191.94,
+      "monday_open": 193.41,
+      "gap_bps": 77
+    },
+    {
+      "friday": "2023-07-28",
+      "monday": "2023-07-31",
+      "friday_close": 195.83,
+      "monday_open": 196.06,
+      "gap_bps": 12
+    },
+    {
+      "friday": "2023-08-04",
+      "monday": "2023-08-07",
+      "friday_close": 181.99,
+      "monday_open": 182.13,
+      "gap_bps": 8
+    },
+    {
+      "friday": "2023-08-11",
+      "monday": "2023-08-14",
+      "friday_close": 177.79,
+      "monday_open": 177.97,
+      "gap_bps": 10
+    },
+    {
+      "friday": "2023-08-18",
+      "monday": "2023-08-21",
+      "friday_close": 174.49,
+      "monday_open": 175.07,
+      "gap_bps": 33
+    },
+    {
+      "friday": "2023-08-25",
+      "monday": "2023-08-28",
+      "friday_close": 178.61,
+      "monday_open": 180.09,
+      "gap_bps": 83
+    },
+    {
+      "friday": "2023-09-01",
+      "monday": "2023-09-05",
+      "friday_close": 189.46,
+      "monday_open": 188.28,
+      "gap_bps": -62
+    },
+    {
+      "friday": "2023-09-08",
+      "monday": "2023-09-11",
+      "friday_close": 178.18,
+      "monday_open": 180.07,
+      "gap_bps": 106
+    },
+    {
+      "friday": "2023-09-15",
+      "monday": "2023-09-18",
+      "friday_close": 175.01,
+      "monday_open": 176.48,
+      "gap_bps": 84
+    },
+    {
+      "friday": "2023-09-22",
+      "monday": "2023-09-25",
+      "friday_close": 174.79,
+      "monday_open": 174.2,
+      "gap_bps": -34
+    },
+    {
+      "friday": "2023-09-29",
+      "monday": "2023-10-02",
+      "friday_close": 171.21,
+      "monday_open": 171.22,
+      "gap_bps": 1
+    },
+    {
+      "friday": "2023-10-06",
+      "monday": "2023-10-09",
+      "friday_close": 177.49,
+      "monday_open": 176.81,
+      "gap_bps": -38
+    },
+    {
+      "friday": "2023-10-13",
+      "monday": "2023-10-16",
+      "friday_close": 178.85,
+      "monday_open": 176.75,
+      "gap_bps": -117
+    },
+    {
+      "friday": "2023-10-20",
+      "monday": "2023-10-23",
+      "friday_close": 172.88,
+      "monday_open": 170.91,
+      "gap_bps": -114
+    },
+    {
+      "friday": "2023-10-27",
+      "monday": "2023-10-30",
+      "friday_close": 168.22,
+      "monday_open": 169.02,
+      "gap_bps": 48
+    },
+    {
+      "friday": "2023-11-03",
+      "monday": "2023-11-06",
+      "friday_close": 176.65,
+      "monday_open": 176.38,
+      "gap_bps": -15
+    },
+    {
+      "friday": "2023-11-10",
+      "monday": "2023-11-13",
+      "friday_close": 186.4,
+      "monday_open": 185.82,
+      "gap_bps": -31
+    },
+    {
+      "friday": "2023-11-17",
+      "monday": "2023-11-20",
+      "friday_close": 189.69,
+      "monday_open": 189.89,
+      "gap_bps": 11
+    },
+    {
+      "friday": "2023-11-24",
+      "monday": "2023-11-27",
+      "friday_close": 189.97,
+      "monday_open": 189.92,
+      "gap_bps": -3
+    },
+    {
+      "friday": "2023-12-01",
+      "monday": "2023-12-04",
+      "friday_close": 191.24,
+      "monday_open": 189.98,
+      "gap_bps": -66
+    },
+    {
+      "friday": "2023-12-08",
+      "monday": "2023-12-11",
+      "friday_close": 195.71,
+      "monday_open": 193.11,
+      "gap_bps": -133
+    },
+    {
+      "friday": "2023-12-15",
+      "monday": "2023-12-18",
+      "friday_close": 197.57,
+      "monday_open": 196.09,
+      "gap_bps": -75
+    },
+    {
+      "friday": "2023-12-22",
+      "monday": "2023-12-26",
+      "friday_close": 193.6,
+      "monday_open": 193.61,
+      "gap_bps": 1
+    },
+    {
+      "friday": "2023-12-29",
+      "monday": "2024-01-02",
+      "friday_close": 192.53,
+      "monday_open": 187.15,
+      "gap_bps": -279
+    },
+    {
+      "friday": "2024-01-05",
+      "monday": "2024-01-08",
+      "friday_close": 181.18,
+      "monday_open": 182.085,
+      "gap_bps": 50
+    },
+    {
+      "friday": "2024-01-12",
+      "monday": "2024-01-16",
+      "friday_close": 185.92,
+      "monday_open": 182.16,
+      "gap_bps": -202
+    },
+    {
+      "friday": "2024-01-19",
+      "monday": "2024-01-22",
+      "friday_close": 191.56,
+      "monday_open": 192.3,
+      "gap_bps": 39
+    },
+    {
+      "friday": "2024-01-26",
+      "monday": "2024-01-29",
+      "friday_close": 192.42,
+      "monday_open": 192.01,
+      "gap_bps": -21
+    },
+    {
+      "friday": "2024-02-02",
+      "monday": "2024-02-05",
+      "friday_close": 185.85,
+      "monday_open": 188.15,
+      "gap_bps": 124
+    },
+    {
+      "friday": "2024-02-09",
+      "monday": "2024-02-12",
+      "friday_close": 188.85,
+      "monday_open": 188.415,
+      "gap_bps": -23
+    },
+    {
+      "friday": "2024-02-16",
+      "monday": "2024-02-20",
+      "friday_close": 182.31,
+      "monday_open": 181.79,
+      "gap_bps": -29
+    },
+    {
+      "friday": "2024-02-23",
+      "monday": "2024-02-26",
+      "friday_close": 182.52,
+      "monday_open": 182.24,
+      "gap_bps": -15
+    },
+    {
+      "friday": "2024-03-01",
+      "monday": "2024-03-04",
+      "friday_close": 179.66,
+      "monday_open": 176.15,
+      "gap_bps": -195
+    },
+    {
+      "friday": "2024-03-08",
+      "monday": "2024-03-11",
+      "friday_close": 170.73,
+      "monday_open": 172.94,
+      "gap_bps": 129
+    },
+    {
+      "friday": "2024-03-15",
+      "monday": "2024-03-18",
+      "friday_close": 172.62,
+      "monday_open": 175.57,
+      "gap_bps": 171
+    },
+    {
+      "friday": "2024-03-22",
+      "monday": "2024-03-25",
+      "friday_close": 172.28,
+      "monday_open": 170.565,
+      "gap_bps": -100
+    },
+    {
+      "friday": "2024-04-05",
+      "monday": "2024-04-08",
+      "friday_close": 169.58,
+      "monday_open": 169.03,
+      "gap_bps": -32
+    },
+    {
+      "friday": "2024-04-12",
+      "monday": "2024-04-15",
+      "friday_close": 176.55,
+      "monday_open": 175.36,
+      "gap_bps": -67
+    },
+    {
+      "friday": "2024-04-19",
+      "monday": "2024-04-22",
+      "friday_close": 165.0,
+      "monday_open": 165.515,
+      "gap_bps": 31
+    },
+    {
+      "friday": "2024-04-26",
+      "monday": "2024-04-29",
+      "friday_close": 169.3,
+      "monday_open": 173.37,
+      "gap_bps": 240
+    },
+    {
+      "friday": "2024-05-03",
+      "monday": "2024-05-06",
+      "friday_close": 183.38,
+      "monday_open": 182.354,
+      "gap_bps": -56
+    },
+    {
+      "friday": "2024-05-10",
+      "monday": "2024-05-13",
+      "friday_close": 183.05,
+      "monday_open": 185.435,
+      "gap_bps": 130
+    },
+    {
+      "friday": "2024-05-17",
+      "monday": "2024-05-20",
+      "friday_close": 189.87,
+      "monday_open": 189.325,
+      "gap_bps": -29
+    },
+    {
+      "friday": "2024-05-24",
+      "monday": "2024-05-28",
+      "friday_close": 189.98,
+      "monday_open": 191.51,
+      "gap_bps": 81
+    },
+    {
+      "friday": "2024-05-31",
+      "monday": "2024-06-03",
+      "friday_close": 192.25,
+      "monday_open": 192.9,
+      "gap_bps": 34
+    },
+    {
+      "friday": "2024-06-07",
+      "monday": "2024-06-10",
+      "friday_close": 196.89,
+      "monday_open": 196.9,
+      "gap_bps": 1
+    },
+    {
+      "friday": "2024-06-14",
+      "monday": "2024-06-17",
+      "friday_close": 212.49,
+      "monday_open": 213.37,
+      "gap_bps": 41
+    },
+    {
+      "friday": "2024-06-21",
+      "monday": "2024-06-24",
+      "friday_close": 207.49,
+      "monday_open": 207.72,
+      "gap_bps": 11
+    },
+    {
+      "friday": "2024-06-28",
+      "monday": "2024-07-01",
+      "friday_close": 210.62,
+      "monday_open": 212.09,
+      "gap_bps": 70
+    },
+    {
+      "friday": "2024-07-05",
+      "monday": "2024-07-08",
+      "friday_close": 226.34,
+      "monday_open": 227.09,
+      "gap_bps": 33
+    },
+    {
+      "friday": "2024-07-12",
+      "monday": "2024-07-15",
+      "friday_close": 230.54,
+      "monday_open": 236.48,
+      "gap_bps": 258
+    },
+    {
+      "friday": "2024-07-19",
+      "monday": "2024-07-22",
+      "friday_close": 224.31,
+      "monday_open": 227.01,
+      "gap_bps": 120
+    },
+    {
+      "friday": "2024-07-26",
+      "monday": "2024-07-29",
+      "friday_close": 217.96,
+      "monday_open": 216.96,
+      "gap_bps": -46
+    },
+    {
+      "friday": "2024-08-02",
+      "monday": "2024-08-05",
+      "friday_close": 219.86,
+      "monday_open": 199.09,
+      "gap_bps": -945
+    },
+    {
+      "friday": "2024-08-09",
+      "monday": "2024-08-12",
+      "friday_close": 216.24,
+      "monday_open": 216.07,
+      "gap_bps": -8
+    },
+    {
+      "friday": "2024-08-16",
+      "monday": "2024-08-19",
+      "friday_close": 226.05,
+      "monday_open": 225.72,
+      "gap_bps": -15
+    },
+    {
+      "friday": "2024-08-23",
+      "monday": "2024-08-26",
+      "friday_close": 226.84,
+      "monday_open": 226.76,
+      "gap_bps": -4
+    },
+    {
+      "friday": "2024-08-30",
+      "monday": "2024-09-03",
+      "friday_close": 229.0,
+      "monday_open": 228.55,
+      "gap_bps": -20
+    },
+    {
+      "friday": "2024-09-06",
+      "monday": "2024-09-09",
+      "friday_close": 220.82,
+      "monday_open": 220.82,
+      "gap_bps": 0
+    },
+    {
+      "friday": "2024-09-13",
+      "monday": "2024-09-16",
+      "friday_close": 222.5,
+      "monday_open": 216.54,
+      "gap_bps": -268
+    },
+    {
+      "friday": "2024-09-20",
+      "monday": "2024-09-23",
+      "friday_close": 228.2,
+      "monday_open": 227.34,
+      "gap_bps": -38
+    },
+    {
+      "friday": "2024-09-27",
+      "monday": "2024-09-30",
+      "friday_close": 227.79,
+      "monday_open": 230.04,
+      "gap_bps": 99
+    },
+    {
+      "friday": "2024-10-04",
+      "monday": "2024-10-07",
+      "friday_close": 226.8,
+      "monday_open": 224.5,
+      "gap_bps": -101
+    },
+    {
+      "friday": "2024-10-11",
+      "monday": "2024-10-14",
+      "friday_close": 227.55,
+      "monday_open": 228.7,
+      "gap_bps": 51
+    },
+    {
+      "friday": "2024-10-18",
+      "monday": "2024-10-21",
+      "friday_close": 235.0,
+      "monday_open": 234.45,
+      "gap_bps": -23
+    },
+    {
+      "friday": "2024-10-25",
+      "monday": "2024-10-28",
+      "friday_close": 231.41,
+      "monday_open": 233.32,
+      "gap_bps": 83
+    },
+    {
+      "friday": "2024-11-01",
+      "monday": "2024-11-04",
+      "friday_close": 222.91,
+      "monday_open": 220.99,
+      "gap_bps": -86
+    },
+    {
+      "friday": "2024-11-08",
+      "monday": "2024-11-11",
+      "friday_close": 226.96,
+      "monday_open": 225.0,
+      "gap_bps": -86
+    },
+    {
+      "friday": "2024-11-15",
+      "monday": "2024-11-18",
+      "friday_close": 225.0,
+      "monday_open": 225.25,
+      "gap_bps": 11
+    },
+    {
+      "friday": "2024-11-22",
+      "monday": "2024-11-25",
+      "friday_close": 229.87,
+      "monday_open": 231.46,
+      "gap_bps": 69
+    },
+    {
+      "friday": "2024-11-29",
+      "monday": "2024-12-02",
+      "friday_close": 237.33,
+      "monday_open": 237.27,
+      "gap_bps": -3
+    },
+    {
+      "friday": "2024-12-06",
+      "monday": "2024-12-09",
+      "friday_close": 242.84,
+      "monday_open": 241.83,
+      "gap_bps": -42
+    },
+    {
+      "friday": "2024-12-13",
+      "monday": "2024-12-16",
+      "friday_close": 248.13,
+      "monday_open": 247.99,
+      "gap_bps": -6
+    },
+    {
+      "friday": "2024-12-20",
+      "monday": "2024-12-23",
+      "friday_close": 254.49,
+      "monday_open": 254.77,
+      "gap_bps": 11
+    },
+    {
+      "friday": "2024-12-27",
+      "monday": "2024-12-30",
+      "friday_close": 255.59,
+      "monday_open": 252.23,
+      "gap_bps": -131
+    },
+    {
+      "friday": "2025-01-03",
+      "monday": "2025-01-06",
+      "friday_close": 243.36,
+      "monday_open": 244.31,
+      "gap_bps": 39
+    },
+    {
+      "friday": "2025-01-10",
+      "monday": "2025-01-13",
+      "friday_close": 236.85,
+      "monday_open": 233.53,
+      "gap_bps": -140
+    },
+    {
+      "friday": "2025-01-17",
+      "monday": "2025-01-21",
+      "friday_close": 229.98,
+      "monday_open": 224.0,
+      "gap_bps": -260
+    },
+    {
+      "friday": "2025-01-24",
+      "monday": "2025-01-27",
+      "friday_close": 222.78,
+      "monday_open": 224.02,
+      "gap_bps": 56
+    },
+    {
+      "friday": "2025-01-31",
+      "monday": "2025-02-03",
+      "friday_close": 236.0,
+      "monday_open": 229.99,
+      "gap_bps": -255
+    },
+    {
+      "friday": "2025-02-07",
+      "monday": "2025-02-10",
+      "friday_close": 227.63,
+      "monday_open": 229.57,
+      "gap_bps": 85
+    },
+    {
+      "friday": "2025-02-14",
+      "monday": "2025-02-18",
+      "friday_close": 244.6,
+      "monday_open": 244.15,
+      "gap_bps": -18
+    },
+    {
+      "friday": "2025-02-21",
+      "monday": "2025-02-24",
+      "friday_close": 245.55,
+      "monday_open": 244.925,
+      "gap_bps": -25
+    },
+    {
+      "friday": "2025-02-28",
+      "monday": "2025-03-03",
+      "friday_close": 241.84,
+      "monday_open": 241.79,
+      "gap_bps": -2
+    },
+    {
+      "friday": "2025-03-07",
+      "monday": "2025-03-10",
+      "friday_close": 239.07,
+      "monday_open": 235.54,
+      "gap_bps": -148
+    },
+    {
+      "friday": "2025-03-14",
+      "monday": "2025-03-17",
+      "friday_close": 213.49,
+      "monday_open": 213.31,
+      "gap_bps": -8
+    },
+    {
+      "friday": "2025-03-21",
+      "monday": "2025-03-24",
+      "friday_close": 218.27,
+      "monday_open": 221.0,
+      "gap_bps": 125
+    },
+    {
+      "friday": "2025-03-28",
+      "monday": "2025-03-31",
+      "friday_close": 217.9,
+      "monday_open": 217.005,
+      "gap_bps": -41
+    },
+    {
+      "friday": "2025-04-04",
+      "monday": "2025-04-07",
+      "friday_close": 188.38,
+      "monday_open": 177.2,
+      "gap_bps": -593
+    },
+    {
+      "friday": "2025-04-11",
+      "monday": "2025-04-14",
+      "friday_close": 198.15,
+      "monday_open": 211.44,
+      "gap_bps": 671
+    },
+    {
+      "friday": "2025-04-25",
+      "monday": "2025-04-28",
+      "friday_close": 209.28,
+      "monday_open": 210.0,
+      "gap_bps": 34
+    },
+    {
+      "friday": "2025-05-02",
+      "monday": "2025-05-05",
+      "friday_close": 205.35,
+      "monday_open": 203.1,
+      "gap_bps": -110
+    },
+    {
+      "friday": "2025-05-09",
+      "monday": "2025-05-12",
+      "friday_close": 198.53,
+      "monday_open": 210.97,
+      "gap_bps": 627
+    },
+    {
+      "friday": "2025-05-16",
+      "monday": "2025-05-19",
+      "friday_close": 211.26,
+      "monday_open": 207.91,
+      "gap_bps": -159
+    },
+    {
+      "friday": "2025-05-23",
+      "monday": "2025-05-27",
+      "friday_close": 195.27,
+      "monday_open": 198.3,
+      "gap_bps": 155
+    },
+    {
+      "friday": "2025-05-30",
+      "monday": "2025-06-02",
+      "friday_close": 200.85,
+      "monday_open": 200.28,
+      "gap_bps": -28
+    },
+    {
+      "friday": "2025-06-06",
+      "monday": "2025-06-09",
+      "friday_close": 203.92,
+      "monday_open": 204.39,
+      "gap_bps": 23
+    },
+    {
+      "friday": "2025-06-13",
+      "monday": "2025-06-16",
+      "friday_close": 196.45,
+      "monday_open": 197.3,
+      "gap_bps": 43
+    },
+    {
+      "friday": "2025-06-20",
+      "monday": "2025-06-23",
+      "friday_close": 201.0,
+      "monday_open": 201.625,
+      "gap_bps": 31
+    },
+    {
+      "friday": "2025-06-27",
+      "monday": "2025-06-30",
+      "friday_close": 201.08,
+      "monday_open": 202.01,
+      "gap_bps": 46
+    },
+    {
+      "friday": "2025-07-11",
+      "monday": "2025-07-14",
+      "friday_close": 211.16,
+      "monday_open": 209.925,
+      "gap_bps": -58
+    },
+    {
+      "friday": "2025-07-18",
+      "monday": "2025-07-21",
+      "friday_close": 211.18,
+      "monday_open": 212.1,
+      "gap_bps": 44
+    },
+    {
+      "friday": "2025-07-25",
+      "monday": "2025-07-28",
+      "friday_close": 213.88,
+      "monday_open": 214.03,
+      "gap_bps": 7
+    },
+    {
+      "friday": "2025-08-01",
+      "monday": "2025-08-04",
+      "friday_close": 202.38,
+      "monday_open": 204.505,
+      "gap_bps": 105
+    },
+    {
+      "friday": "2025-08-08",
+      "monday": "2025-08-11",
+      "friday_close": 229.35,
+      "monday_open": 227.92,
+      "gap_bps": -62
+    },
+    {
+      "friday": "2025-08-15",
+      "monday": "2025-08-18",
+      "friday_close": 231.59,
+      "monday_open": 231.7,
+      "gap_bps": 5
+    },
+    {
+      "friday": "2025-08-22",
+      "monday": "2025-08-25",
+      "friday_close": 227.76,
+      "monday_open": 226.48,
+      "gap_bps": -56
+    },
+    {
+      "friday": "2025-08-29",
+      "monday": "2025-09-02",
+      "friday_close": 232.14,
+      "monday_open": 229.25,
+      "gap_bps": -124
+    },
+    {
+      "friday": "2025-09-05",
+      "monday": "2025-09-08",
+      "friday_close": 239.69,
+      "monday_open": 239.3,
+      "gap_bps": -16
+    },
+    {
+      "friday": "2025-09-12",
+      "monday": "2025-09-15",
+      "friday_close": 234.07,
+      "monday_open": 237.0,
+      "gap_bps": 125
+    },
+    {
+      "friday": "2025-09-19",
+      "monday": "2025-09-22",
+      "friday_close": 245.5,
+      "monday_open": 248.3,
+      "gap_bps": 114
+    },
+    {
+      "friday": "2025-09-26",
+      "monday": "2025-09-29",
+      "friday_close": 255.46,
+      "monday_open": 254.56,
+      "gap_bps": -35
+    },
+    {
+      "friday": "2025-10-03",
+      "monday": "2025-10-06",
+      "friday_close": 258.02,
+      "monday_open": 257.99,
+      "gap_bps": -1
+    },
+    {
+      "friday": "2025-10-10",
+      "monday": "2025-10-13",
+      "friday_close": 245.27,
+      "monday_open": 249.38,
+      "gap_bps": 168
+    },
+    {
+      "friday": "2025-10-17",
+      "monday": "2025-10-20",
+      "friday_close": 252.29,
+      "monday_open": 255.885,
+      "gap_bps": 142
+    },
+    {
+      "friday": "2025-10-24",
+      "monday": "2025-10-27",
+      "friday_close": 262.82,
+      "monday_open": 264.88,
+      "gap_bps": 78
+    },
+    {
+      "friday": "2025-10-31",
+      "monday": "2025-11-03",
+      "friday_close": 270.37,
+      "monday_open": 270.42,
+      "gap_bps": 2
+    },
+    {
+      "friday": "2025-11-07",
+      "monday": "2025-11-10",
+      "friday_close": 268.47,
+      "monday_open": 268.96,
+      "gap_bps": 18
+    },
+    {
+      "friday": "2025-11-14",
+      "monday": "2025-11-17",
+      "friday_close": 272.41,
+      "monday_open": 268.815,
+      "gap_bps": -132
+    },
+    {
+      "friday": "2025-11-21",
+      "monday": "2025-11-24",
+      "friday_close": 271.49,
+      "monday_open": 270.9,
+      "gap_bps": -22
+    },
+    {
+      "friday": "2025-11-28",
+      "monday": "2025-12-01",
+      "friday_close": 278.85,
+      "monday_open": 278.01,
+      "gap_bps": -30
+    },
+    {
+      "friday": "2025-12-05",
+      "monday": "2025-12-08",
+      "friday_close": 278.78,
+      "monday_open": 278.13,
+      "gap_bps": -23
+    },
+    {
+      "friday": "2025-12-12",
+      "monday": "2025-12-15",
+      "friday_close": 278.28,
+      "monday_open": 280.15,
+      "gap_bps": 67
+    },
+    {
+      "friday": "2025-12-19",
+      "monday": "2025-12-22",
+      "friday_close": 273.67,
+      "monday_open": 272.86,
+      "gap_bps": -30
+    },
+    {
+      "friday": "2025-12-26",
+      "monday": "2025-12-29",
+      "friday_close": 273.4,
+      "monday_open": 272.69,
+      "gap_bps": -26
+    },
+    {
+      "friday": "2026-01-02",
+      "monday": "2026-01-05",
+      "friday_close": 271.01,
+      "monday_open": 270.64,
+      "gap_bps": -14
+    },
+    {
+      "friday": "2026-01-09",
+      "monday": "2026-01-12",
+      "friday_close": 259.37,
+      "monday_open": 259.16,
+      "gap_bps": -8
+    },
+    {
+      "friday": "2026-01-16",
+      "monday": "2026-01-20",
+      "friday_close": 255.53,
+      "monday_open": 252.73,
+      "gap_bps": -110
+    },
+    {
+      "friday": "2026-01-23",
+      "monday": "2026-01-26",
+      "friday_close": 248.04,
+      "monday_open": 251.48,
+      "gap_bps": 139
+    },
+    {
+      "friday": "2026-01-30",
+      "monday": "2026-02-02",
+      "friday_close": 259.48,
+      "monday_open": 260.03,
+      "gap_bps": 21
+    },
+    {
+      "friday": "2026-02-06",
+      "monday": "2026-02-09",
+      "friday_close": 278.12,
+      "monday_open": 277.905,
+      "gap_bps": -8
+    },
+    {
+      "friday": "2026-02-13",
+      "monday": "2026-02-17",
+      "friday_close": 255.78,
+      "monday_open": 258.05,
+      "gap_bps": 89
+    },
+    {
+      "friday": "2026-02-20",
+      "monday": "2026-02-23",
+      "friday_close": 264.58,
+      "monday_open": 263.49,
+      "gap_bps": -41
+    },
+    {
+      "friday": "2026-02-27",
+      "monday": "2026-03-02",
+      "friday_close": 264.18,
+      "monday_open": 262.41,
+      "gap_bps": -67
+    },
+    {
+      "friday": "2026-03-06",
+      "monday": "2026-03-09",
+      "friday_close": 257.46,
+      "monday_open": 255.69,
+      "gap_bps": -69
+    },
+    {
+      "friday": "2026-03-13",
+      "monday": "2026-03-16",
+      "friday_close": 250.12,
+      "monday_open": 252.105,
+      "gap_bps": 79
+    },
+    {
+      "friday": "2026-03-20",
+      "monday": "2026-03-23",
+      "friday_close": 247.99,
+      "monday_open": 253.97,
+      "gap_bps": 241
+    },
+    {
+      "friday": "2026-03-27",
+      "monday": "2026-03-30",
+      "friday_close": 248.8,
+      "monday_open": 250.07,
+      "gap_bps": 51
+    },
+    {
+      "friday": "2026-04-10",
+      "monday": "2026-04-13",
+      "friday_close": 260.48,
+      "monday_open": 259.73,
+      "gap_bps": -29
+    },
+    {
+      "friday": "2026-04-17",
+      "monday": "2026-04-20",
+      "friday_close": 270.23,
+      "monday_open": 270.33,
+      "gap_bps": 4
+    },
+    {
+      "friday": "2026-04-24",
+      "monday": "2026-04-27",
+      "friday_close": 271.06,
+      "monday_open": 266.09,
+      "gap_bps": -183
+    },
+    {
+      "friday": "2026-05-01",
+      "monday": "2026-05-04",
+      "friday_close": 280.14,
+      "monday_open": 279.655,
+      "gap_bps": -17
+    },
+    {
+      "friday": "2026-05-08",
+      "monday": "2026-05-11",
+      "friday_close": 293.32,
+      "monday_open": 291.979,
+      "gap_bps": -46
+    },
+    {
+      "friday": "2026-05-15",
+      "monday": "2026-05-18",
+      "friday_close": 300.23,
+      "monday_open": 300.24,
+      "gap_bps": 0
+    },
+    {
+      "friday": "2026-05-22",
+      "monday": "2026-05-26",
+      "friday_close": 308.82,
+      "monday_open": 309.56,
+      "gap_bps": 24
+    },
+    {
+      "friday": "2026-05-29",
+      "monday": "2026-06-01",
+      "friday_close": 312.06,
+      "monday_open": 309.625,
+      "gap_bps": -78
+    },
+    {
+      "friday": "2026-06-05",
+      "monday": "2026-06-08",
+      "friday_close": 307.34,
+      "monday_open": 308.739,
+      "gap_bps": 46
+    },
+    {
+      "friday": "2026-06-12",
+      "monday": "2026-06-15",
+      "friday_close": 291.13,
+      "monday_open": 294.12,
+      "gap_bps": 103
+    },
+    {
+      "friday": "2026-06-26",
+      "monday": "2026-06-29",
+      "friday_close": 283.78,
+      "monday_open": 286.73,
+      "gap_bps": 104
+    },
+    {
+      "friday": "2026-07-10",
+      "monday": "2026-07-13",
+      "friday_close": 315.32,
+      "monday_open": 317.015,
+      "gap_bps": 54
+    },
+    {
+      "friday": "2026-07-17",
+      "monday": "2026-07-20",
+      "friday_close": 333.74,
+      "monday_open": 333.505,
+      "gap_bps": -7
+    },
+    {
+      "friday": "2026-07-24",
+      "monday": "2026-07-27",
+      "friday_close": 333.02,
+      "monday_open": 334.54,
+      "gap_bps": 46
+    },
+    {
+      "friday": "2026-07-31",
+      "monday": "2026-08-03",
+      "friday_close": 308.91,
+      "monday_open": 309.58,
+      "gap_bps": 22
+    },
+    {
+      "friday": "2026-08-07",
+      "monday": "2026-08-10",
+      "friday_close": 313.33,
+      "monday_open": 306.83,
+      "gap_bps": -207
+    },
+    {
+      "friday": "2026-08-14",
+      "monday": "2026-08-17",
+      "friday_close": 305.93,
+      "monday_open": 306.21,
+      "gap_bps": 9
+    },
+    {
+      "friday": "2026-08-21",
+      "monday": "2026-08-24",
+      "friday_close": 309.35,
+      "monday_open": 311.47,
+      "gap_bps": 69
+    },
+    {
+      "friday": "2026-08-28",
+      "monday": "2026-08-31",
+      "friday_close": 319.7,
+      "monday_open": 319.6,
+      "gap_bps": -3
+    },
+    {
+      "friday": "2026-09-04",
+      "monday": "2026-09-08",
+      "friday_close": 319.97,
+      "monday_open": 317.1,
+      "gap_bps": -90
+    },
+    {
+      "friday": "2026-09-11",
+      "monday": "2026-09-14",
+      "friday_close": 332.27,
+      "monday_open": 334.79,
+      "gap_bps": 76
+    },
+    {
+      "friday": "2026-09-18",
+      "monday": "2026-09-21",
+      "friday_close": 336.13,
+      "monday_open": 335.28,
+      "gap_bps": -25
+    }
+  ]
+}
