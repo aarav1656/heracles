@@ -77,7 +77,7 @@ export function Overview() {
             <dd><span className="num">{ext.beyond1pct}</span><small>of {table.weekends.length} weekends</small></dd>
           </div>
           <div>
-            <dt>{ticker === 'SPY' ? <>SPY/USD feed <em className="live">live</em></> : `${ticker} feed`}</dt>
+            <dt>{ticker === 'SPY' ? 'SPY/USD feed, on chain' : `${ticker} feed`}</dt>
             <dd>
               {ticker !== 'SPY' ? (
                 <small>not on Sepolia; fork-tested</small>

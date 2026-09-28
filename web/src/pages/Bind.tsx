@@ -188,7 +188,6 @@ export function Bind() {
           </div>
 
           <div className="quote" aria-live="polite">
-            <span className="lab">Premium, live</span>
             {quoting ? (
               <span className="prose tight">Quoting the Stylus pricer.</span>
             ) : quoteError ? (
@@ -204,10 +203,10 @@ export function Bind() {
                 </dl>
                 <p className="src">
                   {floorApplies
-                    ? `The ${floorPct}% rate-on-line floor applies (pricer quoted ${fmtUsdg(quote.premium)}). `
-                    : `Pricer quote applies (floor ${fmtUsdg(floor)}). `}
-                  Pricer <a className="tx" href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a> at
-                  block <span className="num">#{quote.block.toLocaleString('en-US')}</span>.
+                    ? `Raised to the ${floorPct}% minimum premium on the limit; the pricer quoted ${fmtUsdg(quote.premium)}. `
+                    : `Above the ${usd2(floor)} USDG minimum premium (${floorPct}% of the limit). `}
+                  Quoted by the Stylus pricer <a className="tx" href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a> at
+                  block <a className="num" href={explorer.block(quote.block)} target="_blank" rel="noreferrer">#{quote.block.toLocaleString('en-US')}</a>.
                 </p>
               </>
             ) : (

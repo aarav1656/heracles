@@ -262,7 +262,6 @@ h1, h2, h3 { margin: 0; font-weight: 700; font-style: normal; }
 .mtabs button:hover { color: var(--text); background: var(--wash); }
 .mtabs button:active { background: var(--bg-3); }
 .mtabs button.on { color: var(--text); background: var(--bg-3); }
-.mstats .live { font-style: normal; margin-left: 6px; color: var(--positive); }
 .mtabs small { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--positive); }
 .mstats { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0; }
 .mstats div { min-width: 0; }
@@ -380,7 +379,7 @@ code { font-family: var(--mono); font-size: 0.9em; color: var(--text-2); overflo
 .path .gap-years { grid-column: 2 / 3; }
 .hit-dot { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--negative); box-shadow: 0 0 0 2px var(--bg-1); }
 .path-key { gap: 6px 20px; }
-.sw.dd { background: rgba(255, 80, 106, 0.30); }
+.sw.dd { background: rgba(255, 80, 106, 0.25); outline: 1px solid var(--negative); outline-offset: -1px; }
 .path-end { position: absolute; left: calc(100% + 8px); white-space: nowrap; transform: translateY(-50%); font-size: 13px; color: var(--text); }
 
 .contracts { margin: 20px 0 0; color: var(--text-3); font-size: 12.5px; line-height: 1.8; }
@@ -410,13 +409,15 @@ a, .key, .btn, .chip, .mtabs button, .field input, .field select, .settle-item i
   .desk > .stack { display: contents; }
   .desk > .stack > .panel:last-child { order: 3; }
   .desk > .ticket { order: 2; }
+  .desk > .stack + .ticket { order: -1; }
 }
 @media (max-width: 940px) {
   .shell { flex-direction: column; position: relative; }
   .side { flex: none; position: static; height: auto; flex-direction: column; align-items: stretch; gap: 10px; width: 100%; padding: 14px; border-right: 0; border-bottom: 1px solid var(--border-soft); }
   .brand { line-height: 40px; }
-  .side nav { flex-direction: row; flex-wrap: wrap; gap: 2px; }
-  .side nav a, .side .ext { padding: 7px 8px; font-size: 13px; gap: 6px; }
+  .side nav { flex-direction: row; flex-wrap: nowrap; gap: 2px; }
+  .side nav a, .side .ext { padding: 7px 8px; font-size: 13px; gap: 6px; white-space: nowrap; }
+  .side nav a svg, .side .ext { display: none; }
   .side .netline { display: none; }
   .topbar { position: absolute; top: 14px; right: 14px; padding: 0; border: 0; }
   .fig { font-size: 30px; }

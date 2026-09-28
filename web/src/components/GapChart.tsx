@@ -155,8 +155,7 @@ export function GapChart({ table, layer }: { table: GapTable; layer?: LayerTerms
           <>
             <span><i className="sw p" />layer pays <b className="num">{bt.paid}</b></span>
             <span><i className="sw x" />full limit <b className="num">{bt.exhausted}</b></span>
-            <span><i className="sw k" />vault keeps it</span>
-            <span><i className="sw g" />gain for this side</span>
+            <span><i className="sw k" />layer pays nothing</span>
           </>
         ) : (
           <span><i className="sw k" />Friday close to next open, one bar per weekend</span>
