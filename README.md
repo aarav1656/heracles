@@ -99,8 +99,10 @@ Sequencer Uptime feed and settles in real Paxos USDG on testnet
    UTC cutoff, computed on-chain from `block.timestamp` (`Treaty.weekWindow`); the buyer
    never chooses the cutoff or the expiry (always the following Monday 13:30 UTC), and a
    zero exposure or zero limit reverts outright. The reference price is not the caller's
-   spot: it is set after the cutoff via `setReference(id, marketIdx, roundId)`, which only
-   accepts the last round before Saturday 00:00 UTC, within a 24h window.
+   spot: it is set via `setReference(id, marketIdx, roundId)`, which only accepts the first
+   round at or after the Friday 4:00pm New York close, in the feed's current phase, landing
+   within 36h of that close. If that first round is later, anyone can call `voidReference`
+   with it as proof, and the layer can then only be cancelled, with the premium refunded.
 2. The Stylus `Pricer` runs each market's own 504-weekend gap table (chosen by an explicit
    per-market table id fixed at deploy; an unconfigured market reverts), scales it by that
    feed's realised volatility (never below 1.0x), computes
