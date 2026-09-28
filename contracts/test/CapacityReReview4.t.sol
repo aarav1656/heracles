@@ -75,7 +75,12 @@ contract ReReview4 is Test {
                 treaty.fix(id, 0, 3);
             } else {
                 vm.warp(MON0 + EXP + 3 days);
-                treaty.cancel(id);
+                // P3 (re-review 2026-09-28): an unset reference on a still-live feed no longer
+                // reads as dead, so cancel can legitimately revert StillFixable here (the feed has
+                // a genuine post-close round waiting for setReference); this is a fuzz seeding
+                // helper, not an assertion that cancel must succeed, so treat it the same as the
+                // other try/catch state transitions in this file (e.g. `test_G3_cancelIgnoresSequencerGrace`).
+                try treaty.cancel(id) {} catch {}
             }
         } catch {}
     }
@@ -83,6 +88,11 @@ contract ReReview4 is Test {
     function testFuzz_depositRedeemRoundTrip(uint8 s, uint256 seed, uint256 lf, uint256 a) public {
         uint8 state = uint8(bound(s, 0, 4));
         _enter(state, seed, lf);
+        // P3 (re-review 2026-09-28): state 4's cancel can now legitimately revert StillFixable
+        // (a live feed with an unset reference is no longer treated as dead), leaving the layer
+        // Bound and the epoch gate closed. Skip that fuzz draw instead of asserting a deposit the
+        // fixed contract correctly refuses.
+        vm.assume(capacity.maxDeposit(att) != 0);
         a = bound(a, 1, 1e14);
         vm.startPrank(att);
         uint256 pre = capacity.previewDeposit(a);
@@ -100,6 +110,9 @@ contract ReReview4 is Test {
     function testFuzz_mintRedeemRoundTrip(uint8 s, uint256 seed, uint256 lf, uint256 sh) public {
         uint8 state = uint8(bound(s, 0, 4));
         _enter(state, seed, lf);
+        // P3: same as testFuzz_depositRedeemRoundTrip above, cancel at state 4 can now
+        // legitimately revert and leave the gate closed.
+        vm.assume(capacity.maxMint(att) != 0);
         sh = bound(sh, 1, 1e14);
         vm.startPrank(att);
         uint256 pm = capacity.previewMint(sh);
