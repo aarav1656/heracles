@@ -53,7 +53,7 @@ contract Deploy is Script {
         // valid but wrong table id (e.g. NVDA, id 0) at index 0.
         require(ITableId(pricer).tableIdAt(0) == 2, "PRICER not configured for SPY table at index 0");
 
-        vm.startBroadcast();
+        vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
         treaty = new Treaty(USDG, pricer, feeds, MIN_RATE_ON_LINE_BPS, SEQUENCER_FEED);
         vm.stopBroadcast();
 
