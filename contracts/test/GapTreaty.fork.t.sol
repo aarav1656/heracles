@@ -6,13 +6,24 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Treaty} from "../src/Treaty.sol";
 import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
-import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
-/// Proves the multi-market mechanism (9 real Chainlink equity feeds bound at once) against live
-/// Arbitrum One state, pinned to a fixed block (Item 3: an unreachable RPC now fails the suite,
-/// it does not skip it). Arbitrum Sepolia has
-/// only one live equity feed (SPY), so this fork test is the only place all 9 markets are
+/// Proves the multi-market mechanism against live Arbitrum One state, pinned to a fixed block
+/// (Item 3: an unreachable RPC now fails the suite, it does not skip it). Arbitrum Sepolia has
+/// only one live equity feed (SPY), so this fork test is the only place several markets are
 /// exercised together against real oracle state; the Sepolia deploy binds SPY alone.
+///
+/// L2 (re-review of 23e632f, docs/security/capacity-review.md "Re-review (2026-09-28)"): this
+/// suite used to bind all 9 real Chainlink equity feeds through `nTableIds(9)`, which assigns
+/// table id 0 (NVDA) to every market, including SPY -- the exact P2 mapping error, just written
+/// explicitly instead of relying on position. `evidence/gap-tables/` only sources four tables
+/// (NVDA 0, AAPL 1, SPY 2, TSLA 3); MSFT, AMZN, GOOGL, META and COIN have no table at all. Since
+/// `Pricer`'s constructor now requires an explicit, valid table id per market (P2 fix, `BadTableId`
+/// on any id > 3), this suite can only honestly construct a `Treaty`/`Pricer` for the four markets
+/// that actually have a table, each pinned to its own id. The other five live Chainlink feeds
+/// (MSFT, AMZN, GOOGL, META, COIN) remain a mainnet blocker: mainnet cannot bind them until their
+/// gap tables are sourced and added to the Pricer, and the addresses stay below purely as a record
+/// of the live feeds this treaty cannot yet price.
 contract GapTreatyForkTest is Test {
     string constant RPC = "https://arb1.arbitrum.io/rpc";
     // Judging doc B.1.3 / orchestrator Item 3: forking at "latest" with no pinned block meant this
@@ -33,10 +44,14 @@ contract GapTreatyForkTest is Test {
     address constant SPY = 0x46306F3795342117721D8DEd50fbcF6DF2b3cc10;
     address constant NVDA = 0x4881A4418b5F2460B21d6F08CD5aA0678a7f262F;
     address constant AAPL = 0x8d0CC5f38f9E802475f2CFf4F9fc7000C2E1557c;
+    address constant TSLA = 0x3609baAa0a9b1f0FE4d6CC01884585d0e191C3E3;
+    // MAINNET BLOCKER (L2): these 5 live Arbitrum One Chainlink feeds have no sourced gap table
+    // (`evidence/gap-tables/` only has NVDA/AAPL/SPY/TSLA), so `Pricer` cannot be given a valid
+    // table id for them and this treaty cannot bind them on mainnet until that data is sourced.
+    // Kept here, unused, as the record of which live feeds still need one.
     address constant MSFT = 0xDde33fb9F21739602806580bdd73BAd831DcA867;
     address constant AMZN = 0xd6a77691f071E98Df7217BED98f38ae6d2313EBA;
     address constant GOOGL = 0x1D1a83331e9D255EB1Aaf75026B60dFD00A252ba;
-    address constant TSLA = 0x3609baAa0a9b1f0FE4d6CC01884585d0e191C3E3;
     address constant META = 0xcd1bd86fDc33080DCF1b5715B6FCe04eC6F85845;
     address constant COIN = 0x950DC95D4E537A14283059bADC2734977C454498;
 
@@ -60,17 +75,23 @@ contract GapTreatyForkTest is Test {
     function setUp() public {
         vm.createSelectFork(RPC, FORK_BLOCK);
 
-        address[] memory feeds = new address[](9);
-        (feeds[0], feeds[1], feeds[2], feeds[3], feeds[4]) = (SPY, NVDA, AAPL, MSFT, AMZN);
-        (feeds[5], feeds[6], feeds[7], feeds[8]) = (GOOGL, TSLA, META, COIN);
-        treaty = new Treaty(address(USDG), address(new Pricer(nTableIds(9))), feeds, 50, SEQUENCER_FEED);
+        // L2: only the 4 markets `evidence/gap-tables/` actually sources, each on its own table
+        // id (NVDA 0, AAPL 1, SPY 2, TSLA 3) -- matching feed order to table id order, not the old
+        // "table 0 for everyone" bug.
+        address[] memory feeds = new address[](4);
+        (feeds[0], feeds[1], feeds[2], feeds[3]) = (NVDA, AAPL, SPY, TSLA);
+        uint8[] memory tableIds = new uint8[](4);
+        (tableIds[0], tableIds[1], tableIds[2], tableIds[3]) = (0, 1, 2, 3);
+        treaty = new Treaty(address(USDG), address(new Pricer(tableIds)), feeds, 50, SEQUENCER_FEED);
         capacity = treaty.capacity();
     }
 
-    function test_fork_allowlistAcceptsAllNineRealFeeds() public {
-        assertEq(treaty.marketsLength(), 9);
-        assertEq(address(treaty.markets(0)), SPY);
-        assertEq(address(treaty.markets(8)), COIN);
+    function test_fork_allowlistAcceptsFourTabledRealFeeds() public {
+        assertEq(treaty.marketsLength(), 4);
+        assertEq(address(treaty.markets(0)), NVDA);
+        assertEq(address(treaty.markets(1)), AAPL);
+        assertEq(address(treaty.markets(2)), SPY);
+        assertEq(address(treaty.markets(3)), TSLA);
     }
 
     /// A feed with the wrong decimals (real USDC, 6dp not 8dp) must be refused at construction:
@@ -83,15 +104,15 @@ contract GapTreatyForkTest is Test {
         new Treaty(address(USDG), pricerAddr, bad, 50, SEQUENCER_FEED);
     }
 
-    /// Binds real exposure across all 9 live markets in one layer, reading each market's actual
-    /// current round as the Friday reference and pulling a real premium quote from the Pricer;
-    /// proves the multi-market path end to end against live oracle state. Does not fix/settle:
-    /// that needs a real weekend gap to pass on-chain, which the Sepolia live-cycle run covers
-    /// for the single SPY market instead.
-    function test_fork_bindsRealExposureAcrossAllNineMarkets() public {
+    /// Binds real exposure across the 4 tabled live markets in one layer, reading each market's
+    /// actual current round as the Friday reference and pulling a real premium quote from the
+    /// Pricer; proves the multi-market path end to end against live oracle state. Does not
+    /// fix/settle: that needs a real weekend gap to pass on-chain, which the Sepolia live-cycle
+    /// run covers for the single SPY market instead.
+    function test_fork_bindsRealExposureAcrossFourTabledMarkets() public {
 
-        int256[] memory exposure = new int256[](9);
-        for (uint256 i; i < 9; i++) {
+        int256[] memory exposure = new int256[](4);
+        for (uint256 i; i < 4; i++) {
             exposure[i] = i % 2 == 0 ? int256(100_000e6) : -int256(100_000e6);
         }
 
@@ -118,6 +139,6 @@ contract GapTreatyForkTest is Test {
         assertEq(l_buyer, buyer);
         assertGt(premium, 0);
         assertEq(capacity.locked(), 50_000e6);
-        console.log("live 9-market premium (USDG, 6dp)", premium);
+        console.log("live 4-market premium (USDG, 6dp)", premium);
     }
 }
