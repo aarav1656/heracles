@@ -11,6 +11,8 @@ the claim pays out from the first fresh Monday oracle round. No offchain price s
 no claims adjuster. The weekend gap is the mechanism of the loss; the product is the
 reinsurance layer that pays it. Heracles (contract `Treaty`): `contracts/src/Treaty.sol`.
 
+Live app: https://heracles-virid-seven.vercel.app (reads the book below from the chain; screenshots in `evidence/web-live-book.png` and `evidence/web-live-bind.png`).
+
 ## Deployed, Arbitrum Sepolia (421614)
 
 | Contract | Address | Role |

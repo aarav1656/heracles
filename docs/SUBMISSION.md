@@ -56,6 +56,10 @@ Every closed finding is asserted by a named test in `contracts/test/AttackReview
 
 Built by aarav1656, AI-assisted.
 
+## Live app
+
+https://heracles-virid-seven.vercel.app
+
 ## Deployed (Arbitrum Sepolia)
 
 Addresses and live transactions are added after the redeploy.
