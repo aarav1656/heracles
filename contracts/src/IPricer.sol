@@ -12,8 +12,9 @@ interface IPricer {
     /// `exposure`, used only to read each market's own recent rounds for the realised-volatility
     /// scale applied to its scenario table (docs/pricing.md). Reverts if `feeds.length !=
     /// exposure.length`.
-    /// @return premium el + c*(tvar95 - el), c the annualised cost-of-capital rate prorated to
-    /// one weekend's capital lock (docs/pricing.md).
+    /// @return premium el + RISK_LOAD_PPM*(tvar95 - el) + CAPITAL_CHARGE_ANNUAL_PPM*limit*
+    /// LOCK_DAYS/DAYS_PER_YEAR: a per-weekend tail-risk load plus the risk-free rate on the
+    /// fully collateralised limit for the real capital-lock duration (docs/pricing.md).
     /// @return el mean(payout) (expected loss of the layer) over the 504 stored, per-market,
     /// volatility-scaled weekend scenarios, where payout(s) = min(limit, max(0, portfolioLoss(s)
     /// - retention)).
