@@ -7,6 +7,7 @@ import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 /// Attack surface: drain across layers, stale round, phase change, early fix, payout cap.
 /// Every test here is a check that can fail: each one is paired with the exploit it defeats,
@@ -38,7 +39,7 @@ contract AttackTest is Test {
 
     function setUp() public {
         usdg = new MockUSDG();
-        pricer = new Pricer(new uint8[](0));
+        pricer = new Pricer(oneTableId());
         feed = new MockFeed();
         feed.set(1, FRIDAY_PRICE, CUTOFF - 1 hours);
 

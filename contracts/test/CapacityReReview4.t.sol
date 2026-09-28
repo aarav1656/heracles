@@ -9,6 +9,7 @@ import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {MockSequencerFeed} from "./mocks/MockSequencerFeed.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 /// Fourth-pass review suite (the security review, "Re-review of 8f492a4").
 /// G1/G2 (cancel pre-empts a late valid fix) and E1 (entrant loss on cancel) are open
@@ -31,7 +32,7 @@ contract ReReview4 is Test {
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(new Pricer(new uint8[](0))), feeds, 50, address(0));
+        treaty = new Treaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
         capacity = treaty.capacity();
         vm.warp(MON0 + 1 hours);
         _fund(writer, 1e15);
@@ -145,7 +146,7 @@ contract ReReview4 is Test {
         MockSequencerFeed seq = new MockSequencerFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        Treaty t = new Treaty(address(usdg), address(new Pricer(new uint8[](0))), feeds, 50, address(seq));
+        Treaty t = new Treaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(seq));
         Capacity c = t.capacity();
         vm.prank(writer);
         usdg.approve(address(c), type(uint256).max);

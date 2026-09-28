@@ -8,6 +8,7 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {MockSequencerFeed} from "./mocks/MockSequencerFeed.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 /// Adversarial review (SECURITY-REVIEW.md), post-fix. Each test now asserts the FIXED behaviour:
 /// green here means the finding is closed. Where the original attack is now structurally
@@ -33,7 +34,7 @@ contract AttackReviewTest is Test {
 
     function setUp() public {
         usdg = new MockUSDG();
-        pricer = new Pricer(new uint8[](0));
+        pricer = new Pricer(oneTableId());
         feed = new MockFeed();
         feed.set(1, 100e8, FRI_1900 - 10 minutes); // Friday reference round
         address[] memory feeds = new address[](1);

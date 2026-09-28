@@ -7,6 +7,7 @@ import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 /// Orchestrator Item 3 / judging doc B.4 (Slither divide-before-multiply, Treaty.sol:357-358
 /// pre-fix): proves the old two-step formula (`gapBps = diff * 10000 / friday; pnl = exposure *
@@ -60,7 +61,7 @@ contract TreatyPrecisionTest is Test {
 
     function setUp() public {
         usdg = new MockUSDG();
-        pricer = new Pricer(new uint8[](0));
+        pricer = new Pricer(oneTableId());
         feed = new MockFeed();
         feed.set(1, FRIDAY_PRICE, CUTOFF - 1 hours);
 

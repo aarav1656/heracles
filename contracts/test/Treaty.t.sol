@@ -7,6 +7,7 @@ import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 contract TreatyTest is Test {
     uint256 constant T0 = 1_790_000_000; // a Monday; that week's Fri 19:30/Mon 13:30 below
@@ -38,7 +39,7 @@ contract TreatyTest is Test {
 
     function setUp() public {
         usdg = new MockUSDG();
-        pricer = new Pricer(new uint8[](0));
+        pricer = new Pricer(oneTableId());
         feed = new MockFeed();
         feed.set(1, FRIDAY_PRICE, CUTOFF - 1 hours);
 

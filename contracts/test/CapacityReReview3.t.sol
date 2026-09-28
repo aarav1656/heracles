@@ -9,6 +9,7 @@ import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PermitUSDG} from "./CapacityReReview.t.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 /// Re-review of 96309c8. Every test here is red on 96309c8 (the security review
 /// "Re-review of 96309c8"). F1 and F4 are ported unmodified and green after Resolution 3 (GRACE
@@ -39,7 +40,7 @@ contract ReReview3Findings is Test {
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(new Pricer(new uint8[](0))), feeds, 50, address(0));
+        treaty = new Treaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
         capacity = treaty.capacity();
         vm.warp(MON0 + 1 hours);
         _fund(writer, 100_000e6);

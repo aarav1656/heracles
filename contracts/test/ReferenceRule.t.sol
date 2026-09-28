@@ -7,6 +7,7 @@ import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 /// Item 6 / judging doc B.2: `setReference`'s calendar math (`fridayCloseOf`, DST-aware) unit
 /// tested directly against known real-world dates, plus the specific Labor Day 2026 holiday
@@ -24,7 +25,7 @@ contract ReferenceRuleTest is Test {
 
     function setUp() public {
         usdg = new MockUSDG();
-        pricer = new Pricer(new uint8[](0));
+        pricer = new Pricer(oneTableId());
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);

@@ -9,6 +9,7 @@ import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 contract PermitUSDG is ERC20, ERC20Permit {
     constructor() ERC20("Permit USDG", "pUSDG") ERC20Permit("Permit USDG") {}
@@ -45,7 +46,7 @@ contract CapacityReReviewTest is Test {
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(new Pricer(new uint8[](0))), feeds, 50, address(0));
+        treaty = new Treaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
         capacity = treaty.capacity();
 
         // Item 6: setReference now needs its own first-round-after-Friday's-close pair, so each

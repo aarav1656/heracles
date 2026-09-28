@@ -7,6 +7,7 @@ import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 /// Re-review of 6af8b2b..79320b8 (docs/security/capacity-review.md, "Re-review (2026-09-28)"),
 /// P3 and P5. Ported from the reviewer's scratch suite at
@@ -28,7 +29,7 @@ contract TreatyReReviewTest is Test {
 
     function setUp() public {
         usdg = new MockUSDG();
-        pricer = new Pricer();
+        pricer = new Pricer(oneTableId());
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);

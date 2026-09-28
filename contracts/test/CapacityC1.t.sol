@@ -7,6 +7,7 @@ import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 /// the security review's Critical C1 and Low L2. Ported from the
 /// reviewer's scratch suite at the reviewer's own scratch copy. These tests are red against the code
@@ -37,7 +38,7 @@ contract CapacityC1Test is Test {
         feed.set(1, 100e8, FRI_1900 - 10 minutes);
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(new Pricer(new uint8[](0))), feeds, 50, address(0));
+        treaty = new Treaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
         capacity = treaty.capacity();
         _deposit(writer, 100_000e6);
         _deposit(writerB, 100_000e6);

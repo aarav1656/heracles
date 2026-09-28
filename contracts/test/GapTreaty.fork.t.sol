@@ -6,6 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Treaty} from "../src/Treaty.sol";
 import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
+import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
 
 /// Proves the multi-market mechanism (9 real Chainlink equity feeds bound at once) against live
 /// Arbitrum One state, pinned to a fixed block (Item 3: an unreachable RPC now fails the suite,
@@ -62,7 +63,7 @@ contract GapTreatyForkTest is Test {
         address[] memory feeds = new address[](9);
         (feeds[0], feeds[1], feeds[2], feeds[3], feeds[4]) = (SPY, NVDA, AAPL, MSFT, AMZN);
         (feeds[5], feeds[6], feeds[7], feeds[8]) = (GOOGL, TSLA, META, COIN);
-        treaty = new Treaty(address(USDG), address(new Pricer(new uint8[](0))), feeds, 50, SEQUENCER_FEED);
+        treaty = new Treaty(address(USDG), address(new Pricer(nTableIds(9))), feeds, 50, SEQUENCER_FEED);
         capacity = treaty.capacity();
     }
 
@@ -77,7 +78,7 @@ contract GapTreatyForkTest is Test {
     function test_fork_rejectsNonEightDecimalFeed() public {
         address[] memory bad = new address[](1);
         bad[0] = USDC;
-        address pricerAddr = address(new Pricer(new uint8[](0)));
+        address pricerAddr = address(new Pricer(oneTableId()));
         vm.expectRevert(Treaty.BadParams.selector);
         new Treaty(address(USDG), pricerAddr, bad, 50, SEQUENCER_FEED);
     }

@@ -6,6 +6,7 @@ import {Treaty} from "../src/Treaty.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 /// C1+H1 (SECURITY-REVIEW.md): unit-tests `Treaty.weekWindow`'s integer weekday math (epoch day 0,
 /// 1970-01-01, was a Thursday) against Python-computed (`datetime`, UTC) expected values, across
@@ -16,7 +17,7 @@ contract WeekWindowTest is Test {
 
     function setUp() public {
         MockUSDG usdg = new MockUSDG();
-        Pricer pricer = new Pricer(new uint8[](0));
+        Pricer pricer = new Pricer(oneTableId());
         MockFeed feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
