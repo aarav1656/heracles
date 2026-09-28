@@ -122,6 +122,9 @@ premium).
 finding below is closed and asserted by a green test in `contracts/test/AttackReview.t.sol`, except
 L2/L5 (latent, not exploitable) and L3 (operational, documented below).
 
+Capacity permit-path review (deposit-while-live pricing, epoch/cutoff gate, JIT premium skim):
+`docs/security/capacity-review.md`.
+
 | Finding | Issue | Fix |
 |---|---|---|
 | C1 | Zero-exposure bind froze writer capital for free, unbounded expiry | `bind` rejects `exposure == 0`/`limit == 0`; expiry is always computed, never caller-chosen |
