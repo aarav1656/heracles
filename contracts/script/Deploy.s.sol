@@ -51,7 +51,13 @@ contract Deploy is Script {
         // The Pricer constructor already reverts on an empty or invalid tableIds array (P2
         // re-review), so this check only catches the narrower case of a Pricer deployed with a
         // valid but wrong table id (e.g. NVDA, id 0) at index 0.
-        require(ITableId(pricer).tableIdAt(0) == 2, "PRICER not configured for SPY table at index 0");
+        // Asked of the live node through vm.rpc rather than called in Forge's local EVM, which
+        // cannot execute Stylus (WASM) code and would revert with OpcodeNotFound.
+        string memory callParams = string.concat(
+            '[{"to":"', vm.toString(pricer), '","data":"',
+            vm.toString(abi.encodeCall(ITableId.tableIdAt, (0))), '"},"latest"]'
+        );
+        require(abi.decode(vm.rpc("eth_call", callParams), (uint8)) == 2, "PRICER not configured for SPY table at index 0");
 
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
         treaty = new Treaty(USDG, pricer, feeds, MIN_RATE_ON_LINE_BPS, SEQUENCER_FEED);
