@@ -331,5 +331,5 @@ the pricer. Multi-market calls were not measured.
   `MissingTable()` for any market position not covered by the deploy's table id array. A
   fifth market still needs a real sourced table added before it can be priced at all; it
   can no longer be priced silently on NVDA's data instead.
-- **Gas ratio unmeasured post-rewrite.** See "Gas" above: the 4.06x figure is retracted,
-  not replaced, pending a permitted deployment/devnode run.
+- **Gas ratio measured on one market only.** See "Gas" above: 8.01x L2 execution gas on a
+  single-market SPY quote; multi-market quotes were not measured.
