@@ -3,10 +3,12 @@
 //! arg parsing (ponytail: this is 4 positional fields, not worth a CLI-parsing or serde
 //! dependency).
 //!
-//! Usage: pricer_cli <retention> <limit> <exposure_csv> <vol_scale_ppm_csv>
+//! Usage: pricer_cli <retention> <limit> <exposure_csv> <vol_scale_ppm_csv> <table_ids_csv>
 //!   retention, limit: non-negative decimal u128
 //!   exposure_csv: comma-separated signed i128 (e.g. "-2000000000000,500000000000")
 //!   vol_scale_ppm_csv: comma-separated non-negative u128, same length as exposure_csv
+//!   table_ids_csv: comma-separated u8 (0 NVDA, 1 AAPL, 2 SPY, 3 TSLA); may be shorter than
+//!     exposure_csv or empty, matching price_core's default-table-id fallback
 //!
 //! On success, prints one line to stdout: "0x" followed by the abi encoding (three concatenated
 //! 32-byte big-endian words, since all three return values are static uint256) of
@@ -36,18 +38,26 @@ fn parse_u128_csv(s: &str) -> Vec<u128> {
     s.split(',').map(|v| v.parse::<u128>().expect("bad u128 in vol_scale csv")).collect()
 }
 
+fn parse_u8_csv(s: &str) -> Vec<u8> {
+    if s.is_empty() {
+        return Vec::new();
+    }
+    s.split(',').map(|v| v.parse::<u8>().expect("bad u8 in table_ids csv")).collect()
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 5 {
-        eprintln!("usage: pricer_cli <retention> <limit> <exposure_csv> <vol_scale_ppm_csv>");
+    if args.len() != 6 {
+        eprintln!("usage: pricer_cli <retention> <limit> <exposure_csv> <vol_scale_ppm_csv> <table_ids_csv>");
         std::process::exit(2);
     }
     let retention = U256::from(args[1].parse::<u128>().expect("bad retention"));
     let limit = U256::from(args[2].parse::<u128>().expect("bad limit"));
     let exposure: Vec<I256> = parse_i128_csv(&args[3]).into_iter().map(|v| I256::try_from(v).unwrap()).collect();
     let vol_scale_ppm: Vec<U256> = parse_u128_csv(&args[4]).into_iter().map(U256::from).collect();
+    let table_ids: Vec<u8> = parse_u8_csv(&args[5]);
 
-    match price_core(&exposure, &vol_scale_ppm, retention, limit) {
+    match price_core(&exposure, &vol_scale_ppm, retention, limit, &table_ids) {
         Ok((premium, el, tvar95)) => {
             let mut out = [0u8; 96];
             out[0..32].copy_from_slice(&premium.to_be_bytes::<32>());
