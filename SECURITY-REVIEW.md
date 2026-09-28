@@ -64,9 +64,10 @@ exploitable, just latent; L3 is documented operational risk, not a code bug).
   13:30 UTC expiry on-chain from `block.timestamp` (`Treaty.weekWindow`, unit-tested
   across 3 weeks, a DST-free week and a year boundary in `test/WeekWindow.t.sol`); rejects
   `exposure == 0` and `limit == 0`; the Friday reference price is set post-cutoff via
-  `setReference` against the last pre-Saturday round, never the caller's spot.
+  `setReference` against the first round at or after `fridayCloseOf` (Item 6's DST-aware
+  rewrite, `test/ReferenceRule.t.sol`), never the caller's spot.
 - H2: premium floors at `minRateOnLineBps * limit / 1e4` (immutable, deployed at 50 bps).
-- H3: `Capacity.totalAssets()` nets out `locked` and `pendingPremium` so withdrawals are
+- H3: `Capacity.totalAssets()` nets out `owed` and `pendingPremium` so withdrawals are
   pro rata regardless of order.
 - M1: bind premium is held in `Capacity.pendingPremium`, excluded from `totalAssets()`
   until the layer settles, so a JIT deposit around a bind gets none of it.

@@ -65,9 +65,10 @@ once it is gone the vault "enters UC state and automatically blocks new deposits
 
 Not a single-ticker note sold to a pool operator covering that pool's own inventory.
 Heracles sells a portfolio excess-of-loss layer to a vault treasury on Arbitrum One
-covering the vault's net exposure across the markets it lists at bind time: a
-different buyer, a different instrument, a cross-market design (`FixingLib`) rather
-than a single-ticker one.
+covering the sum of each losing market's gap across the markets it lists at bind time
+(`_settle` sums only the legs that moved against the buyer, per market, never netted
+against a gain on another leg in the same layer): a different buyer, a different
+instrument, a cross-market design rather than a single-ticker one.
 
 ## Why Arbitrum
 
@@ -77,7 +78,9 @@ must be able to recompute the price from public data. The pricer runs in Stylus 
 it is re-run on every bind and every capacity withdrawal check: measured 4.06x less
 total gas than the identical Solidity pricer (bit-identical outputs, 5 cases, live on
 Robinhood Chain testnet at the same ArbOS version as Arbitrum Sepolia;
-`spikes/stylus-pricer/FINDINGS.md`). The treaty gates on Arbitrum One's real L2
+`spikes/stylus-pricer/FINDINGS.md`), measured pre-fix; the checked-arithmetic overhead
+added for L1 has not been remeasured, so treat 4.06x as the pre-fix baseline, not the
+current ratio. The treaty gates on Arbitrum One's real L2
 Sequencer Uptime feed and settles in real Paxos USDG on testnet
 (`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`).
 
@@ -102,10 +105,11 @@ Sequencer Uptime feed and settles in real Paxos USDG on testnet
 4. `fix(id, marketIdx, roundId)` per market applies the same fixing rule (first
    round with `updatedAt >= expiry`, previous round strictly before expiry). Once every market is fixed the layer settles: payout
    is the realized loss above retention, clamped at the layer's own locked limit, never
-   at the pool's total assets. `Capacity.totalAssets()` nets out both `locked` and
-   `pendingPremium`, so withdrawals price pro rata across writers regardless of order.
-   If a phase change leaves every round unfixable, `cancel()` after a 7-day grace period
-   refunds the buyer's premium instead of stranding it with writers.
+   at the pool's total assets. `Capacity.totalAssets()` nets out both `owed` (a
+   settled-but-unclaimed payout) and `pendingPremium`, so withdrawals price pro rata
+   across writers regardless of order; active `locked` capital is still counted at face
+   value. If a phase change leaves every round unfixable, `cancel()` after a 3-day grace
+   period refunds the buyer's premium instead of stranding it with writers.
 5. Buyer and writer both pull their own claim; nothing is pushed. `claimTo(id, to)` lets
    the claim owner redirect payout to another address (for a blocklisted buyer).
 6. `bind`, `setReference` and `fix` all check a constructor-pinned L2 Sequencer Uptime
@@ -130,10 +134,10 @@ Capacity permit-path review (deposit-while-live pricing, epoch/cutoff gate, JIT 
 | C1 | Zero-exposure bind froze writer capital for free, unbounded expiry | `bind` rejects `exposure == 0`/`limit == 0`; expiry is always computed, never caller-chosen |
 | H1 | Caller-chosen expiry, bind allowed any time | Bind window closes at that week's Friday 19:30 UTC; expiry fixed at the following Monday 13:30 UTC |
 | H2 | High retention could quote a zero premium | Premium floors at `minRateOnLineBps * limit / 1e4` (50 bps) |
-| H3 | First writer to withdraw escaped a realized loss at a stale price | `Capacity.totalAssets()` nets out `locked` and `pendingPremium`; share price always marked |
+| H3 | First writer to withdraw escaped a realized loss at a stale price | `Capacity.totalAssets()` nets out `owed` and `pendingPremium`; share price always marked |
 | M1 | JIT deposit around a bind skimmed the premium | Premium held in `pendingPremium`, excluded from share pricing until settle |
 | M2 | No L2 sequencer uptime check | Constructor-pinned uptime feed, 3600s grace period, gates bind/setReference/fix |
-| M3 | Phase change after expiry stranded the payout with writers | `cancel()` after grace refunds the buyer's premium |
+| M3 | Phase change after expiry stranded the payout with writers | `cancel()` after grace refunds the buyer's premium; the buyer is still unpaid for any real weekend loss on that layer, since a dead round makes the true Monday price unrecoverable, not just delayed |
 | L1 | Stylus pricer wrapped silently on overflow | `checked_mul`/`checked_add`/`checked_sub` in the scenario loop, returns an error |
 | L3 | Stylus program can lapse after 365 days with no reactivation path documented | `pricer` is immutable; reactivation documented below |
 | L4 | Blocklisted buyer had no way to redirect payout | `claimTo(id, to)`, callable only by the claim owner |
@@ -173,14 +177,27 @@ performance number is claimed here.
 
 ## What works
 
-- Full local suite: 45 Foundry tests pass (15 Treaty unit, 5 Attack, 6 Pricer, 11
-  AttackReview post-fix, 6 WeekWindow calendar-math unit tests, 1 Solvency fuzz at 256
-  runs, 1 Solidity/Rust parity print), plus 3 fork tests against live Arbitrum One state.
-- Mutation checks (this build, both independently confirmed red then green): removing
+- Full local suite: 100 Foundry tests pass across 19 suites, 0 failed, 0 skipped
+  (`forge test --summary`): 15 Treaty unit, 5 Attack, 11 AttackReview post-fix, 13
+  GuardMutation (the three previously-deletable guards plus every `onlyTreaty`/
+  `WrongState` check, each with its own red-then-green mutation), 9 Pricer, 2
+  PricerParity (Solidity/Rust cross-language check via `vm.ffi`), 7 WeekWindow
+  calendar-math unit tests, 3 ReferenceRule (fixed EDT/EST `fridayCloseOf` checks plus
+  the Labor Day 2026 holiday-heartbeat test), 2 TreatyPrecision, 1 Solvency fuzz at 256
+  runs, 2 invariant suites at 256 runs / 128,000 calls each (`invariant_noViolations`,
+  `invariant_ledgersMatchLayers`, `invariant_gateMatchesOracle`), plus 5 fork tests
+  against live Arbitrum One/Sepolia state (pinned blocks, fails rather than skips if the
+  RPC is unavailable). This count moves as tests are added; verify with
+  `forge test --summary` rather than trusting this number stale.
+- Mutation checks (this build, each independently confirmed red then green): removing
   the H2 premium floor turns `test_H2_premiumFloorPreventsZeroPremiumLayer` red; removing
   the H3 liabilities subtraction in `Capacity.totalAssets()` turns
-  `test_H3_lossSharedProRataRegardlessOfWithdrawOrder` red; restoring both returns the
-  full suite to green.
+  `test_H3_lossSharedProRataRegardlessOfWithdrawOrder` red; deleting `Treaty.sol`'s
+  `NotFirstRound` reference-round guard turns `test_setReference_NotFirstRound_guard`
+  red; deleting the `AlreadyFixed` guard turns `test_setReference_AlreadyFixed_guard`
+  red; removing `onlyTreaty` from `Capacity.payOut` turns
+  `test_capacity_payOut_onlyTreaty_guard` red; restoring each returns the full suite to
+  green.
 - Redeployed live on Arbitrum Sepolia after the fixes (addresses above), wired to the
   live SPY/USD Chainlink feed (`0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06`),
   `minRateOnLineBps = 50`, and `sequencerUptimeFeed = address(0)` (no Arbitrum Sepolia
@@ -212,7 +229,7 @@ performance number is claimed here.
   not a per-market distribution.
 - No corporate-action multiplier handling: the treaty reads raw Chainlink equity feeds
   directly, not Stock Tokens with a `uiMultiplier()`, so there is no multiplier to check.
-- A settle that never receives a fresh Monday round within `GRACE` (7 days) needs
+- A settle that never receives a fresh Monday round within `GRACE` (3 days) needs
   `cancel()`; the buyer's premium is refunded (M3 fix), but the writers' locked capacity
   is simply released, they earn nothing for the layer that never settled.
 - Arbiscan source verification for the redeployed `Treaty`/`Capacity` was not reattempted
@@ -246,6 +263,14 @@ claim rather than overstate them, are all this author's calls.
 
 ## Run instructions
 
+Clone with submodules (`contracts/lib/forge-std`, `contracts/lib/openzeppelin-contracts`);
+a plain `git clone` leaves those directories empty and `forge build` fails:
+```
+git clone <repo-url>
+cd heracles
+git submodule update --init --recursive
+```
+
 Contracts (Foundry):
 ```
 cd contracts
@@ -257,6 +282,13 @@ Pricer (Rust/Stylus):
 ```
 cd pricer
 cargo test
+```
+
+Web app (Vite/TypeScript, reads deployed addresses from `contracts/deployments/`):
+```
+cd web
+npm ci
+npm run build
 ```
 
 Deploy (needs `PRIVATE_KEY` in `contracts/.env`, loaded only in a subshell):

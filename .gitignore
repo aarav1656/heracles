@@ -1,7 +1,7 @@
 node_modules/
 out/
 cache/
-lib/
+/contracts/lib/
 .env
 .env.local
 dist/

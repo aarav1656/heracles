@@ -1,0 +1,48 @@
+{
+  "chainId": 421614,
+  "chainName": "Arbitrum Sepolia",
+  "deployedAt": "2026-09-27",
+  "note": "Redeployed for the Capacity permit fix (commit 3f19b79, 76/76 tests). Treaty and Capacity are new; the Stylus Pricer is reused unchanged from the prior deploy.",
+  "contracts": {
+    "Treaty": {
+      "address": "0x889F1fA08DE3d280511432893A1D7e5DB66d3252",
+      "role": "bind, fix, settle, claim",
+      "verification": {
+        "method": "sourcify",
+        "matchId": "53330627",
+        "matchType": "exact_match",
+        "verifiedAt": "2026-09-27T06:51:35Z"
+      }
+    },
+    "Capacity": {
+      "address": "0xe645d83EA67ca1ECC7689f48Eb65eB2dE2e8933D",
+      "role": "ERC-4626 USDG writer vault, depositWithPermit",
+      "verification": {
+        "method": "sourcify",
+        "matchId": "53330691",
+        "matchType": "exact_match",
+        "verifiedAt": "2026-09-27T06:51:53Z"
+      }
+    },
+    "Pricer": {
+      "address": "0x0202D849Dc7CC7b643ff62Cf3E81130EA30D95da",
+      "role": "on-chain premium (Rust/Stylus)",
+      "verification": {
+        "method": "unverified",
+        "reason": "Sourcify's Solidity route does not take Stylus/WASM bytecode; cargo stylus verify's reproducible-build route needs a Docker daemon unavailable in this deploy run."
+      }
+    },
+    "USDG": {
+      "address": "0xFFC95faa3d63Cde504a05B567C600B78C0b41892",
+      "role": "settlement asset (Paxos testnet)"
+    }
+  },
+  "constructorArgs": {
+    "SEQUENCER_FEED": "0x0000000000000000000000000000000000000000",
+    "SEQUENCER_FEED_NOTE": "Arbitrum Sepolia has no L2 Sequencer Uptime Status Feed; address(0) disables the check on this deploy only. A mainnet deploy must pass 0xFdB631F5EE196F0ed6FAa767959853A9F217697D.",
+    "MIN_RATE_ON_LINE_BPS": 50,
+    "feeds": ["0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06"],
+    "feedsNote": "SPY/USD, the one live equity feed Arbitrum Sepolia carries."
+  },
+  "sourceOfTruth": "README.md ('Deployed, Arbitrum Sepolia' section) and docs/e2e/heracles.md; addresses re-confirmed live via `cast code` against https://sepolia-rollup.arbitrum.io/rpc on 2026-09-28 (all four return non-empty bytecode)."
+}
