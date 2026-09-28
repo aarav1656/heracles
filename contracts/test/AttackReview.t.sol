@@ -90,11 +90,15 @@ contract AttackReviewTest is Test {
     {
         vm.prank(who);
         id = treaty.bind(exposure, retention, limit);
-        vm.warp(SAT_MIDNIGHT + 1);
-        treaty.setReference(id, 0, 1);
-        feed.set(2, monday, MONDAY + 1);
+        // Item 6: setReference now waits for `fridayCloseOf` (FRI_CLOSE), not Saturday midnight;
+        // round 1 (set in setUp, FRI_1900 - 10 minutes) is its required strictly-earlier
+        // predecessor, round 2 is the first fresh round at/after FRI_CLOSE.
+        feed.set(2, 100e8, FRI_CLOSE);
+        vm.warp(FRI_CLOSE + 1);
+        treaty.setReference(id, 0, 2);
+        feed.set(3, monday, MONDAY + 1);
         vm.warp(uint256(MONDAY) + 60);
-        treaty.fix(id, 0, 2);
+        treaty.fix(id, 0, 3);
     }
 
     /// C1 (fixed): a bind with zero exposure is rejected outright, so writer capital can never be
@@ -245,8 +249,9 @@ contract AttackReviewTest is Test {
         vm.prank(buyer);
         uint256 id = treaty.bind(_one(1_000_000e6), 0, 100_000e6);
         uint256 premium = _premium(id);
-        vm.warp(SAT_MIDNIGHT + 1);
-        treaty.setReference(id, 0, 1);
+        feed.set(2, 100e8, FRI_CLOSE);
+        vm.warp(FRI_CLOSE + 1);
+        treaty.setReference(id, 0, 2);
 
         uint80 p2 = uint80((uint256(2) << 64) | 1);
         feed.set(p2, 80e8, MONDAY + 1); // first Monday round, published in a new phase

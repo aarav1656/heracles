@@ -25,19 +25,24 @@ interface AggregatorV3Interface {
 ///
 /// Fixing rule, allowlist and several checks follow a proven pattern: constructor-fixed feed
 /// allowlist with a `decimals() == 8` check ("writer picks the oracle"), the Chainlink
-/// phase-boundary guard `_latestInPhase`, the `fix()` first-fresh-round rule
-/// (`updatedAt >= expiry`, previous round `updatedAt < expiry`, both read via `getRoundData`),
-/// and `setReference`'s "last round before Saturday 00:00 UTC, within 24h" rule (same
-/// REF_WINDOW pattern). This treaty has no
-/// corporate-action multiplier check because it binds raw Chainlink equity feeds directly, not
-/// Robinhood-style Stock Tokens with a `uiMultiplier()`; there is no multiplier to read.
+/// phase-boundary guard `_latestInPhase`, and matching first-fresh-round rules for both ends of
+/// the weekend: `fix()` takes the first round with `updatedAt >= expiry` (Monday's open, DST-aware,
+/// previous round strictly before `expiry`), and `setReference` takes the first round with
+/// `updatedAt >= fridayCloseOf(fridayCutoff)` (Friday's official close, also DST-aware, previous
+/// round strictly before that close) -- see `_isUsDst`/`fridayCloseOf` (Item 6 / judging doc B.2).
+/// This treaty has no corporate-action multiplier check because it binds raw Chainlink equity
+/// feeds directly, not Robinhood-style Stock Tokens with a `uiMultiplier()`; there is no
+/// multiplier to read.
 ///
 /// Timing (SECURITY-REVIEW.md C1+H1): the caller does not choose `fridayCutoff`/`expiry`. `bind`
 /// only succeeds strictly before the current ISO week's Friday 19:30 UTC (computed on-chain from
-/// `block.timestamp` with integer weekday math, `_weekWindow`); `expiry` is always exactly the
-/// following Monday 13:30 UTC. The Friday reference price used for settlement is not the spot at
-/// bind time either: it is fixed afterwards, per market, by `setReference` against the last round
-/// before Saturday 00:00 UTC (within 24h). The premium
+/// `block.timestamp` with integer weekday math, `weekWindow`); `expiry` is the following Monday
+/// 9:30am ET, expressed in UTC via `_isUsDst` (13:30 UTC under DST, 14:30 UTC under standard
+/// time). The bind cutoff itself stays fixed at 19:30 UTC year-round: that is strictly earlier
+/// than Friday's close under either DST regime (20:00 UTC EDT, 21:00 UTC EST), so a bind can never
+/// land after the reference has already printed. The Friday reference price used for settlement is
+/// not the spot at bind time either: it is fixed afterwards, per market, by `setReference` against
+/// the first round at or after Friday's official close. The premium
 /// is still quoted at bind time (the Pricer's 504-scenario table has no price/date argument, so
 /// "latest" and "reference" price the same premium either way); a floor (H2) guarantees it is
 /// never zero.
@@ -77,7 +82,6 @@ contract Treaty is ReentrancyGuard {
         uint256 payout;
     }
 
-    uint256 internal constant REF_WINDOW = 24 hours;
     // F1 (re-review of 96309c8, the security review): a layer's own cutoff to
     // the next weekly cutoff is 168h (7 days). A layer becomes cancellable at `expiry + GRACE`,
     // and `expiry` is cutoff + 66h (Friday 19:30 to Monday 13:30). For a stuck layer (dead feed,
@@ -103,9 +107,19 @@ contract Treaty is ReentrancyGuard {
     // ISO weekday (Monday=0..Sunday=6) of epoch day `d` is `(d + 3) % 7` (day 0=Thu -> 3, day
     // 4=Mon -> 0; unit-tested in contracts/test/WeekWindow.t.sol across 3 weeks, a year boundary
     // and both weekend days).
+    //
+    // Item 6 / judging doc B.2: NYSE's Friday close and Monday open are fixed in *US Eastern*
+    // clock time (4:00pm / 9:30am ET), not fixed UTC offsets; UTC drifts by an hour twice a year
+    // as the US switches DST. `FRIDAY_CUTOFF_TOD` (the bind deadline) is left DST-independent on
+    // purpose: 19:30 UTC is strictly earlier than the close under either regime (20:00 UTC EDT,
+    // 21:00 UTC EST), so a bind can never straddle the reference print regardless of which side of
+    // the March/November switch the week falls on. `MONDAY_EXPIRY_TOD_*` and `fridayCloseOf` below
+    // are the two instants that do move with DST.
     uint256 internal constant FRIDAY_CUTOFF_TOD = 19 hours + 30 minutes;
-    uint256 internal constant SATURDAY_MIDNIGHT_OFFSET = 4 hours + 30 minutes; // Fri 19:30 -> Sat 00:00
-    uint256 internal constant MONDAY_EXPIRY_TOD = 13 hours + 30 minutes;
+    uint256 internal constant MONDAY_EXPIRY_TOD_EDT = 13 hours + 30 minutes; // 9:30am ET, UTC-4
+    uint256 internal constant MONDAY_EXPIRY_TOD_EST = 14 hours + 30 minutes; // 9:30am ET, UTC-5
+    uint256 internal constant FRIDAY_CLOSE_TOD_EDT = 20 hours; // 4:00pm ET, UTC-4
+    uint256 internal constant FRIDAY_CLOSE_TOD_EST = 21 hours; // 4:00pm ET, UTC-5
 
     IERC20 public immutable usdg;
     IPricer public immutable pricer; // L3: fixed at deploy, no setter, no admin path to swap it
@@ -135,13 +149,15 @@ contract Treaty is ReentrancyGuard {
     error BadTiming();
     error BadRound();
     error NotFirstRound();
-    error NotLastRound();
     error EarlyFix();
     error ReferenceNotSet();
     error WrongState();
     error AlreadyFixed();
     error NothingToClaim();
     error SequencerDown();
+    // Item 6: cancel is a backstop for a genuinely stale/dead feed, not a way to skip a layer that
+    // could still be fixed right now.
+    error StillFixable();
 
     constructor(
         address usdg_,
@@ -171,9 +187,10 @@ contract Treaty is ReentrancyGuard {
         return _exposure[id];
     }
 
-    /// The ISO week's Friday 19:30 UTC cutoff and the following Monday 13:30 UTC expiry
-    /// containing `ts`, regardless of which day of that week `ts` falls on. `public pure` so
-    /// contracts/test/WeekWindow.t.sol can unit-test the calendar math directly.
+    /// The ISO week's Friday 19:30 UTC cutoff and the following Monday 9:30am-ET expiry (13:30 UTC
+    /// under DST, 14:30 UTC under standard time) containing `ts`, regardless of which day of that
+    /// week `ts` falls on. `public pure` so contracts/test/WeekWindow.t.sol and
+    /// contracts/test/ReferenceRule.t.sol can unit-test the calendar math directly.
     function weekWindow(uint256 ts) public pure returns (uint256 fridayCutoff, uint256 expiry) {
         uint256 day = ts / 1 days;
         uint256 isoDow = (day + 3) % 7; // Monday=0 .. Sunday=6
@@ -183,7 +200,71 @@ contract Treaty is ReentrancyGuard {
         uint256 fridayDay = day + 4 - isoDow;
         uint256 mondayDay = fridayDay + 3;
         fridayCutoff = fridayDay * 1 days + FRIDAY_CUTOFF_TOD;
-        expiry = mondayDay * 1 days + MONDAY_EXPIRY_TOD;
+        // DST status is evaluated at the Monday itself, not the Friday: the US DST transition
+        // always lands on a Sunday, which sits inside this weekend window between the two, so the
+        // rare week that straddles the March/November switch has Friday in one regime and Monday
+        // in the other. `fridayCloseOf` below makes the matching choice for Friday's own instant.
+        uint256 mondayTs = mondayDay * 1 days;
+        expiry = mondayTs + (_isUsDst(mondayTs) ? MONDAY_EXPIRY_TOD_EDT : MONDAY_EXPIRY_TOD_EST);
+    }
+
+    /// Friday's official US market-close instant (4:00pm ET) for the week containing
+    /// `fridayCutoff` (any timestamp that same UTC day works; DST never changes mid-day). Item 6 /
+    /// judging doc B.2: this, not "the last round before Saturday 00:00 UTC", is what
+    /// `setReference` now waits for.
+    function fridayCloseOf(uint256 fridayCutoff) public pure returns (uint256 closeTs) {
+        uint256 fridayDay = fridayCutoff / 1 days;
+        uint256 fridayMidnight = fridayDay * 1 days;
+        closeTs = fridayMidnight + (_isUsDst(fridayMidnight) ? FRIDAY_CLOSE_TOD_EDT : FRIDAY_CLOSE_TOD_EST);
+    }
+
+    /// US DST is in effect from 07:00 UTC on the 2nd Sunday of March (clocks spring forward to
+    /// 3am EDT) through 06:00 UTC on the 1st Sunday of November (clocks fall back to 1am EST),
+    /// under the rule in effect continuously since the Energy Policy Act of 2005. Pure function of
+    /// `ts`'s calendar date; unit-tested across both switch weeks in
+    /// contracts/test/WeekWindow.t.sol, and against fixed EDT/EST dates directly (via
+    /// `fridayCloseOf`) in contracts/test/ReferenceRule.t.sol.
+    function _isUsDst(uint256 ts) internal pure returns (bool) {
+        uint256 day = ts / 1 days;
+        (uint256 year,,) = _civilFromDays(day);
+        uint256 startTs = _nthSundayOfMonth(year, 3, 2) * 1 days + 7 hours;
+        uint256 endTs = _nthSundayOfMonth(year, 11, 1) * 1 days + 6 hours;
+        return ts >= startTs && ts < endTs;
+    }
+
+    /// Epoch day number of the `n`th Sunday of `month`/`year` (`n=1` is the first).
+    function _nthSundayOfMonth(uint256 year, uint256 month, uint256 n) internal pure returns (uint256 day) {
+        uint256 firstDay = _daysFromCivil(year, month, 1);
+        uint256 firstDow = (firstDay + 3) % 7; // Monday=0 .. Sunday=6, same convention as weekWindow
+        uint256 toFirstSunday = (6 + 7 - firstDow) % 7;
+        day = firstDay + toFirstSunday + (n - 1) * 7;
+    }
+
+    /// Civil (year, month, day) from an epoch day count. Howard Hinnant's `civil_from_days`
+    /// algorithm (public-domain, http://howardhinnant.github.io/date_algorithms.html), valid over
+    /// the full proleptic Gregorian calendar; only `year` is used by `_isUsDst` above.
+    function _civilFromDays(uint256 z_) internal pure returns (uint256 year, uint256 month, uint256 day) {
+        int256 z = int256(z_) + 719468;
+        int256 era = (z >= 0 ? z : z - 146096) / 146097;
+        uint256 doe = uint256(z - era * 146097); // [0, 146096]
+        uint256 yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365; // [0, 399]
+        int256 y = int256(yoe) + era * 400;
+        uint256 doy = doe - (365 * yoe + yoe / 4 - yoe / 100); // [0, 365]
+        uint256 mp = (5 * doy + 2) / 153; // [0, 11]
+        day = doy - (153 * mp + 2) / 5 + 1; // [1, 31]
+        month = mp < 10 ? mp + 3 : mp - 9; // [1, 12]
+        year = uint256(month <= 2 ? y + 1 : y);
+    }
+
+    /// Inverse of `_civilFromDays`: epoch day count of a given civil (year, month, day), valid for
+    /// `year >= 1970` (the only range this contract ever needs).
+    function _daysFromCivil(uint256 year, uint256 month, uint256 day) internal pure returns (uint256) {
+        int256 y = int256(year) - (month <= 2 ? int256(1) : int256(0));
+        int256 era = (y >= 0 ? y : y - 399) / 400;
+        uint256 yoe = uint256(y - era * 400); // [0, 399]
+        uint256 doy = (153 * (month + (month > 2 ? 0 : 12) - 3) + 2) / 5 + day - 1; // [0, 365]
+        uint256 doe = yoe * 365 + yoe / 4 - yoe / 100 + doy; // [0, 146096]
+        return uint256(era * 146097 + int256(doe) - 719468);
     }
 
     /// Declares exposure per market and locks a layer for the current weekend. Only callable
@@ -219,7 +300,11 @@ contract Treaty is ReentrancyGuard {
         (uint256 cutoff, uint256 expiry) = weekWindow(block.timestamp);
         if (block.timestamp >= cutoff) revert BadTiming();
 
-        (uint256 quoted,,) = pricer.quote(exposure, retention, limit);
+        address[] memory feedAddrs = new address[](n);
+        for (uint256 i; i < n; i++) {
+            feedAddrs[i] = address(markets[i]);
+        }
+        (uint256 quoted,,) = pricer.quote(exposure, feedAddrs, retention, limit);
         uint256 floor_ = limit * minRateOnLineBps / BPS;
         uint256 premium = quoted < floor_ ? floor_ : quoted;
         // L2 (the security review): the H2 floor itself rounds to zero for any
@@ -245,30 +330,32 @@ contract Treaty is ReentrancyGuard {
         capacity.receivePremium(msg.sender, premium);
     }
 
-    /// Sets one market's Friday reference: the last round before Saturday 00:00 UTC, updated no
-    /// more than `REF_WINDOW` (24h) before it. Callable
-    /// only after Saturday 00:00 UTC (so the whole Friday session has printed) and permissionless,
-    /// same as `fix`.
+    /// Sets one market's Friday reference: the first round with `updatedAt >= fridayCloseOf`
+    /// (Friday's official US market close, 4:00pm ET, DST-aware), whose predecessor round is
+    /// strictly before that close (`NotFirstRound`) -- the same "first fresh round" shape as
+    /// `fix`'s Monday rule below, just anchored to Friday's close instead of Monday's open. Item 6
+    /// / judging doc B.2: replaces the earlier "last round before Saturday 00:00 UTC" rule, which
+    /// both used a fixed UTC offset (wrong under DST) and picked the wrong instant (the research
+    /// this repo cites, contracts/../evidence/auction-and-pricing.md, is about the *official
+    /// close*, not an arbitrary midnight boundary). Callable only once that Friday's close has
+    /// passed, and permissionless, same as `fix`.
     function setReference(uint256 id, uint256 marketIdx, uint80 roundId) external nonReentrant {
         Layer storage L = layers[id];
         if (L.state != State.Bound) revert WrongState();
         if (marketIdx >= markets.length) revert BadParams();
         if (referenceSet[id][marketIdx]) revert AlreadyFixed();
 
-        uint256 refTime = uint256(L.fridayCutoff) + SATURDAY_MIDNIGHT_OFFSET;
+        uint256 refTime = fridayCloseOf(uint256(L.fridayCutoff));
         if (block.timestamp < refTime) revert BadTiming();
         _requireSequencerUp();
 
         AggregatorV3Interface feed = markets[marketIdx];
-        uint80 latestId = _latestInPhase(feed, roundId);
+        _latestInPhase(feed, roundId);
         (, int256 answer,, uint256 updatedAt,) = feed.getRoundData(roundId);
         if (answer <= 0 || uint256(answer) > type(uint64).max) revert BadRound();
-        if (updatedAt >= refTime || updatedAt + REF_WINDOW < refTime) revert BadRound();
-
-        if (roundId != latestId) {
-            (,,, uint256 nextUpdatedAt,) = feed.getRoundData(roundId + 1);
-            if (nextUpdatedAt < refTime) revert NotLastRound();
-        }
+        if (updatedAt < refTime || updatedAt > block.timestamp) revert BadRound();
+        (,,, uint256 prevUpdatedAt,) = feed.getRoundData(roundId - 1);
+        if (prevUpdatedAt == 0 || prevUpdatedAt >= refTime) revert NotFirstRound();
 
         uint64 price = uint64(uint256(answer));
         fridayPrice[id][marketIdx] = price;
@@ -313,16 +400,56 @@ contract Treaty is ReentrancyGuard {
     /// the layer, freeing the writer capital it locked. Unlike the earlier build, the buyer's
     /// premium is refunded here rather than kept by writers for a layer that never resolved
     /// (SECURITY-REVIEW.md M3): writers only earn the premium for a layer that actually settles.
+    ///
+    /// Item 6: cancel is a backstop for a genuinely dead layer, not a shortcut around a layer that
+    /// could still be fixed. `_anyMarketFixable` below reverts `StillFixable` if any unfixed
+    /// market already has a Monday round sitting there waiting to be consumed by `fix` -- at that
+    /// point the correct call is `fix`, not `cancel`.
     function cancel(uint256 id) external nonReentrant {
         Layer storage L = layers[id];
         if (L.state != State.Bound) revert WrongState();
         if (block.timestamp < uint256(L.expiry) + GRACE) revert BadTiming();
         // Same sequencer gate as fix: cancel must not land in a window where fix is blocked.
         _requireSequencerUp();
+        if (_anyMarketFixable(id)) revert StillFixable();
         L.state = State.Cancelled;
         emit Cancelled(id, L.premium);
         capacity.unlock(L.limit, L.fridayCutoff);
         capacity.refundPremium(L.buyer, L.premium);
+    }
+
+    /// True if some not-yet-fixed market on this layer already has a Monday round `fix` could
+    /// consume right now. A market whose Friday reference was never set is treated as dead, not
+    /// fixable: `setReference` is permissionless, so if that feed were alive any
+    /// economically-interested party (the buyer, who wants a chance at a payout, or a writer, who
+    /// wants the premium to vest) could have called it by `expiry + GRACE`; its absence is itself
+    /// the evidence the feed is stale, not a reason to keep the layer open indefinitely.
+    ///
+    /// Mirrors `fix`'s full acceptance test, not just "a round with `updatedAt >= expiry`
+    /// exists": the feed's current latest round can sit in a phase whose own predecessor round
+    /// (phase, roundId - 1) was never published (a Chainlink phase change right after expiry, the
+    /// M3 scenario), in which case `fix` itself would revert `NotFirstRound`/`BadRound` on that
+    /// exact round forever. Without checking the predecessor here too, a layer stuck in that
+    /// state could never be fixed AND never be cancelled -- capital locked with no exit. `try`
+    /// because round 0 in a phase (or a roundId of 0) has no predecessor to read and must revert,
+    /// not be treated as fixable.
+    function _anyMarketFixable(uint256 id) internal view returns (bool) {
+        Layer storage L = layers[id];
+        uint256 n = markets.length;
+        for (uint256 i; i < n; i++) {
+            if (marketFixed[id][i]) continue;
+            if (!referenceSet[id][i]) continue;
+            (uint80 roundId, int256 answer,, uint256 updatedAt,) = markets[i].latestRoundData();
+            if (answer <= 0 || uint256(answer) > type(uint64).max) continue;
+            if (updatedAt < uint256(L.expiry)) continue;
+            if (roundId == 0) continue;
+            try markets[i].getRoundData(roundId - 1) returns (uint80, int256, uint256, uint256 prevUpdatedAt, uint80) {
+                if (prevUpdatedAt != 0 && prevUpdatedAt < uint256(L.expiry)) return true;
+            } catch {
+                continue;
+            }
+        }
+        return false;
     }
 
     /// Pull claim for the buyer's realized payout, paid to the caller. `claimTo` lets the buyer
@@ -354,8 +481,15 @@ contract Treaty is ReentrancyGuard {
         for (uint256 i; i < n; i++) {
             int256 friday = int256(uint256(fridayPrice[id][i]));
             int256 monday = int256(uint256(mondayPrice[id][i]));
-            int256 gapBps = ((monday - friday) * 10000) / friday;
-            int256 pnl = (exposure[i] * gapBps) / 10000;
+            // Slither divide-before-multiply / judging doc B.4 (Treaty.sol:357-358 pre-fix): the
+            // old two-step computation truncated the gap to whole bps (`* 10000 / friday`) before
+            // multiplying by exposure, losing up to 0.005% of the true gap per market, always
+            // rounded toward the writers (up to ~100 USDG of error on 1e12 exposure). One division
+            // keeps full precision; `friday` can never be 0 (`setReference` requires a Chainlink
+            // `answer > 0`), and Solidity's `int256` division truncates toward zero either way, so
+            // this changes precision, not rounding direction. See
+            // contracts/test/TreatyPrecision.t.sol for the measured before/after difference.
+            int256 pnl = (exposure[i] * (monday - friday)) / friday;
             if (pnl < 0) totalLoss -= pnl;
         }
 

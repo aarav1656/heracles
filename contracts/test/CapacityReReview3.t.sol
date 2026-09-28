@@ -143,12 +143,16 @@ contract ReReview3Findings is Test {
         vm.prank(jit);
         uint256 jitShares = capacity.deposit(900_000e6, jit);
 
+        // round 2: first round at/after Friday's close (MON0's week is Sept 2026, DST/EDT, so
+        // close = Friday 20:00 UTC = MON0 + 4 days + 20 hours); round 1 (pre-close, 19:00 UTC)
+        // is its required strictly-earlier predecessor.
         feed.set(1, 100e8, MON0 + 4 days + 19 hours);
-        feed.set(2, 100e8, MON0 + EXP + 1); // flat weekend, payout 0
+        feed.set(2, 100e8, MON0 + 4 days + 20 hours);
+        feed.set(3, 100e8, MON0 + EXP + 1); // flat weekend, payout 0
         vm.warp(MON0 + 5 days + 1);
-        treaty.setReference(id, 0, 1);
+        treaty.setReference(id, 0, 2);
         vm.warp(MON0 + EXP + 1);
-        treaty.fix(id, 0, 2);
+        treaty.fix(id, 0, 3);
 
         uint256 writerRedeem = capacity.previewRedeem(capacity.balanceOf(writer));
         uint256 jitRedeem = capacity.previewRedeem(jitShares);

@@ -43,14 +43,29 @@ contract CapacityReReviewTest is Test {
     function setUp() public {
         usdg = new MockUSDG();
         feed = new MockFeed();
-        for (uint256 w; w < WEEKS; w++) {
-            feed.set(uint80(2 * w + 1), 100e8, MON0 + w * 7 days + 4 days + 19 hours);
-            feed.set(uint80(2 * w + 2), 100e8, MON0 + (w + 1) * 7 days + 13 hours + 30 minutes + 1);
-        }
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
         treaty = new Treaty(address(usdg), address(new Pricer()), feeds, 50, address(0));
         capacity = treaty.capacity();
+
+        // Item 6: setReference now needs its own first-round-after-Friday's-close pair, so each
+        // week gets three round ids instead of two: 3w+1 (pre-close predecessor, unchanged Fri
+        // 19:00 seed), 3w+2 (the actual Friday reference round, at `fridayCloseOf`, queried live
+        // since this WEEKS=10 run spans the Nov 2026 DST switch), 3w+3 (Monday fix round,
+        // unchanged placeholder timing).
+        // Round 3 (the Monday fix round) is timestamped from `expiry` itself, not a hardcoded
+        // "13:30 UTC" offset: WEEKS=10 from a late-September MON0 runs past the first Sunday of
+        // November, so mid-run `expiry`'s time-of-day shifts from 13:30 UTC (EDT) to 14:30 UTC
+        // (EST) -- a fixed offset would seed a round that is `EarlyFix` (or `BadRound`, once the
+        // round predates the real DST-shifted expiry) for every EST week.
+        for (uint256 w; w < WEEKS; w++) {
+            uint256 monday = MON0 + w * 7 days;
+            (uint256 cutoff, uint256 expiry) = treaty.weekWindow(monday);
+            uint256 refTime = treaty.fridayCloseOf(cutoff);
+            feed.set(uint80(3 * w + 1), 100e8, cutoff - 30 minutes);
+            feed.set(uint80(3 * w + 2), 100e8, refTime);
+            feed.set(uint80(3 * w + 3), 100e8, expiry + 1);
+        }
         vm.warp(MON0 + 1 hours);
         usdg.mint(writer, 100_000e6);
         vm.startPrank(writer);
@@ -94,8 +109,10 @@ contract CapacityReReviewTest is Test {
             assertEq(premium, 1, "min nonzero premium is 1 base unit");
 
             if (prevId != type(uint256).max) {
-                vm.warp(MON0 + w * 7 days + 13 hours + 30 minutes + 1);
-                treaty.fix(prevId, 0, uint80(2 * (w - 1) + 2)); // writer settles diligently
+                // prevId's expiry, DST-aware, not a hardcoded "13:30 UTC" (see setUp).
+                (, uint256 prevExpiry) = treaty.weekWindow(MON0 + (w - 1) * 7 days + 5 minutes);
+                vm.warp(prevExpiry + 1);
+                treaty.fix(prevId, 0, uint80(3 * (w - 1) + 3)); // writer settles diligently
                 // A modest, representative redemption (not the writer's whole balance): some
                 // capital is always, correctly, reserved for whichever dust layer is currently
                 // open, so a redeem of the full balance can never succeed on any version of this
@@ -109,9 +126,10 @@ contract CapacityReReviewTest is Test {
                     } catch {}
                 }
             }
-            // Saturday 00:00+1 of week w: writer sets this layer's reference at once.
+            // Saturday 00:00+1 of week w: writer sets this layer's reference at once (safely
+            // after Friday's close, regardless of DST regime).
             vm.warp(MON0 + w * 7 days + 5 days + 1);
-            treaty.setReference(id, 0, uint80(2 * w + 1));
+            treaty.setReference(id, 0, uint80(3 * w + 2));
             prevId = id;
         }
         console2.log("griefer USDG base units spent over 8 weeks", grieferStart - usdg.balanceOf(griefer));
@@ -131,13 +149,16 @@ contract CapacityReReviewTest is Test {
         usdg.approve(address(capacity), type(uint256).max);
         vm.prank(buyer);
         uint256 a = treaty.bind(_one(-500_000e6), 20_000e6, 10_000e6);
+        // Round 1 (set in setUp, w=0) is the pre-close predecessor; round 2 is the actual
+        // Friday-close reference round.
         vm.warp(MON0 + 5 days + 1);
-        treaty.setReference(a, 0, 1);
+        treaty.setReference(a, 0, 2);
         vm.warp(MON0 + 7 days + 9 hours); // Monday 09:00, next week's roll
         vm.prank(buyer);
         treaty.bind(_one(-500_000e6), 20_000e6, 10_000e6);
-        vm.warp(MON0 + 7 days + 13 hours + 30 minutes + 1);
-        treaty.fix(a, 0, 2);
+        (, uint256 expiryA) = treaty.weekWindow(MON0);
+        vm.warp(expiryA + 1);
+        treaty.fix(a, 0, 3);
         assertGt(capacity.maxRedeem(writer), 0, "H1b: exit closed after every past weekend has settled");
     }
 

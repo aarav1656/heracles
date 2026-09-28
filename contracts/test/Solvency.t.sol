@@ -17,6 +17,9 @@ contract SolvencyTest is Test {
     uint256 constant T0 = 1_790_000_000; // a Monday
     uint256 constant CUTOFF = 1_790_364_600; // that week's Fri 19:30 UTC
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
+    // Item 6: setReference now waits for `fridayCloseOf` (T0's week is DST/EDT, so close =
+    // CUTOFF + 30 minutes), not Saturday midnight.
+    uint256 constant REF_TIME = CUTOFF + 30 minutes;
     uint40 constant EXPIRY = uint40(1_790_602_200); // that week's Mon 13:30 UTC
     uint256 constant N_MARKETS = 3;
     uint256 constant N_LAYERS = 5;
@@ -36,9 +39,10 @@ contract SolvencyTest is Test {
         address[] memory feedAddrs = new address[](N_MARKETS);
         for (uint256 i; i < N_MARKETS; i++) {
             feeds[i] = new MockFeed();
-            // Must land within REF_WINDOW (24h) of Saturday 00:00 UTC, not merely before bind
-            // time (T0 is a Monday, over 4 days before that week's Saturday).
+            // Round 1: the pre-close predecessor, strictly before REF_TIME (T0 is a Monday, over
+            // 4 days before that week's Friday close). Round 2: the actual Friday reference round.
             feeds[i].set(1, 100e8, CUTOFF - 1 hours);
+            feeds[i].set(2, 100e8, REF_TIME);
             feedAddrs[i] = address(feeds[i]);
         }
         treaty = new Treaty(address(usdg), address(pricer), feedAddrs, 50, address(0));
@@ -98,25 +102,25 @@ contract SolvencyTest is Test {
             assertLe(capacity.locked(), usdg.balanceOf(address(capacity)));
         }
 
-        // Set every market's Friday reference for every bound layer (Saturday, before Monday's fix).
-        vm.warp(SAT_MIDNIGHT + 1);
+        // Set every market's Friday reference for every bound layer (round 2, at/after REF_TIME).
+        vm.warp(REF_TIME + 1);
         for (uint256 l; l < N_LAYERS; l++) {
             if (ids[l] == type(uint256).max) continue;
             for (uint256 m; m < N_MARKETS; m++) {
-                treaty.setReference(ids[l], m, 1);
+                treaty.setReference(ids[l], m, 2);
             }
         }
 
-        // Fix every market for every bound layer with a randomized Monday price.
+        // Fix every market for every bound layer with a randomized Monday price (round 3).
         for (uint256 m; m < N_MARKETS; m++) {
             int256 price = int256(bound(uint256(keccak256(abi.encode(seed, m, "monday"))), 1e8, 300e8));
-            feeds[m].set(2, price, uint256(EXPIRY) + 10);
+            feeds[m].set(3, price, uint256(EXPIRY) + 10);
         }
         vm.warp(uint256(EXPIRY) + 20);
         for (uint256 l; l < N_LAYERS; l++) {
             if (ids[l] == type(uint256).max) continue;
             for (uint256 m; m < N_MARKETS; m++) {
-                treaty.fix(ids[l], m, 2);
+                treaty.fix(ids[l], m, 3);
             }
             assertLe(capacity.locked(), usdg.balanceOf(address(capacity)));
         }

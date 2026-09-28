@@ -61,13 +61,18 @@ contract ReReview4 is Test {
         vm.prank(buyer);
         try treaty.bind(_one(-int256(limit) * 20), 0, limit) returns (uint256 id) {
             if (state == 2) return;
+            // Item 6: round 1 is the pre-close predecessor, round 2 is the actual Friday-close
+            // reference round (setReference must consume round 2, not round 1).
+            (uint256 cutoff,) = treaty.weekWindow(MON0);
+            uint256 refTime = treaty.fridayCloseOf(cutoff);
             feed.set(1, 100e8, MON0 + 4 days + 19 hours);
-            feed.set(2, 100e8, MON0 + EXP + 1);
+            feed.set(2, 100e8, refTime);
+            feed.set(3, 100e8, MON0 + EXP + 1);
             if (state == 3) {
-                vm.warp(MON0 + 5 days + 1);
-                treaty.setReference(id, 0, 1);
+                vm.warp(refTime + 1);
+                treaty.setReference(id, 0, 2);
                 vm.warp(MON0 + EXP + 1);
-                treaty.fix(id, 0, 2);
+                treaty.fix(id, 0, 3);
             } else {
                 vm.warp(MON0 + EXP + 3 days);
                 treaty.cancel(id);
@@ -137,16 +142,19 @@ contract ReReview4 is Test {
         c.deposit(1_000_000e6, writer);
         vm.prank(buyer);
         uint256 id = t.bind(_one(-2_000_000e6), 0, 1_000_000e6);
+        (uint256 cutoff,) = t.weekWindow(MON0);
+        uint256 refTime = t.fridayCloseOf(cutoff);
         feed.set(1, 100e8, MON0 + 4 days + 19 hours);
-        feed.set(2, 50e8, MON0 + EXP + 1);
-        vm.warp(MON0 + 5 days + 1);
-        t.setReference(id, 0, 1);
+        feed.set(2, 100e8, refTime);
+        feed.set(3, 50e8, MON0 + EXP + 1);
+        vm.warp(refTime + 1);
+        t.setReference(id, 0, 2);
         vm.warp(MON0 + EXP + 60 hours);
         seq.setDown();
         vm.warp(MON0 + EXP + 72 hours);
         seq.setUp(block.timestamp);
         vm.expectRevert(Treaty.SequencerDown.selector);
-        t.fix(id, 0, 2);
+        t.fix(id, 0, 3);
         vm.prank(writer);
         try t.cancel(id) {} catch {}
         (,,,,, Treaty.State st,,,,,) = t.layers(id);

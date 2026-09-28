@@ -58,11 +58,15 @@ contract CapacityC1Test is Test {
     }
 
     function _settleNoLoss(uint256 id) internal {
-        vm.warp(SAT_MIDNIGHT + 1);
-        treaty.setReference(id, 0, 1);
-        feed.set(2, 100e8, MONDAY + 1); // flat weekend, zero payout
+        // Item 6: setReference now waits for `fridayCloseOf` (FRI_CLOSE), not Saturday midnight;
+        // round 1 (set in setUp, FRI_1900 - 10 minutes) is its required strictly-earlier
+        // predecessor, round 2 is the first fresh round at/after FRI_CLOSE.
+        feed.set(2, 100e8, FRI_CLOSE);
+        vm.warp(FRI_CLOSE + 1);
+        treaty.setReference(id, 0, 2);
+        feed.set(3, 100e8, MONDAY + 1); // flat weekend, zero payout
         vm.warp(uint256(MONDAY) + 60);
-        treaty.fix(id, 0, 2);
+        treaty.fix(id, 0, 3);
     }
 
     /// CRITICAL. Attacker is both buyer and depositor. Binds a layer that locks all free capacity

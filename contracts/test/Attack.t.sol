@@ -15,6 +15,10 @@ contract AttackTest is Test {
     uint256 constant T0 = 1_790_000_000; // a Monday
     uint256 constant CUTOFF = 1_790_364_600; // that week's Fri 19:30 UTC
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
+    // Item 6: setReference now waits for `fridayCloseOf(fridayCutoff)` (Friday's official US
+    // market close), not "Saturday 00:00 UTC". T0's week is DST (EDT), so close = CUTOFF + 30
+    // minutes.
+    uint256 constant REF_TIME = CUTOFF + 30 minutes;
     uint40 constant EXPIRY = uint40(1_790_602_200); // that week's Mon 13:30 UTC
     int256 constant FRIDAY_PRICE = 100e8;
 
@@ -79,13 +83,14 @@ contract AttackTest is Test {
         uint256 idB = treaty.bind(_exposure(), RETENTION, LIMIT);
         assertEq(capacity.locked(), 2 * LIMIT); // pool fully committed, zero free capacity
 
-        vm.warp(SAT_MIDNIGHT + 1);
-        treaty.setReference(idA, 0, 1);
-        treaty.setReference(idB, 0, 1);
+        feed.set(2, FRIDAY_PRICE, REF_TIME);
+        vm.warp(REF_TIME + 1);
+        treaty.setReference(idA, 0, 2);
+        treaty.setReference(idB, 0, 2);
 
-        feed.set(2, 90e8, uint256(EXPIRY) + 10);
+        feed.set(3, 90e8, uint256(EXPIRY) + 10);
         vm.warp(uint256(EXPIRY) + 20);
-        treaty.fix(idA, 0, 2); // settles A only; B is still Bound
+        treaty.fix(idA, 0, 3); // settles A only; B is still Bound
 
         uint256 poolBefore = usdg.balanceOf(address(capacity));
         vm.prank(alice);
@@ -96,7 +101,7 @@ contract AttackTest is Test {
 
         // B still settles and claims in full against the same Monday round: the drain attempt
         // cost it nothing.
-        treaty.fix(idB, 0, 2);
+        treaty.fix(idB, 0, 3);
         vm.prank(bob);
         treaty.claim(idB);
         assertEq(capacity.locked(), 0);
@@ -106,13 +111,14 @@ contract AttackTest is Test {
     function test_staleRoundRejected() public {
         vm.prank(alice);
         uint256 id = treaty.bind(_exposure(), RETENTION, LIMIT);
-        vm.warp(SAT_MIDNIGHT + 1);
-        treaty.setReference(id, 0, 1);
-        // Round 2 is stale: updatedAt is before expiry, not a fresh Monday print.
-        feed.set(2, 90e8, uint256(EXPIRY) - 1 hours);
+        feed.set(2, FRIDAY_PRICE, REF_TIME);
+        vm.warp(REF_TIME + 1);
+        treaty.setReference(id, 0, 2);
+        // Round 3 is stale: updatedAt is before expiry, not a fresh Monday print.
+        feed.set(3, 90e8, uint256(EXPIRY) - 1 hours);
         vm.warp(uint256(EXPIRY) + 20);
         vm.expectRevert(Treaty.BadRound.selector);
-        treaty.fix(id, 0, 2);
+        treaty.fix(id, 0, 3);
     }
 
     /// Attack: present a round from a different Chainlink phase (proxy upgrade) as if it were
@@ -121,17 +127,18 @@ contract AttackTest is Test {
     function test_phaseChangeRejected() public {
         vm.prank(alice);
         uint256 id = treaty.bind(_exposure(), RETENTION, LIMIT);
-        vm.warp(SAT_MIDNIGHT + 1);
-        treaty.setReference(id, 0, 1);
+        feed.set(2, FRIDAY_PRICE, REF_TIME);
+        vm.warp(REF_TIME + 1);
+        treaty.setReference(id, 0, 2);
         // The aggregator proxy upgrades: the feed's real latest round moves into a new phase
-        // (phaseId 1 << 64 | 1), leaving old phase-0 round ids (like 2) behind.
+        // (phaseId 1 << 64 | 1), leaving old phase-0 round ids (like 3) behind.
         uint80 newPhaseRound = uint80((uint256(1) << 64) | 1);
         feed.set(newPhaseRound, 90e8, uint256(EXPIRY) + 10);
         // Attacker submits a phase-0 round id, no longer the feed's current phase.
-        feed.set(2, 200e8, uint256(EXPIRY) + 10);
+        feed.set(3, 200e8, uint256(EXPIRY) + 10);
         vm.warp(uint256(EXPIRY) + 20);
         vm.expectRevert(Treaty.BadRound.selector);
-        treaty.fix(id, 0, 2);
+        treaty.fix(id, 0, 3);
     }
 
     /// Attack: fix before expiry to lock in a favorable price before the real Monday print
@@ -139,12 +146,13 @@ contract AttackTest is Test {
     function test_earlyFixRejected() public {
         vm.prank(alice);
         uint256 id = treaty.bind(_exposure(), RETENTION, LIMIT);
-        vm.warp(SAT_MIDNIGHT + 1);
-        treaty.setReference(id, 0, 1);
-        feed.set(2, 200e8, uint256(EXPIRY) - 1); // an attacker-favorable round updated just before expiry
+        feed.set(2, FRIDAY_PRICE, REF_TIME);
+        vm.warp(REF_TIME + 1);
+        treaty.setReference(id, 0, 2);
+        feed.set(3, 200e8, uint256(EXPIRY) - 1); // an attacker-favorable round updated just before expiry
         vm.warp(uint256(EXPIRY) - 1);
         vm.expectRevert(Treaty.EarlyFix.selector);
-        treaty.fix(id, 0, 2);
+        treaty.fix(id, 0, 3);
     }
 
     /// Attack: engineer a catastrophic loss (extreme exposure vs. a real historical gap) and
@@ -156,11 +164,12 @@ contract AttackTest is Test {
         hugeExposure[0] = 100_000_000e6; // far beyond what any premium was priced for
         vm.prank(alice);
         uint256 id = treaty.bind(hugeExposure, RETENTION, LIMIT);
-        vm.warp(SAT_MIDNIGHT + 1);
-        treaty.setReference(id, 0, 1);
-        feed.set(2, 1e8, uint256(EXPIRY) + 10); // price collapses 99%
+        feed.set(2, FRIDAY_PRICE, REF_TIME);
+        vm.warp(REF_TIME + 1);
+        treaty.setReference(id, 0, 2);
+        feed.set(3, 1e8, uint256(EXPIRY) + 10); // price collapses 99%
         vm.warp(uint256(EXPIRY) + 20);
-        treaty.fix(id, 0, 2);
+        treaty.fix(id, 0, 3);
         assertEq(_payout(id), LIMIT);
         assertEq(usdg.balanceOf(address(capacity)) >= LIMIT, true);
     }

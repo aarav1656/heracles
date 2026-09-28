@@ -11,7 +11,13 @@ import {MockUSDG} from "./mocks/MockUSDG.sol";
 contract TreatyTest is Test {
     uint256 constant T0 = 1_790_000_000; // a Monday; that week's Fri 19:30/Mon 13:30 below
     uint256 constant CUTOFF = 1_790_364_600; // Fri 2026-09-25 19:30 UTC (T0's week)
+    // Item 6: setReference now waits for `fridayCloseOf(fridayCutoff)`, Friday's official US
+    // market close, not "Saturday 00:00 UTC". T0's week is DST (EDT), so close = Friday 20:00
+    // UTC = CUTOFF + 30 minutes (CUTOFF is Friday 19:30 UTC). `SAT_MIDNIGHT` is kept only as a
+    // recognizable landmark comment for readers used to the old rule; every timing call below
+    // uses `REF_TIME`.
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
+    uint256 constant REF_TIME = CUTOFF + 30 minutes; // Fri 2026-09-25 20:00 UTC (EDT close)
     uint40 constant EXPIRY = uint40(1_790_602_200); // Mon 2026-09-28 13:30 UTC
 
     int256 constant FRIDAY_PRICE = 100e8;
@@ -115,18 +121,23 @@ contract TreatyTest is Test {
         treaty.bind(_exposure(), RETENTION, 0);
     }
 
+    /// Item 6: a round whose `updatedAt` predates Friday's close (`REF_TIME`) is too old to serve
+    /// as the reference round, even once we're well past close -- `setReference` must reject it
+    /// (`BadRound`), not silently accept whatever round number is passed.
     function test_setReferenceRevertsIfFridayRoundTooOld() public {
         vm.prank(buyer);
         uint256 id = treaty.bind(_exposure(), RETENTION, LIMIT);
-        feed.set(1, FRIDAY_PRICE, SAT_MIDNIGHT - 25 hours); // older than REF_WINDOW (24h)
-        vm.warp(SAT_MIDNIGHT + 1);
+        // round 1 (set in setUp at CUTOFF - 1 hours, i.e. Friday 18:30 UTC) predates REF_TIME
+        // (Friday 20:00 UTC close) by 90 minutes.
+        vm.warp(REF_TIME + 1);
         vm.expectRevert(Treaty.BadRound.selector);
         treaty.setReference(id, 0, 1);
     }
 
-    function test_setReferenceRevertsBeforeSaturday() public {
+    function test_setReferenceRevertsBeforeFridayClose() public {
         vm.prank(buyer);
         uint256 id = treaty.bind(_exposure(), RETENTION, LIMIT);
+        // still at T0 (Monday of that same week), well before Friday's close.
         vm.expectRevert(Treaty.BadTiming.selector);
         treaty.setReference(id, 0, 1);
     }
@@ -135,24 +146,30 @@ contract TreatyTest is Test {
         vm.prank(buyer);
         id = treaty.bind(_exposure(), RETENTION, LIMIT);
 
-        vm.warp(SAT_MIDNIGHT + 1);
-        treaty.setReference(id, 0, 1);
+        // round 2: the first round at/after Friday's close (REF_TIME); round 1 (set in setUp,
+        // Friday 18:30 UTC) is its required strictly-earlier predecessor.
+        feed.set(2, FRIDAY_PRICE, REF_TIME);
+        vm.warp(REF_TIME + 1);
+        treaty.setReference(id, 0, 2);
 
-        feed.set(2, MONDAY_PRICE, uint256(EXPIRY) + 10);
+        // round 3: the first round at/after Monday's expiry; round 2 (Friday's close) is its
+        // required strictly-earlier predecessor.
+        feed.set(3, MONDAY_PRICE, uint256(EXPIRY) + 10);
         vm.warp(uint256(EXPIRY) + 20);
-        treaty.fix(id, 0, 2);
+        treaty.fix(id, 0, 3);
     }
 
     function test_fixBeforeExpiryReverts() public {
         vm.prank(buyer);
         uint256 id = treaty.bind(_exposure(), RETENTION, LIMIT);
-        vm.warp(SAT_MIDNIGHT + 1);
-        treaty.setReference(id, 0, 1);
-        feed.set(2, MONDAY_PRICE, uint256(EXPIRY) + 10);
+        feed.set(2, FRIDAY_PRICE, REF_TIME);
+        vm.warp(REF_TIME + 1);
+        treaty.setReference(id, 0, 2);
+        feed.set(3, MONDAY_PRICE, uint256(EXPIRY) + 10);
         // Still before expiry: the deliberate-failure demo path.
         vm.warp(uint256(EXPIRY) - 1);
         vm.expectRevert(Treaty.EarlyFix.selector);
-        treaty.fix(id, 0, 2);
+        treaty.fix(id, 0, 3);
     }
 
     function test_fixRevertsIfReferenceNotSet() public {
