@@ -142,17 +142,19 @@ contract Handler is Test {
         (uint40 cutoff, uint40 expiry, Treaty.State st, uint256 limit, uint256 premium,) = _layer(id);
         if (st != Treaty.State.Bound) return;
         uint256 w = (uint256(cutoff) - MON0) / 7 days;
+        // Sat 00:00 UTC is always after Friday's close (20:00 UTC EDT or 21:00 UTC EST either
+        // way), still a valid conservative "safe to try setReference" gate.
         if (block.timestamp < uint256(cutoff) + 4 hours + 30 minutes) return;
-        if (!treaty.referenceSet(id, 0)) treaty.setReference(id, 0, uint80(2 * w + 1));
+        if (!treaty.referenceSet(id, 0)) treaty.setReference(id, 0, uint80(3 * w + 2));
         if (block.timestamp < uint256(expiry) + 1) return;
         if (!weekPriced[w]) {
             // -40% .. +10% weekend move, so zero, partial and full-limit payouts all occur
             int256 bps = -4000 + int256(bound(moveBps, 0, 5000));
-            feed.set(uint80(2 * w + 2), int256(100e8) * (10000 + bps) / 10000, uint256(expiry) + 1);
+            feed.set(uint80(3 * w + 3), int256(100e8) * (10000 + bps) / 10000, uint256(expiry) + 1);
             weekPriced[w] = true;
         }
         uint256 taBefore = cap.totalAssets();
-        treaty.fix(id, 0, uint80(2 * w + 2));
+        treaty.fix(id, 0, uint80(3 * w + 3));
         (,,,,, uint256 payout) = _layer(id);
         nSettle++;
         if (payout == 0) nSettleZero++;
@@ -200,14 +202,24 @@ contract CapacityInvariantTest is Test {
     function setUp() public {
         usdg = new MockUSDG();
         feed = new MockFeed();
-        for (uint256 w; w < WEEKS; w++) {
-            feed.set(uint80(2 * w + 1), 100e8, MON0 + w * 7 days + 4 days + 19 hours); // Fri 19:00
-            feed.set(uint80(2 * w + 2), 100e8, MON0 + (w + 1) * 7 days + 13 hours + 30 minutes + 1); // Mon
-        }
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
         treaty = new Treaty(address(usdg), address(new Pricer()), feeds, 50, address(0));
         cap = treaty.capacity();
+
+        // Item 6: setReference now needs its own first-round-after-Friday's-close pair, so each
+        // week gets three round ids: 2w+1 -> 3w+1 (pre-close predecessor, unchanged Fri 19:00
+        // seed), a new 3w+2 (the actual Friday reference round, at `fridayCloseOf`, queried live
+        // since this WEEKS=16 run spans the Nov 2026 DST switch), 3w+3 (Monday fix round,
+        // placeholder seed immediately superseded in settle()).
+        for (uint256 w; w < WEEKS; w++) {
+            uint256 monday = MON0 + w * 7 days;
+            (uint256 cutoff,) = treaty.weekWindow(monday);
+            uint256 refTime = treaty.fridayCloseOf(cutoff);
+            feed.set(uint80(3 * w + 1), 100e8, cutoff - 30 minutes); // pre-close predecessor
+            feed.set(uint80(3 * w + 2), 100e8, refTime); // Friday reference round
+            feed.set(uint80(3 * w + 3), 100e8, MON0 + (w + 1) * 7 days + 13 hours + 30 minutes + 1); // Mon placeholder
+        }
         vm.warp(MON0 + 1 hours);
         h = new Handler(treaty, usdg, feed);
         // seed the pool so binds have capacity from call 1
@@ -215,12 +227,20 @@ contract CapacityInvariantTest is Test {
         targetContract(address(h));
     }
 
+    /// Judging doc B.1.2 / orchestrator Item 3: the old `bal == totalAssets + owed + pendingPremium`
+    /// line here was a tautology, not an invariant. `totalAssets()` is *defined* as
+    /// `balance - owed - pendingPremium` (Capacity.sol:102), so that equation holds by
+    /// construction for any `bal`/`owed`/`pendingPremium`, including corrupted ones; no mutation
+    /// of the contract's bookkeeping can ever make it fail. The two lines kept below (flow
+    /// identity and the free-capacity floor) are independently falsifiable, and
+    /// `invariant_ledgersMatchLayers` below cross-checks `locked`/`owed`/`pendingPremium` against
+    /// `Treaty.layers` directly, which the deleted line never did.
     function invariant_conservation() public view {
-        uint256 bal = usdg.balanceOf(address(cap));
         uint256 ta = cap.totalAssets();
-        assertEq(bal, ta + cap.owed() + cap.pendingPremium(), "balance == totalAssets + owed + pendingPremium");
         assertEq(
-            bal + h.gWithdrawn() + h.gRefunded() + h.gPaid(), h.gDeposited() + h.gPremIn(), "USDG in == USDG out + held"
+            usdg.balanceOf(address(cap)) + h.gWithdrawn() + h.gRefunded() + h.gPaid(),
+            h.gDeposited() + h.gPremIn(),
+            "USDG in == USDG out + held"
         );
         assertGe(ta, cap.locked(), "every live layer fully backed");
     }

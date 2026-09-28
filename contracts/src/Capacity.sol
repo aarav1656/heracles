@@ -77,6 +77,18 @@ contract Capacity is ERC4626 {
     uint40[] public cutoffs;
     uint256 public cutoffCursor;
 
+    // Judging doc B.4 / slither events-maths: every onlyTreaty money-path function used to emit
+    // nothing, so an indexer could not rebuild `locked`/`owed`/`pendingPremium` from logs alone
+    // and had to replay storage reads instead. One event per function, mirroring its own
+    // parameters exactly.
+    event Locked(uint256 amount, uint40 indexed cutoff);
+    event Unlocked(uint256 amount, uint40 indexed cutoff);
+    event LayerSettled(uint256 unused, uint256 payout, uint40 indexed cutoff);
+    event PremiumReceived(address indexed from, uint256 amount);
+    event PremiumReleased(uint256 amount);
+    event PremiumRefunded(address indexed to, uint256 amount);
+    event PaidOut(address indexed to, uint256 amount);
+
     error NotTreaty();
     error CapacityExceeded();
     error InsufficientLocked();
@@ -204,6 +216,7 @@ contract Capacity is ERC4626 {
             cutoffs.push(cutoff);
         }
         lockedByCutoff[cutoff] += amount;
+        emit Locked(amount, cutoff);
     }
 
     /// Releases `amount` back to free capacity (a cancelled layer's full limit) from its `cutoff`
@@ -213,6 +226,7 @@ contract Capacity is ERC4626 {
         locked -= amount;
         lockedByCutoff[cutoff] -= amount;
         _advanceCursor();
+        emit Unlocked(amount, cutoff);
     }
 
     /// Moves a layer out of `locked` (and its `cutoff` bucket) on settle: `unused` becomes free
@@ -226,6 +240,7 @@ contract Capacity is ERC4626 {
         owed += payout;
         lockedByCutoff[cutoff] -= amount;
         _advanceCursor();
+        emit LayerSettled(unused, payout, cutoff);
     }
 
     /// Walks `cutoffCursor` past every bucket that has fully drained. Out-of-order resolution
@@ -247,12 +262,14 @@ contract Capacity is ERC4626 {
         if (amount == 0) return;
         IERC20(asset()).safeTransferFrom(from, address(this), amount);
         pendingPremium += amount;
+        emit PremiumReceived(from, amount);
     }
 
     /// Vests a settled layer's premium to writers: it stops being excluded from `totalAssets()`.
     function releasePremium(uint256 amount) external onlyTreaty {
         if (amount > pendingPremium) revert InsufficientPremium();
         pendingPremium -= amount;
+        emit PremiumReleased(amount);
     }
 
     /// Returns a cancelled layer's premium to the buyer; it leaves the pool, so writers never see
@@ -262,6 +279,7 @@ contract Capacity is ERC4626 {
         if (amount > pendingPremium) revert InsufficientPremium();
         pendingPremium -= amount;
         IERC20(asset()).safeTransfer(to, amount);
+        emit PremiumRefunded(to, amount);
     }
 
     /// Pays a layer's realized loss out of pooled assets, pull-based from `Treaty.claimTo`.
@@ -275,5 +293,6 @@ contract Capacity is ERC4626 {
         if (amount > owed) revert InsufficientLocked();
         owed -= amount;
         IERC20(asset()).safeTransfer(to, amount);
+        emit PaidOut(to, amount);
     }
 }

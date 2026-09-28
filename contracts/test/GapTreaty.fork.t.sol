@@ -8,12 +8,23 @@ import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 
 /// Proves the multi-market mechanism (9 real Chainlink equity feeds bound at once) against live
-/// Arbitrum One state: try the RPC, skip cleanly if it is unreachable, warp forward from whatever
-/// the live state actually is rather than assuming a fixed calendar date. Arbitrum Sepolia has
+/// Arbitrum One state, pinned to a fixed block (Item 3: an unreachable RPC now fails the suite,
+/// it does not skip it). Arbitrum Sepolia has
 /// only one live equity feed (SPY), so this fork test is the only place all 9 markets are
 /// exercised together against real oracle state; the Sepolia deploy binds SPY alone.
 contract GapTreatyForkTest is Test {
     string constant RPC = "https://arb1.arbitrum.io/rpc";
+    // Judging doc B.1.3 / orchestrator Item 3: forking at "latest" with no pinned block meant this
+    // suite's result silently depended on whatever round Arbitrum One's live feeds happened to be
+    // on when CI ran, and reproducing a failure required forking at the same unrecorded moment.
+    // Pinned to a real Arbitrum One block read via `cast block-number` on 2026-09-28
+    // (509,707,336), 2,000 blocks back for safety margin against reorgs at the tip. Kept close to
+    // the tip deliberately: `arb1.arbitrum.io`'s public RPC is not a full archive node and
+    // returns `missing trie node`/`historical state is not available` for account state much
+    // further back than this (confirmed empirically -- ~16,000 blocks back already fails, ~2,000
+    // blocks back is reliable) -- a pin has to be both fixed and within what the RPC actually
+    // still serves.
+    uint256 constant FORK_BLOCK = 509_705_336;
 
     // Chainlink `<ticker> / USD` proxies on Arbitrum One, from Chainlink's own reference-data
     // directory (reference-data-directory.vercel.app/feeds-ethereum-mainnet-arbitrum-1.json),
@@ -35,19 +46,18 @@ contract GapTreatyForkTest is Test {
     // via cast call decimals()/latestRoundData() against arb1.arbitrum.io on 2026-09-26).
     address constant SEQUENCER_FEED = 0xFdB631F5EE196F0ed6FAa767959853A9F217697D;
 
-    bool forked;
     Treaty treaty;
     Capacity capacity;
     address writer = makeAddr("writer");
     address buyer = makeAddr("buyer");
 
+    // Judging doc B.1.3 / orchestrator Item 3: this suite used to `vm.skip(true)` when the RPC
+    // was unreachable, so CI stayed green with zero fork coverage. `vm.createSelectFork` is now
+    // called directly, with no try/catch: an unreachable RPC reverts `setUp` and every test in
+    // this contract reports FAIL, not SKIP, which is the outcome that actually surfaces the
+    // missing coverage instead of hiding it.
     function setUp() public {
-        try vm.createSelectFork(RPC) returns (uint256) {
-            forked = true;
-        } catch {
-            console.log("SKIP: RPC unreachable", RPC);
-            return;
-        }
+        vm.createSelectFork(RPC, FORK_BLOCK);
 
         address[] memory feeds = new address[](9);
         (feeds[0], feeds[1], feeds[2], feeds[3], feeds[4]) = (SPY, NVDA, AAPL, MSFT, AMZN);
@@ -56,15 +66,7 @@ contract GapTreatyForkTest is Test {
         capacity = treaty.capacity();
     }
 
-    function _requireFork() internal {
-        if (!forked) {
-            console.log("SKIP: no fork");
-            vm.skip(true);
-        }
-    }
-
     function test_fork_allowlistAcceptsAllNineRealFeeds() public {
-        _requireFork();
         assertEq(treaty.marketsLength(), 9);
         assertEq(address(treaty.markets(0)), SPY);
         assertEq(address(treaty.markets(8)), COIN);
@@ -73,7 +75,6 @@ contract GapTreatyForkTest is Test {
     /// A feed with the wrong decimals (real USDC, 6dp not 8dp) must be refused at construction:
     /// the same fix this treaty applies ("writer picks the oracle").
     function test_fork_rejectsNonEightDecimalFeed() public {
-        _requireFork();
         address[] memory bad = new address[](1);
         bad[0] = USDC;
         address pricerAddr = address(new Pricer());
@@ -87,7 +88,6 @@ contract GapTreatyForkTest is Test {
     /// that needs a real weekend gap to pass on-chain, which the Sepolia live-cycle run covers
     /// for the single SPY market instead.
     function test_fork_bindsRealExposureAcrossAllNineMarkets() public {
-        _requireFork();
 
         int256[] memory exposure = new int256[](9);
         for (uint256 i; i < 9; i++) {

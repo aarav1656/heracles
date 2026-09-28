@@ -25,8 +25,13 @@ import {MockFeed} from "./mocks/MockFeed.sol";
 contract GapTreatyForkLifecycleTest is Test {
     string constant RPC = "https://sepolia-rollup.arbitrum.io/rpc";
     IERC20 constant USDG = IERC20(0xFFC95faa3d63Cde504a05B567C600B78C0b41892);
+    // Judging doc B.1.3 / orchestrator Item 3: same fix as GapTreaty.fork.t.sol, pinned to a real
+    // Arbitrum Sepolia block read via `cast block-number` on 2026-09-28 (313,609,081), 2,000
+    // blocks back for safety margin. Kept close to the tip for the same reason as
+    // GapTreaty.fork.t.sol: `sepolia-rollup.arbitrum.io`'s public RPC does not serve archive
+    // state indefinitely far back.
+    uint256 constant FORK_BLOCK = 313_607_081;
 
-    bool forked;
     Treaty treaty;
     Capacity capacity;
     MockFeed feed;
@@ -37,13 +42,11 @@ contract GapTreatyForkLifecycleTest is Test {
     uint256 constant LIMIT = 60_000e6;
     int256 constant EXPOSURE = 2_000_000e6; // long: loses when Monday prints below Friday
 
+    // Judging doc B.1.3 / orchestrator Item 3: same fix as GapTreaty.fork.t.sol -- no try/catch,
+    // no `vm.skip`. An unreachable RPC fails `setUp` and every test in this contract, instead of
+    // silently reporting SKIP with zero fork coverage.
     function setUp() public {
-        try vm.createSelectFork(RPC) returns (uint256) {
-            forked = true;
-        } catch {
-            console.log("SKIP: RPC unreachable", RPC);
-            return;
-        }
+        vm.createSelectFork(RPC, FORK_BLOCK);
 
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
@@ -64,13 +67,6 @@ contract GapTreatyForkLifecycleTest is Test {
         USDG.approve(address(capacity), type(uint256).max);
     }
 
-    function _requireFork() internal {
-        if (!forked) {
-            console.log("SKIP: no fork");
-            vm.skip(true);
-        }
-    }
-
     function _layerState(uint256 id) internal view returns (Treaty.State s) {
         (,,,,, s,,,,,) = treaty.layers(id);
     }
@@ -88,7 +84,6 @@ contract GapTreatyForkLifecycleTest is Test {
     /// deterministic -10% weekend gap through the MockFeed, and drives fix()/settle()/claim() the
     /// same shape as the live 421614 deploy's happy path would take once binds reopen.
     function test_forkLifecycle_bindReferenceFixSettleAndClaim() public {
-        _requireFork();
 
         (uint256 cutoff,) = treaty.weekWindow(block.timestamp);
         if (block.timestamp >= cutoff) vm.warp(cutoff + 3 days); // land inside next week's window
@@ -105,12 +100,18 @@ contract GapTreatyForkLifecycleTest is Test {
         assertEq(capacity.locked(), LIMIT);
         console.log("fork lifecycle: Solidity-twin premium (USDG, 6dp)", premium);
 
-        vm.warp(fridayCutoff + 4 hours + 31 minutes); // just past Saturday 00:00 UTC
-        treaty.setReference(id, 0, 1);
+        // Item 6: setReference now waits for Friday's official close (`fridayCloseOf`), not
+        // "Saturday 00:00 UTC"; round 2 is the first fresh round at/after that close, round 1
+        // (set above, an hour before the bind cutoff) is its required strictly-earlier
+        // predecessor.
+        uint256 refTime = treaty.fridayCloseOf(fridayCutoff);
+        feed.set(2, 100e8, refTime);
+        vm.warp(refTime + 1);
+        treaty.setReference(id, 0, 2);
 
-        feed.set(2, 90e8, expiry + 10); // -10% weekend gap, first fresh round after expiry
+        feed.set(3, 90e8, expiry + 10); // -10% weekend gap, first fresh round after expiry
         vm.warp(expiry + 20);
-        treaty.fix(id, 0, 2);
+        treaty.fix(id, 0, 3);
 
         assertEq(uint8(_layerState(id)), uint8(Treaty.State.Settled));
         // real loss = 10% of 2,000,000e6 = 200,000e6, less 20,000e6 retention = 180,000e6,
@@ -128,7 +129,6 @@ contract GapTreatyForkLifecycleTest is Test {
     /// M3) must cancel and refund the buyer's premium, releasing the writer's locked capacity
     /// without paying it, on the same forked real Sepolia state.
     function test_forkLifecycle_cancelAfterGraceRefundsPremium() public {
-        _requireFork();
 
         (uint256 cutoff,) = treaty.weekWindow(block.timestamp);
         if (block.timestamp >= cutoff) vm.warp(cutoff + 3 days);

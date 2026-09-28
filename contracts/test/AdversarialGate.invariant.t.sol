@@ -207,8 +207,11 @@ contract AdvHandler is Test {
         (uint40 cutoff, uint40 expiry, Treaty.State st, uint256 limit, uint256 premium,) = _layer(id);
         if (st != Treaty.State.Bound) return;
         uint256 w = (uint256(cutoff) - AMON0) / 7 days;
+        // Sat 00:00 UTC is always after Friday's close (20:00 UTC EDT or 21:00 UTC EST either
+        // way), so this remains a valid, if slightly conservative, "safe to try setReference"
+        // gate under the new DST-aware rule without needing to query fridayCloseOf here too.
         if (block.timestamp < uint256(cutoff) + 4 hours + 30 minutes) return;
-        if (!treaty.referenceSet(id, 0)) treaty.setReference(id, 0, uint80(2 * w + 1));
+        if (!treaty.referenceSet(id, 0)) treaty.setReference(id, 0, uint80(3 * w + 2));
         if (block.timestamp < uint256(expiry) + 1) return;
         if (!weekPriced[w]) {
             weekPriced[w] = true;
@@ -217,12 +220,12 @@ contract AdvHandler is Test {
                 nDeadWeek++;
             } else {
                 int256 bps = -4000 + int256(bound(moveBps, 0, 5000));
-                feed.set(uint80(2 * w + 2), int256(100e8) * (10000 + bps) / 10000, uint256(expiry) + 1);
+                feed.set(uint80(3 * w + 3), int256(100e8) * (10000 + bps) / 10000, uint256(expiry) + 1);
             }
         }
         if (weekDead[w]) return;
         uint256 taBefore = cap.totalAssets();
-        treaty.fix(id, 0, uint80(2 * w + 2));
+        treaty.fix(id, 0, uint80(3 * w + 3));
         (,,,,, uint256 payout) = _layer(id);
         nSettle++;
         if (cap.totalAssets() + payout != taBefore + premium) vSettleDelta++;
@@ -263,29 +266,64 @@ contract AdversarialGateInvariant is Test {
     function setUp() public {
         usdg = new MockUSDG();
         feed = new MockFeed();
-        // Friday reference rounds for every week; Monday rounds are written lazily by the handler
-        // (or never, for dead weeks). Round 2w+2 must exist as a later id so round 2w+1 is not
-        // "latest"; seed it with updatedAt = 0 is wrong (NotLastRound check reads it), so seed
-        // Monday rounds far in the future and overwrite on first settle.
-        for (uint256 w; w < AWEEKS; w++) {
-            feed.set(uint80(2 * w + 1), 100e8, AMON0 + w * 7 days + 4 days + 19 hours);
-            feed.set(uint80(2 * w + 2), 100e8, AMON0 + 1000 weeks);
-        }
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
         treaty = new Treaty(address(usdg), address(new Pricer()), feeds, 50, address(0));
         cap = treaty.capacity();
+
+        // Item 6: setReference now needs its own first-round-after-Friday's-close pair, on top
+        // of the pre-existing Monday fix round, so each week gets three round ids instead of
+        // two: 3w+1 (pre-close predecessor), 3w+2 (the actual Friday reference round, at
+        // `fridayCloseOf`, DST-aware and queried live since this 20-week run spans the Nov 2026
+        // switch), 3w+3 (Monday fix round, written lazily by the handler, or never for dead
+        // weeks -- seeded far in the future and overwritten on first settle, unchanged from
+        // before).
+        for (uint256 w; w < AWEEKS; w++) {
+            uint256 monday = AMON0 + w * 7 days;
+            (uint256 cutoff,) = treaty.weekWindow(monday);
+            uint256 refTime = treaty.fridayCloseOf(cutoff);
+            feed.set(uint80(3 * w + 1), 100e8, cutoff - 30 minutes);
+            feed.set(uint80(3 * w + 2), 100e8, refTime);
+            feed.set(uint80(3 * w + 3), 100e8, AMON0 + 1000 weeks);
+        }
         vm.warp(AMON0 + 1 hours);
         h = new AdvHandler(treaty, usdg, feed);
         h.deposit(0, 1_000_000e6);
         targetContract(address(h));
     }
 
+    /// Judging doc B.1.2 / orchestrator Item 3: `bal == totalAssets + owed + pendingPremium` was a
+    /// tautology, not an invariant (`totalAssets()` is *defined* as `balance - owed -
+    /// pendingPremium`, Capacity.sol:102, so it holds for any values including corrupted ones,
+    /// and no mutation of the contract's bookkeeping could ever make it fail). Replaced with the
+    /// flow identity, the free-capacity floor (both independently falsifiable, kept from the
+    /// original), and `invariant_ledgersMatchLayers` below, which cross-checks
+    /// `locked`/`owed`/`pendingPremium` against `Treaty.layers` directly (this file's handler
+    /// drives `settle`/`cancel`/`claim` with adversarial timing, so this is the invariant suite
+    /// that actually exercises the cross-check under gate-edge conditions).
     function invariant_conservation() public view {
         uint256 bal = usdg.balanceOf(address(cap));
-        assertEq(bal, cap.totalAssets() + cap.owed() + cap.pendingPremium(), "balance identity");
         assertEq(bal + h.gWithdrawn() + h.gRefunded() + h.gPaid(), h.gDeposited() + h.gPremIn(), "USDG in == out + held");
         assertGe(cap.totalAssets(), cap.locked(), "every live layer fully backed");
+    }
+
+    function invariant_ledgersMatchLayers() public view {
+        uint256 sumLocked;
+        uint256 sumOwed;
+        uint256 sumPending;
+        uint256 n = treaty.layerCount();
+        for (uint256 id; id < n; id++) {
+            (,,,,, Treaty.State st, bool claimed,, uint256 limit, uint256 premium, uint256 payout) = treaty.layers(id);
+            if (st == Treaty.State.Bound) {
+                sumLocked += limit;
+                sumPending += premium;
+            } else if (st == Treaty.State.Settled && !claimed) {
+                sumOwed += payout;
+            }
+        }
+        assertEq(cap.locked(), sumLocked, "locked == sum(limit of Bound)");
+        assertEq(cap.owed(), sumOwed, "owed == sum(unclaimed payout of Settled)");
+        assertEq(cap.pendingPremium(), sumPending, "pendingPremium == sum(premium of Bound)");
     }
 
     function invariant_gateMatchesOracle() public view {
