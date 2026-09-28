@@ -15,6 +15,13 @@
         "matchId": "53784936",
         "matchType": "exact_match (creation and runtime)",
         "verifiedAt": "2026-09-28T19:39:52Z"
+      },
+      "constructorArgs": {
+        "feeds": [
+          "0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06"
+        ],
+        "minRateOnLineBps": 50,
+        "sequencerFeed": "0x0000000000000000000000000000000000000000"
       }
     },
     "Capacity": {
@@ -54,8 +61,15 @@
     "SEQUENCER_FEED": "0x0000000000000000000000000000000000000000",
     "SEQUENCER_FEED_NOTE": "Arbitrum Sepolia has no L2 Sequencer Uptime Status Feed; address(0) disables the check on this deploy only. A mainnet deploy must pass 0xFdB631F5EE196F0ed6FAa767959853A9F217697D.",
     "MIN_RATE_ON_LINE_BPS": 50,
-    "feeds": ["0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06"],
+    "feeds": [
+      "0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06"
+    ],
     "feedsNote": "SPY/USD, the one live equity feed Arbitrum Sepolia carries."
   },
-  "sourceOfTruth": "Read live on 2026-09-28 against https://sepolia-rollup.arbitrum.io/rpc: Treaty.pricer() = Pricer, Treaty.capacity() = Capacity, Treaty.usdg() = USDG, Treaty.minRateOnLineBps() = 50; Pricer.tableIdAt(0) = 2, tableIdAt(1) reverts MissingTable; Sourcify v2 API for the two verifications."
+  "sourceOfTruth": "Read live on 2026-09-28 against https://sepolia-rollup.arbitrum.io/rpc: Treaty.pricer() = Pricer, Treaty.capacity() = Capacity, Treaty.usdg() = USDG, Treaty.minRateOnLineBps() = 50; Pricer.tableIdAt(0) = 2, tableIdAt(1) reverts MissingTable; Sourcify v2 API for the two verifications.",
+  "rpc": "https://sepolia-rollup.arbitrum.io/rpc",
+  "usdg": {
+    "address": "0xFFC95faa3d63Cde504a05B567C600B78C0b41892",
+    "decimals": 6
+  }
 }
