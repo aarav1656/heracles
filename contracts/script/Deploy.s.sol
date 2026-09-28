@@ -23,8 +23,10 @@ interface ITableId {
 ///   The single feed passed here is SPY at index 0 (docs/security/capacity-review.md P2), so the
 ///   Stylus Pricer must be constructed with an explicit per-market table id array selecting the
 ///   SPY table (id 2) at index 0, e.g. `cargo stylus deploy --constructor-args 2` (single-byte
-///   `table_ids = [2]`), never the old zero-arg/default-table deploy, or SPY exposure prices on
-///   the NVDA table.
+///   `table_ids = [2]`). The constructor itself now reverts (P2 re-review) on an empty array or
+///   any id > 3, so a misconfigured deploy fails before this script can even run; the require()
+///   below still catches the narrower case where the Pricer deployed cleanly but was configured
+///   for the wrong table (e.g. left at NVDA, id 0) at index 0.
 ///
 /// H2: `MIN_RATE_ON_LINE_BPS = 50` (0.50%) is the premium floor, immutable at deploy.
 /// M2: Arbitrum Sepolia (421614) has no L2 Sequencer Uptime Status Feed (verified empty at the
@@ -45,8 +47,10 @@ contract Deploy is Script {
         feeds[0] = SPY_FEED;
 
         // P2 deploy-time guard: the single feed above is SPY at index 0, so refuse to wire up a
-        // Pricer that was not explicitly configured to price index 0 on the SPY table (id 2). A
-        // Pricer left at its default (empty tableIds) would silently price SPY on the NVDA table.
+        // Pricer that was not explicitly configured to price index 0 on the SPY table (id 2).
+        // The Pricer constructor already reverts on an empty or invalid tableIds array (P2
+        // re-review), so this check only catches the narrower case of a Pricer deployed with a
+        // valid but wrong table id (e.g. NVDA, id 0) at index 0.
         require(ITableId(pricer).tableIdAt(0) == 2, "PRICER not configured for SPY table at index 0");
 
         vm.startBroadcast();
