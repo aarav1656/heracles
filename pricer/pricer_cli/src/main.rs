@@ -7,8 +7,10 @@
 //!   retention, limit: non-negative decimal u128
 //!   exposure_csv: comma-separated signed i128 (e.g. "-2000000000000,500000000000")
 //!   vol_scale_ppm_csv: comma-separated non-negative u128, same length as exposure_csv
-//!   table_ids_csv: comma-separated u8 (0 NVDA, 1 AAPL, 2 SPY, 3 TSLA); may be shorter than
-//!     exposure_csv or empty, matching price_core's default-table-id fallback
+//!   table_ids_csv: comma-separated u8 (0 NVDA, 1 AAPL, 2 SPY, 3 TSLA); must cover every market
+//!     in exposure_csv (same length or longer). A shorter or empty table_ids_csv makes
+//!     price_core return MissingTable (this CLI then exits 1); P2 re-review, no default-table-id
+//!     fallback
 //!
 //! On success, prints one line to stdout: "0x" followed by the abi encoding (three concatenated
 //! 32-byte big-endian words, since all three return values are static uint256) of

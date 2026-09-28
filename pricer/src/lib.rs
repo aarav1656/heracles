@@ -25,8 +25,10 @@
 //! Per-market table ids: `table_ids` (constructor-supplied, `bytes`-backed storage) picks each
 //! market's scenario table explicitly, matching `Pricer.sol`'s `marketTableIds` array
 //! (docs/security/capacity-review.md "Re-review (2026-09-28)" P2). Table id 0 NVDA, 1 AAPL, 2
-//! SPY, 3 TSLA, any id past the array's length falls back to `pricer_core::default_table_id`
-//! (the old position-only mapping).
+//! SPY, 3 TSLA. The constructor reverts if `table_ids` is empty or any entry is not 0-3, and
+//! `price_core` itself (../core/src/lib.rs) reverts with `MissingTable` if a market index has no
+//! entry in the stored array: there is no positional or id-value fallback left that could
+//! silently price an unmapped or out-of-range market on the NVDA table.
 #![cfg_attr(not(any(test, feature = "export-abi")), no_main)]
 extern crate alloc;
 
@@ -57,10 +59,20 @@ sol_storage! {
 #[public]
 impl Pricer {
     /// `table_ids[i]` picks market i's scenario table explicitly (docs/security/capacity-review
-    /// .md P2); pass an empty array to keep the old position-only mapping for every market.
+    /// .md "Re-review (2026-09-28)" P2). Fails closed at deploy time: `table_ids` must be
+    /// nonempty and every entry must be a real table id (0 NVDA, 1 AAPL, 2 SPY, 3 TSLA), so a
+    /// misconfigured deploy reverts immediately instead of silently mis-pricing on the first
+    /// quote.
     #[constructor]
-    pub fn constructor(&mut self, table_ids: Vec<u8>) {
+    pub fn constructor(&mut self, table_ids: Vec<u8>) -> Result<(), Vec<u8>> {
+        if table_ids.is_empty() {
+            return Err(b"BadTableId".to_vec());
+        }
+        if table_ids.iter().any(|&id| id > 3) {
+            return Err(b"BadTableId".to_vec());
+        }
         self.table_ids.set_bytes(&table_ids);
+        Ok(())
     }
 
     /// exposure[i] is signed: positive is long market i (loses when it falls), negative is
@@ -87,11 +99,12 @@ impl Pricer {
         price_core(&exposure, &vol_scale_ppm, retention, limit, &table_ids)
     }
 
-    /// Table id configured for market `i` at deploy time (0 default/NVDA fallback if `i` is
-    /// past the configured array), matching `Pricer.sol`'s `tableIdAt` getter.
-    pub fn table_id_at(&self, i: U256) -> u8 {
+    /// Table id configured for market `i` at deploy time, matching `Pricer.sol`'s `tableIdAt`
+    /// getter. Reverts (`MissingTable`) if `i` is past the configured array; there is no
+    /// positional fallback (docs/security/capacity-review.md "Re-review (2026-09-28)" P2).
+    pub fn table_id_at(&self, i: U256) -> Result<u8, Vec<u8>> {
         let i = usize::try_from(i).unwrap_or(usize::MAX);
-        self.table_ids.get(i).unwrap_or_else(|| pricer_core::default_table_id(i))
+        self.table_ids.get(i).ok_or_else(|| b"MissingTable".to_vec())
     }
 
     /// Realised volatility over the feed's last VOL_ROUNDS rounds, as a scale in parts-per-
@@ -234,7 +247,8 @@ mod test {
     fn test_p1_quote_does_not_panic_on_real_chainlink_phase_round_id() {
         let vm = TestVM::default();
         let feed_addr = Address::from([7u8; 20]);
-        let contract = Pricer::from(&vm);
+        let mut contract = Pricer::from(&vm);
+        contract.constructor(alloc::vec![0]).unwrap();
 
         let real_round_id = U256::from(18_446_744_073_709_553_978u128);
         vm.mock_static_call(
@@ -250,13 +264,13 @@ mod test {
 
     /// With the volatility feed configured at neutral scale via a mocked feed (rather than an
     /// unset one, since unset now fails closed per P1), `quote()` must match calling
-    /// `pricer_core::price_core` directly with an all-neutral scale vector and the same table
-    /// ids as the deployed contract's (constructor-default, empty).
+    /// `pricer_core::price_core` directly with an all-neutral scale vector and the same explicit
+    /// table ids the constructor was deployed with (P2 re-review: no empty-array default left).
     #[test]
     fn test_quote_matches_price_core_at_neutral_scale() {
         let vm = TestVM::default();
         let mut contract = Pricer::from(&vm);
-        contract.constructor(alloc::vec![]);
+        contract.constructor(alloc::vec![0]).unwrap();
 
         let feed_addr = Address::from([9u8; 20]);
         // latestId < VOL_ROUNDS => _volScalePpm short-circuits to the neutral PPM scale without
@@ -272,7 +286,7 @@ mod test {
             .quote(exposure.clone(), alloc::vec![feed_addr], U256::from(20_000_000_000u64), U256::from(60_000_000_000u64))
             .unwrap();
         let (premium2, el2, tvar95_2) =
-            price_core(&exposure, &neutral(1), U256::from(20_000_000_000u64), U256::from(60_000_000_000u64), &[]).unwrap();
+            price_core(&exposure, &neutral(1), U256::from(20_000_000_000u64), U256::from(60_000_000_000u64), &[0]).unwrap();
         assert_eq!((premium, el, tvar95), (premium2, el2, tvar95_2));
     }
 
@@ -282,9 +296,9 @@ mod test {
     fn test_constructor_table_ids_select_configured_table() {
         let vm = TestVM::default();
         let mut contract = Pricer::from(&vm);
-        contract.constructor(alloc::vec![2]); // market 0 => SPY
+        contract.constructor(alloc::vec![2]).unwrap(); // market 0 => SPY
 
-        assert_eq!(contract.table_id_at(U256::from(0u64)), 2u8);
+        assert_eq!(contract.table_id_at(U256::from(0u64)).unwrap(), 2u8);
 
         let feed_addr = Address::from([9u8; 20]);
         vm.mock_static_call(
@@ -297,5 +311,61 @@ mod test {
             .quote(exposure, alloc::vec![feed_addr], U256::from(20_000_000_000u64), U256::from(60_000_000_000u64))
             .unwrap();
         assert_eq!(premium, U256::from(1_676_722_158u64), "must be the SPY acceptance number, not NVDA's");
+    }
+
+    #[test]
+    fn test_table_id_at_reverts_out_of_range() {
+        let vm = TestVM::default();
+        let mut contract = Pricer::from(&vm);
+        contract.constructor(alloc::vec![2]).unwrap(); // only market 0 configured
+
+        assert_eq!(contract.table_id_at(U256::from(0u64)).unwrap(), 2u8);
+        let result = contract.table_id_at(U256::from(1u64));
+        assert!(result.is_err(), "table_id_at past the configured array must revert, not default by position");
+    }
+
+    /// P2 re-review (docs/security/capacity-review.md): an empty `table_ids` array must revert
+    /// the constructor itself, not silently keep the old position-only mapping.
+    #[test]
+    fn test_constructor_reverts_on_empty_table_ids() {
+        let vm = TestVM::default();
+        let mut contract = Pricer::from(&vm);
+        let result = contract.constructor(alloc::vec![]);
+        assert!(result.is_err(), "empty table_ids must revert the constructor");
+    }
+
+    /// P2 re-review: any table id above 3 must revert the constructor, not silently price that
+    /// market on NVDA (the old catch-all fallback).
+    #[test]
+    fn test_constructor_reverts_on_bad_table_id() {
+        let vm = TestVM::default();
+        let mut contract = Pricer::from(&vm);
+        let result = contract.constructor(alloc::vec![0, 4]);
+        assert!(result.is_err(), "table id 4 must revert the constructor, not silently price on NVDA");
+    }
+
+    /// P2 re-review: a quote spanning more markets than the deployed `table_ids` covers must
+    /// revert with MissingTable, not fall back to `default_table_id`'s old positional guess.
+    #[test]
+    fn test_quote_reverts_when_markets_exceed_configured_table_ids() {
+        let vm = TestVM::default();
+        let mut contract = Pricer::from(&vm);
+        contract.constructor(alloc::vec![0]).unwrap(); // only market 0 configured
+
+        let feed_addr = Address::from([9u8; 20]);
+        vm.mock_static_call(
+            feed_addr,
+            latest_round_data_calldata(),
+            Ok(encode_round_data(U256::from(1u64), I256::try_from(500_000_000i128).unwrap(), U256::ZERO, U256::ZERO, U256::from(1u64))),
+        );
+        // Two markets in this quote, but only one table id was configured at construction.
+        let exposure = alloc::vec![I256::try_from(2_000_000_000_000i128).unwrap(), I256::try_from(1_000_000_000_000i128).unwrap()];
+        let result = contract.quote(
+            exposure,
+            alloc::vec![feed_addr, feed_addr],
+            U256::from(20_000_000_000u64),
+            U256::from(60_000_000_000u64),
+        );
+        assert!(result.is_err(), "a quote spanning more markets than table_ids covers must revert, not default by position");
     }
 }

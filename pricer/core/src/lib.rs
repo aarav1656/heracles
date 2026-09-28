@@ -21,14 +21,13 @@
 //! 504-scenario Friday-close-to-Monday-open weekend gap tables (basis points), one each for
 //! NVDA, AAPL, SPY and TSLA, fetched from api.nasdaq.com's free historical-bars endpoint and
 //! re-derivable with `scripts/generate_gap_tables.py` (evidence/gap-tables/{TICKER}.json holds
-//! the full detail). Table id 0 is NVDA, 1 AAPL, 2 SPY, 3 TSLA; any other id falls back to NVDA.
-//! `table_ids[i]` (a caller-supplied, per-deployment array; docs/security/capacity-review.md
-//! "Re-review (2026-09-28)" P2) picks market i's table explicitly, so the market a table prices
-//! no longer depends on `exposure[i]`'s array position. When `table_ids` is shorter than
-//! `exposure` (including empty), the missing entries fall back to `default_table_id`, which
-//! reproduces the old position-only mapping (0 NVDA, 1 AAPL, 2 SPY, 3 TSLA, else NVDA) exactly,
-//! so existing callers that never pass table ids keep their old (buggy for a non-canonical feed
-//! order) behaviour unchanged rather than silently repricing.
+//! the full detail). Table id 0 is NVDA, 1 AAPL, 2 SPY, 3 TSLA. `table_ids[i]` (a caller-
+//! supplied, per-deployment array; docs/security/capacity-review.md "Re-review (2026-09-28)" P2)
+//! picks market i's table explicitly, so the market a table prices no longer depends on
+//! `exposure[i]`'s array position. There is no positional or id-value fallback (P2 re-review):
+//! `price_core` fails closed with `MissingTable` if `table_ids` does not cover every market in
+//! `exposure`, and with `BadTableId` if any entry is not 0-3, rather than ever silently pricing
+//! an unmapped or out-of-range market on the NVDA table.
 //!
 //! Pricing formula: `premium = el + RISK_LOAD_PPM * (tvar95 - el) + CAPITAL_CHARGE_ANNUAL_PPM *
 //! limit * LOCK_DAYS / DAYS_PER_YEAR` (docs/security/capacity-review.md "Re-review
@@ -69,27 +68,16 @@ pub const NORMAL_ROUND_MOVE_BPS: u64 = 50;
 pub const MIN_SCALE_PPM: u64 = 1_000_000;
 pub const MAX_SCALE_PPM: u64 = 3_000_000;
 
-/// Reproduces the old position-only market-to-table mapping (index 0 NVDA, 1 AAPL, 2 SPY, 3
-/// TSLA, else NVDA), used as the fallback for any market index `table_ids` does not cover.
-pub fn default_table_id(i: usize) -> u8 {
-    match i {
-        1 => 1,
-        2 => 2,
-        3 => 3,
-        _ => 0,
-    }
-}
-
-/// Table id 0 NVDA, 1 AAPL, 2 SPY, 3 TSLA, any other id falls back to NVDA. `table_ids[i]`
-/// selects market i's table explicitly; if `table_ids` has no entry at `i`, falls back to
-/// `default_table_id(i)` (docs/security/capacity-review.md P2).
+/// Table id 0 NVDA, 1 AAPL, 2 SPY, 3 TSLA. `table_ids[i]` selects market i's table explicitly
+/// (docs/security/capacity-review.md P2 re-review). Callers must ensure `i < table_ids.len()`
+/// and `table_ids[i] <= 3`; `price_core` validates both before ever calling this, so there is no
+/// positional or id-value fallback left to silently mis-table a market.
 pub fn table_for(i: usize, table_ids: &[u8]) -> &'static [i32; 504] {
-    let id = table_ids.get(i).copied().unwrap_or_else(|| default_table_id(i));
-    match id {
+    match table_ids[i] {
         1 => &AAPL_GAPS,
         2 => &SPY_GAPS,
         3 => &TSLA_GAPS,
-        _ => &NVDA_GAPS,
+        _ => &NVDA_GAPS, // id == 0; any other value was already rejected by price_core
     }
 }
 
@@ -112,6 +100,17 @@ pub fn price_core(
     }
     if vol_scale_ppm.len() != exposure.len() {
         return Err(b"BadFeeds".to_vec());
+    }
+    // P2 re-review (docs/security/capacity-review.md): fail closed instead of silently pricing
+    // an unmapped market on NVDA. `table_ids` must cover every market in `exposure`, and every
+    // entry must be a real table id (0-3); both are the single root check every caller of
+    // `table_for` below relies on (the Stylus constructor performs the same id check again at
+    // deploy time so a misconfigured deploy reverts immediately, not just on first quote).
+    if table_ids.len() < exposure.len() {
+        return Err(b"MissingTable".to_vec());
+    }
+    if table_ids.iter().any(|&id| id > 3) {
+        return Err(b"BadTableId".to_vec());
     }
     let retention = I256::from_raw(retention);
     let limit = I256::from_raw(limit);
@@ -212,7 +211,7 @@ mod test {
             &neutral(1),
             U256::from(20_000_000_000u64),
             U256::from(60_000_000_000u64),
-            &[],
+            &[0],
         )
         .unwrap();
         assert_eq!(el, U256::ZERO);
@@ -228,15 +227,54 @@ mod test {
 
     #[test]
     fn test_bad_feeds_length_reverts() {
-        let result = price_core(&[I256::ZERO], &neutral(2), U256::from(0u64), U256::from(1u64), &[]);
+        let result = price_core(&[I256::ZERO], &neutral(2), U256::from(0u64), U256::from(1u64), &[0]);
         assert!(result.is_err());
     }
 
     /// L1: an exposure large enough that exposure*gap overflows I256 must revert, not wrap.
     #[test]
     fn test_overflow_reverts() {
-        let result = price_core(&[I256::MIN], &neutral(1), U256::from(0u64), U256::from(40_000_000u64), &[]);
+        let result = price_core(&[I256::MIN], &neutral(1), U256::from(0u64), U256::from(40_000_000u64), &[0]);
         assert!(result.is_err(), "overflowing exposure must revert, not wrap");
+    }
+
+    /// P2 re-review (docs/security/capacity-review.md): a market index past `table_ids`'s length
+    /// (including the old empty-array default) must revert, never silently price on
+    /// `default_table_id(i)`'s old positional guess.
+    #[test]
+    fn test_missing_table_reverts_on_empty_table_ids() {
+        let result = price_core(
+            &[I256::try_from(2_000_000_000_000i128).unwrap()],
+            &neutral(1),
+            U256::from(20_000_000_000u64),
+            U256::from(60_000_000_000u64),
+            &[],
+        );
+        assert!(result.is_err(), "empty table_ids with nonempty exposure must revert, not default by position");
+    }
+
+    /// P2 re-review: a market index past `table_ids`'s length must revert even when other
+    /// indices are covered (three markets, only two table ids supplied).
+    #[test]
+    fn test_missing_table_reverts_when_table_ids_shorter_than_exposure() {
+        let exposure = [I256::ZERO, I256::ZERO, I256::try_from(2_000_000_000_000i128).unwrap()];
+        let result =
+            price_core(&exposure, &neutral(3), U256::from(20_000_000_000u64), U256::from(60_000_000_000u64), &[0, 1]);
+        assert!(result.is_err(), "table_ids shorter than exposure must revert, not default the missing index by position");
+    }
+
+    /// P2 re-review: any table id above 3 (the highest real table) must revert, never silently
+    /// price that market on NVDA (the old catch-all fallback).
+    #[test]
+    fn test_bad_table_id_reverts() {
+        let result = price_core(
+            &[I256::try_from(2_000_000_000_000i128).unwrap()],
+            &neutral(1),
+            U256::from(20_000_000_000u64),
+            U256::from(60_000_000_000u64),
+            &[4],
+        );
+        assert!(result.is_err(), "table id 4 must revert, not silently price on the NVDA table");
     }
 
     /// Acceptance number (docs/security/capacity-review.md "Pricing (item 2)" README example:
@@ -253,7 +291,7 @@ mod test {
             &neutral(1),
             U256::from(20_000_000_000u64),
             U256::from(60_000_000_000u64),
-            &[], // table id defaults to 0 (NVDA) at index 0
+            &[0], // explicit table id: NVDA
         )
         .unwrap();
         assert_eq!(el, U256::from(5_040_079_365u64));
@@ -317,7 +355,7 @@ mod test {
             &neutral(1),
             U256::from(20_000_000_000u64),
             U256::from(60_000_000_000u64),
-            &[],
+            &[0],
         )
         .unwrap();
         let exposure3 = [I256::ZERO, I256::ZERO, I256::try_from(2_000_000_000_000i128).unwrap()];
@@ -326,7 +364,7 @@ mod test {
             &neutral(3),
             U256::from(20_000_000_000u64),
             U256::from(60_000_000_000u64),
-            &[],
+            &[0, 1, 2],
         )
         .unwrap();
         assert!(premium_spy < premium_nvda, "SPY's calmer table must price lower than NVDA's at the same exposure");
@@ -336,10 +374,10 @@ mod test {
     fn test_vol_scale_up_increases_premium() {
         let exposure = [I256::try_from(2_000_000_000_000i128).unwrap()];
         let (premium_neutral, ..) =
-            price_core(&exposure, &neutral(1), U256::from(0u64), U256::from(1_000_000_000_000u64), &[]).unwrap();
+            price_core(&exposure, &neutral(1), U256::from(0u64), U256::from(1_000_000_000_000u64), &[0]).unwrap();
         let scaled_up = alloc::vec![U256::from(MAX_SCALE_PPM)];
         let (premium_scaled, ..) =
-            price_core(&exposure, &scaled_up, U256::from(0u64), U256::from(1_000_000_000_000u64), &[]).unwrap();
+            price_core(&exposure, &scaled_up, U256::from(0u64), U256::from(1_000_000_000_000u64), &[0]).unwrap();
         assert!(premium_scaled > premium_neutral, "3x volatility scale must price a higher premium");
     }
 
