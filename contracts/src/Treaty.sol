@@ -433,8 +433,9 @@ contract Treaty is ReentrancyGuard {
         uint256 refTime = fridayCloseOf(uint256(L.fridayCutoff));
         AggregatorV3Interface feed = markets[marketIdx];
         _latestInPhase(feed, roundId);
-        (, int256 answer,, uint256 updatedAt,) = feed.getRoundData(roundId);
-        if (answer <= 0 || uint256(answer) > type(uint64).max) revert BadRound();
+        // Void proves timing only, so the answer is deliberately not checked: a late round with a
+        // bad answer must still be voidable, or setReference and cancel would both stay blocked.
+        (,,, uint256 updatedAt,) = feed.getRoundData(roundId);
         if (updatedAt < refTime || updatedAt > block.timestamp) revert BadRound();
         // The whole point of voiding: this round must actually be late. A round inside the
         // allowed delay belongs in `setReference`, not here.
