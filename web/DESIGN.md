@@ -1,4 +1,4 @@
-# Heracles web: a trade desk for the weekend gap
+# Heracles web: a trade desk for the Monday reopen
 
 The skin is GMX's (sidebar, navy surface, 4px instrument buttons, a numerals face split
 from the UI face; tokens below). The product UX is GMX Trade's reading order applied to a
