@@ -381,3 +381,68 @@ Test: `test_G3_cancelIgnoresSequencerGrace` (red: layer Cancelled while `fix` is
 - Open before mainnet, product decisions rather than constants:
   - G1/G2 (Medium): a 3-day GRACE lets `cancel` pre-empt a fix that is still valid inside the documented five-day holiday search. The F1 freeze bound needs GRACE under 102h; the holiday search needs 120h. Candidate direction: make `cancel` revert while the market feed has printed any round at or after expiry (a late feed is then fixable, only a dead feed is cancellable), and measure real Chainlink 24/5 holiday behaviour before choosing.
   - E1 (Medium): a writer who deposits between bind and cutoff pays for `pendingPremium` at entry and loses that slice if the layer is cancelled and the premium refunded. Candidate direction: on cancel, return the refunded premium's share from entrants rather than pro rata, or forbid deposits between bind and cutoff for layers that can still be cancelled.
+
+## Re-review (2026-09-28): 6af8b2b, 9210093, 94edf3b, 79320b8
+
+Scope: Pricer rewrite (CoC load, per-market tables, on-chain vol scale, Solidity and Stylus), Capacity events, Treaty DST reference/fixing rule and `StillFixable`. Repo suite: 97/97 non-fork tests pass, 5/5 fork tests pass, `PricerParity` passes (ffi, `pricer_cli` built). Scratch tests below live in `/tmp/heracles-rr/proj/test/ReReview.t.sol` (repo contracts copied unchanged), all red.
+
+Verdict for the testnet redeploy: FIX FIRST (P1 and P2 break or misprice every bind on the planned deploy; P3 is a money-path fairness bug).
+
+### High
+
+#### P1. Stylus `quote` panics on every real Chainlink proxy round id (pricer/src/lib.rs:87)
+
+`latest_id.to::<u64>()` panics when the U80 does not fit in u64. Chainlink proxy ids are `phaseId << 64 | aggregatorRound`, so any live proxy overflows. Live SPY/USD on Arbitrum Sepolia (`0x4fB4...0b06`) returned `roundId = 18446744073709553978` (phase 1, round 2362) on 2026-09-28. With `panic = "abort"` the Stylus call traps, `pricer.quote` reverts, and every `Treaty.bind` through the Stylus pricer reverts. The Solidity twin keeps the phase bits and works (fork tests). `PricerParity` only covers `price_core`, and the Stylus unit test uses an unset feed, so nothing exercised this path.
+Repro: `/tmp/heracles-rr/u80` (`cargo run --offline`), panics with `Uint conversion error: Overflow(80, 2362, 18446744073709551615)`.
+Fix: do the arithmetic in U80 (`latest_id < U80::from(VOL_ROUNDS)`, `latest_id - U80::from(k)`). Add a Stylus test with a mocked feed that returns a phase-1 id. Also note that Solidity does not wrap `latestRoundData` in `try`, but Rust falls back to neutral, which contradicts docs/pricing.md step 5. Separately, the deployed Stylus pricer `0x0202...95da` has the old `quote(int256[],uint256,uint256)` ABI, so reusing it as `PRICER` also makes every bind revert.
+
+#### P2. Market-to-table mapping is positional, and every configured deploy gets it wrong (Pricer.sol:117-122, core/src/lib.rs `table_for`, script/Deploy.s.sol:33-34)
+
+The testnet Treaty has one feed, SPY at index 0, so SPY exposure is priced on the NVDA table: README example premium 5,062.54 USDG instead of 1,059.92 USDG (4.8x). The repo's own 9-market fork test (`GapTreaty.fork.t.sol:63-64`) orders the feeds SPY, NVDA, AAPL, MSFT..., so none of the four sourced tables reaches its own market.
+Test: `test_RR3_singleSpyFeedMustPriceOnSpyTable` (red: `5062541027 != 1059922732`).
+Fix: the pricer needs an explicit table id for each market (a constructor array in both implementations, or a table id per feed address). Position must not decide it.
+
+### Medium
+
+#### P3. `StillFixable` almost never fires on a live feed, so each side can cancel the layer that goes against it (Treaty.sol:414, 436-453)
+
+`_anyMarketFixable` only looks at the latest round and its predecessor. By `expiry + 72h`, a feed with a 24h heartbeat has printed about three rounds past expiry, so the check returns false even though the valid first round after expiry is still in the current phase. A market whose reference was never set is skipped as dead even when its feed is live (line 441). Result: a buyer whose layer finished out of the money leaves it unfixed and cancels for a full premium refund, a free option. A writer can still cancel a layer that should pay (G2 above, still open). This does not close G1/G2.
+Tests: `test_RR1_cancelOfFixableLayerMustRevert` and `test_RR1b_cancelWithUnsetReferenceOnLiveFeedMustRevert` (red: cancel succeeds and refunds the premium).
+Fix (O(1) per market): a market counts as dead only if `latest.updatedAt < boundary`, or the current phase's first round `(phaseId << 64 | 1)` has `updatedAt >= boundary` (the crossing happened in an older phase). Use the same test for the reference boundary. Until then, the redeploy needs a keeper that calls `setReference` and `fix`.
+
+#### P4. The vol scale is a heartbeat and calendar artefact that the buyer can time (Pricer.sol:131-156, src/lib.rs:80-122)
+
+The mean move per round has no time normalisation. On a heartbeat-driven feed, the weekend heartbeats republish the same price and add zero-bps rounds. Over the last 35 rounds of the live Sepolia SPY feed the scale ranged from 0.52x to 1.06x, median about 0.74x, and it never reached the 1.0x "normal" in a normal week. Inside one bind window (Mon 09-21 to Fri 09-25) the same layer quotes 1,922.50 USDG on Wednesday at 0.52x and 4,209.82 USDG on Thursday at 0.88x, a 2.19x swing. Nobody can move Chainlink rounds, but the buyer can choose when to bind, and that choice goes against the writers.
+Test: `test_RR4_volScaleTimingOption` (real round data; red: 54% delta against a 10% tolerance).
+Fix for the redeploy: `MIN_SCALE_PPM = 1_000_000` in both implementations, so the scale can only raise the price, never lower it below the table. Later: realised variance per market-open hour from `updatedAt`, skipping republished answers.
+
+#### P5. The first round after close has no latest bound (Treaty.sol:342-358)
+
+The reference is safe only while the feed prints a round between Friday close and the Sunday-evening overnight session. The live Sepolia feed does: Saturday heartbeats at 13:31 and 16:18 UTC carried the Friday close. If a feed pauses heartbeats while the venue is closed, the reference becomes the post-news Sunday price.
+Test: `test_RR2_referenceMustNotAbsorbWeekendGap` (hypothetical feed config; red: 4,237 USDG paid against a 60,000 USDG true loss).
+Fix: revert `setReference` if the chosen round's `updatedAt` is later than about close + 24h (let it go to cancel instead). Check the mainnet feed's weekend heartbeat before mainnet.
+
+### Low / Info
+
+- Holiday Mondays still settle to zero on a republished heartbeat. This is a known, tested limitation (`ReferenceRule.t.sol`). `bind` should refuse weeks whose Monday is an NYSE holiday, and the pricer tables include those weekends measured to the Tuesday open, so the priced risk and the settled risk differ.
+- `WEEKEND_HOURS = 66` does not match the lock. Capital is reserved from bind (as early as Monday 00:00 UTC) until settlement, up to about 7.5 days, and the EST weeks run 67h.
+- README.md:20 still claims the retracted 4.06x gas ratio, and README.md:98 still shows the old `1.25*EL + 0.5*TVaR95` formula.
+- Capacity events (94edf3b): additive only, each emitted after its state change, and the semantics are unchanged (diff checked line by line). The early `return` on a zero amount emits nothing, which is fine.
+- DST math: `weekWindow`/`fridayCloseOf`/`_isUsDst` are correct at both switch weekends, and a DST change can never fall between Friday 00:00 UTC and the Friday close. The bind cutoff (19:30 UTC) stays before the reference under both regimes, so a buyer never sees the reference before binding. `setReference` and `fix` accept exactly one round for each boundary, so nothing can be front-run or chosen.
+
+### Pricing (item 2): the CoC load is too thin for writers
+
+README example (long $2M, NVDA table, retention $20k, limit $60k, 1.0x): EL 5,040.08, TVaR95 54,728, P(any payout) 21.8% per weekend, P(full-limit loss) 3.4%. Premium 5,062.54, which is EL + 22.46. The writer's expected excess return is 0.037% of locked capital per weekend: 1.95% a year on a 1-week lock, below the USDG risk-free rate. The payout standard deviation is 22% of the limit per weekend, so the annualised Sharpe ratio is about 0.01. The standard error of EL from 504 scenarios is 590 (11.7% of EL; 25% for SPY), about 26x the load.
+
+Recommended: `premium = EL + 0.03 * (TVaR95 - EL) + 0.04 * limit * 7/365`. This is a per-weekend risk load (not prorated) plus the risk-free rate on the fully collateralised limit for the real one-week lock. Keep the 50 bps rate-on-line floor and `MIN_SCALE_PPM = 1.0x`.
+- README example: 5,040.08 + 1,490.64 + 46.03 = 6,576.75 USDG, rate on line 10.96%, 1.305x EL. Writer excess return is 129% a year on the limit against a 159% annual standard deviation (Sharpe about 0.8).
+- SPY table, same layer: 1,051.19 + 579.50 + 46.03 = 1,676.72 USDG, rate on line 2.79%, 1.60x EL, Sharpe about 0.7.
+- Both sit above the bootstrap p90 of EL (1.15x EL for NVDA, 1.34x for SPY), so the load covers the estimation error.
+- Buyer side: the net cost of cover beyond expected recoveries is 4.0% a year of a $2M NVDA exposure and 1.6% a year for SPY.
+Numbers: `/tmp/heracles-rr/econ.py` on `evidence/gap-tables/*.json`.
+
+### Blind spots
+
+- The Stylus panic is shown with a standalone repro of the same expression and types, not with a deployed Stylus call.
+- The benchmark comparison (cat bond spreads, Nexus, Sherlock) was not re-fetched in this re-review.
+- Mainnet Arbitrum One equity-feed weekend and holiday heartbeat behaviour was not read. Only Sepolia SPY rounds 2320-2362 were read.
