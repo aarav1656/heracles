@@ -15,30 +15,36 @@ reinsurance layer that pays it. Heracles (contract `Treaty`): `contracts/src/Tre
 
 | Contract | Address | Role |
 |---|---|---|
-| Treaty | [`0x889F1fA08DE3d280511432893A1D7e5DB66d3252`](https://sepolia.arbiscan.io/address/0x889F1fA08DE3d280511432893A1D7e5DB66d3252) | bind, fix, settle, claim |
-| Capacity | [`0xe645d83EA67ca1ECC7689f48Eb65eB2dE2e8933D`](https://sepolia.arbiscan.io/address/0xe645d83EA67ca1ECC7689f48Eb65eB2dE2e8933D) | ERC-4626 USDG writer vault, depositWithPermit |
-| Pricer (Rust/Stylus) | [`0x0202D849Dc7CC7b643ff62Cf3E81130EA30D95da`](https://sepolia.arbiscan.io/address/0x0202D849Dc7CC7b643ff62Cf3E81130EA30D95da) | on-chain premium, measured 4.06x less gas than the Solidity twin |
+| Treaty | [`0x222AFa24403d8118a66C5b2F0f26Aa0ea91Dd794`](https://sepolia.arbiscan.io/address/0x222AFa24403d8118a66C5b2F0f26Aa0ea91Dd794) | bind, fix, settle, claim |
+| Capacity | [`0x29750a2018934f1Ca52d1F6940d89AAE8E34bd3D`](https://sepolia.arbiscan.io/address/0x29750a2018934f1Ca52d1F6940d89AAE8E34bd3D) | ERC-4626 USDG writer vault, depositWithPermit, created by the Treaty constructor |
+| Pricer (Rust/Stylus) | [`0xbe99217180a5fcb83372375b0928c971dfa71f88`](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) | on-chain premium, measured 8.01x less L2 execution gas than the Solidity twin |
 | USDG (Paxos testnet) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) | settlement asset |
 
-Redeployed 2026-09-27 for the Capacity permit fix
-(commit 3f19b79, 76/76 tests):
-Treaty and Capacity are new, the Stylus Pricer is reused unchanged. Treaty and Capacity
-are Sourcify-verified (`exact_match`, both creation and runtime, checked live via
-`sourcify.dev/server/v2/contract/421614/<address>`); the Pricer is not, since Sourcify's
-Solidity route doesn't take Stylus/WASM bytecode and `cargo stylus verify`'s own
-reproducible-build route needs a Docker daemon that was unavailable in this deploy run.
-`depositWithPermit(uint256,address,uint256,uint8,bytes32,bytes32)` is live: deployer
-deposited 2.0 USDG by permit, tx
-[`0x748cc1db...c2e7078`](https://sepolia.arbiscan.io/tx/0x748cc1dbe9b5a6296d5fe29878822130808f70ee521baf0d57ae11912c2e7078),
-status success, input selector `0x50921b23` matching `cast sig` of the function exactly.
-The documented second wallet (`contracts/testnet/.taker.env`) holds 0 ETH and 0 USDG, so
-the second-writer-deposits-by-permit step is blocked on funding, not on code. A bind
-attempted at redeploy time (Sunday, already past that week's Friday 19:30 UTC cutoff)
-reverted `BadTiming` as designed, tx
-[`0x87b25006...d425f06`](https://sepolia.arbiscan.io/tx/0x87b25006ebd751fda0ef5f1107a22bd9e8b4e7fe53420314341b2dd70d425f06);
-the gate reopens Monday 2026-09-28 00:00 UTC against next week's Friday 2026-10-02 19:30
-UTC cutoff, and a live `Bound` event needs that real chain time to pass, which it had not
-as of this deploy.
+Redeployed 2026-09-28: Treaty and Capacity share one deploy tx
+([`0xa3583c8b...dba3eb423`](https://sepolia.arbiscan.io/tx/0xa3583c8b74f8fd3b0a5d51491893e14a2e3b888e5b4491eb115c4e2dba3eb423),
+block 313,708,353, status success), and the Stylus Pricer above is a fresh deploy too, tx
+[`0x01a37192...b4ee945e7d`](https://sepolia.arbiscan.io/tx/0x01a37192c882dc7f856baf81bbee70679267b983723ca20e7b9460b4ee945e7d),
+block 313,689,917: 25,765 bytes compressed, deployed as two fragments behind a 48-byte
+root contract, constructed with table id `[2]` (SPY). Treaty and Capacity are
+Sourcify-verified (`exact_match`, both creation and runtime, matchId 53784936 and
+53784937, checked live via `sourcify.dev/server/v2/contract/421614/<address>`); the
+Pricer is not, since Sourcify's Solidity route doesn't take Stylus/WASM bytecode and
+`cargo stylus verify`'s own reproducible-build route needs a Docker daemon that was
+unavailable in this deploy run.
+
+Every wiring read on the new Treaty checks out live: `pricer()` and `capacity()` point at
+the two addresses above, `usdg()` points at the Paxos USDG address, and
+`minRateOnLineBps()` reads 50. The Pricer itself reads back its one configured market:
+`tableIdAt(0)` returns `2` (SPY), `tableIdAt(1)` reverts `MissingTable`. A live quote at
+block 313,690,038, long 2,000,000 USDG of SPY with a 20,000 USDG retention and a 60,000
+USDG limit, against the live SPY/USD feed
+[`0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06`](https://sepolia.arbiscan.io/address/0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06)
+at round id `18446744073709553978` (the Chainlink phase id sits in the upper bits of that
+round, the same input shape that used to panic the earlier pricer): premium 1,676.722158
+USDG, EL 1,051.190476 USDG, TVaR95 20,368 USDG.
+
+Deposit and bind are still pending on this deployment: the owner wallet holds 0 USDG,
+since the Paxos testnet faucet has not delivered to it yet.
 
 Wired for Arbitrum One: the L2 Sequencer Uptime feed
 [`0xFdB631F5EE196F0ed6FAa767959853A9F217697D`](https://arbiscan.io/address/0xFdB631F5EE196F0ed6FAa767959853A9F217697D)
@@ -75,12 +81,14 @@ instrument, a cross-market design rather than a single-ticker one.
 Ostium and gTrade's capital, open interest and Chainlink feeds already sit on Arbitrum
 One; the treaty must lock and pay a vault's cover without a claims adjuster, and writers
 must be able to recompute the price from public data. The pricer runs in Stylus because
-it is re-run on every bind and every capacity withdrawal check: measured 4.06x less
-total gas than the identical Solidity pricer (bit-identical outputs, 5 cases, live on
-Robinhood Chain testnet at the same ArbOS version as Arbitrum Sepolia;
-`spikes/stylus-pricer/FINDINGS.md`), measured pre-fix; the checked-arithmetic overhead
-added for L1 has not been remeasured, so treat 4.06x as the pre-fix baseline, not the
-current ratio. The treaty gates on Arbitrum One's real L2
+it is re-run on every bind and every capacity withdrawal check: measured 8.01x less L2
+execution gas than the Solidity twin (7.93x less total gas), read live at block
+313,704,736 via NodeInterface's `gasEstimateComponents` against a Solidity twin deployed
+at [`0x6aAf1b58939d55d1142a34aE02903bB788E9e771`](https://sepolia.arbiscan.io/address/0x6aAf1b58939d55d1142a34aE02903bB788E9e771)
+for this comparison only (`script/DeployPricerTwin.s.sol`): Stylus 584,865 total gas /
+578,444 L2 execution gas, Solidity 4,639,494 total / 4,632,865 L2 execution, identical
+outputs. That figure covers a single-market call; a multi-market call is not measured.
+Full numbers in `docs/pricing.md` under "Gas". The treaty gates on Arbitrum One's real L2
 Sequencer Uptime feed and settles in real Paxos USDG on testnet
 (`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`).
 
@@ -172,26 +180,18 @@ cases before the fix (Solidity via `forge test`, Stylus via `cargo test`, and bo
 re-checked live against the deployed contracts via `cast call`): all three sides returned
 identical premium, el and tvar95; the redeployed pricer still returns nonzero, consistent
 values live post-fix (`quote([2000000000000],20000000000,60000000000)` returns
-`(33664099206, 5040079365, 54728000000)`). Redeployed size 13.3 KB, activation fee
-0.000084 ETH. The measured Stylus-vs-Solidity gas ratio for this exact pricer, from
-`spikes/stylus-pricer/FINDINGS.md`, is **4.06x** less total gas (average of 5 cases,
-measured pre-fix; the checked-arithmetic overhead was not remeasured). No other Stylus
-performance number is claimed here.
+`(33664099206, 5040079365, 54728000000)`). The 2026-09-28 redeploy compresses to 25,765
+bytes, split across two fragments behind a 48-byte root contract, activation fee 0.000084
+ETH. The measured Stylus-vs-Solidity gas ratio for that deploy, read live via
+NodeInterface's `gasEstimateComponents` at block 313,704,736, is **8.01x** less L2
+execution gas (7.93x less total gas, single-market call; see `docs/pricing.md` under
+"Gas"). No other Stylus performance number is claimed here.
 
 ## What works
 
-- Full local suite: 100 Foundry tests pass across 19 suites, 0 failed, 0 skipped
-  (`forge test --summary`): 15 Treaty unit, 5 Attack, 11 AttackReview post-fix, 13
-  GuardMutation (the three previously-deletable guards plus every `onlyTreaty`/
-  `WrongState` check, each with its own red-then-green mutation), 9 Pricer, 2
-  PricerParity (Solidity/Rust cross-language check via `vm.ffi`), 7 WeekWindow
-  calendar-math unit tests, 3 ReferenceRule (fixed EDT/EST `fridayCloseOf` checks plus
-  the Labor Day 2026 holiday-heartbeat test), 2 TreatyPrecision, 1 Solvency fuzz at 256
-  runs, 2 invariant suites at 256 runs / 128,000 calls each (`invariant_noViolations`,
-  `invariant_ledgersMatchLayers`, `invariant_gateMatchesOracle`), plus 5 fork tests
-  against live Arbitrum One/Sepolia state (pinned blocks, fails rather than skips if the
-  RPC is unavailable). This count moves as tests are added; verify with
-  `forge test --summary` rather than trusting this number stale.
+- Full local suite, 2026-09-28: 120 Foundry tests pass across 22 suites, 0 failed, 0
+  skipped. This count moves as tests are added; verify with `forge test --summary`
+  rather than trusting this number stale.
 - Mutation checks (this build, each independently confirmed red then green): removing
   the H2 premium floor turns `test_H2_premiumFloorPreventsZeroPremiumLayer` red; removing
   the H3 liabilities subtraction in `Capacity.totalAssets()` turns
@@ -245,7 +245,8 @@ performance number is claimed here.
   but not wired into `pricer/src/lib.rs`; every bound market still prices off the one
   measured NVDA distribution.
 - Stylus re-run at the treaty's real target scale (1,000 scenarios x 40 markets): the
-  measured 4.06x is small-scale; it is not claimed to hold at scale.
+  measured 8.01x is a single-market, small-scale figure; it is not claimed to hold at
+  scale.
 - A staged or invented reviewer, contact, or buyer acknowledgment: no one at Ostium or
   Gains has confirmed seeing this yet.
 - ERC-4337 gasless bind: a new signing path, not built for this deadline.
@@ -255,13 +256,13 @@ performance number is claimed here.
 - 2026-09-30: three markets (AAPL, SPY, TSLA) get their own gap table instead of the
   shared NVDA one.
 - 2026-10: post the comp numbers above to Ostium's own public channel and log any reply.
-- Later: re-run the Stylus gas spike at 1,000 scenarios x 40 markets before repeating the
-  4.06x figure at scale.
+- Later: re-run the Stylus gas comparison at 1,000 scenarios x 40 markets before
+  repeating the 8.01x figure at scale.
 
 ## Contributors
 
 Built by aarav1656, AI-assisted. The pricing model, the security fixes in
-`SECURITY-REVIEW.md`, and the decision to cut per-market tables and the 4.06x-at-scale
+`SECURITY-REVIEW.md`, and the decision to cut per-market tables and the 8.01x-at-scale
 claim rather than overstate them, are all this author's calls.
 
 ## Run instructions
