@@ -1,149 +1,238 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useConnection } from 'wagmi';
+import { useConnection, usePublicClient } from 'wagmi';
+import type { PublicClient } from 'viem';
 import { CAPACITY_ADDRESS, PRICER_ADDRESS, TREATY_ADDRESS, USDG_ADDRESS } from '../abi';
 import { explorer } from '../chain';
 import { useBook, type BookSnapshot, type Layer } from '../hooks/useBook';
 import { useNow } from '../hooks/useNow';
+import { useReferenceQuote } from '../hooks/useReferenceQuote';
+import { useWeekWindow } from '../hooks/useWeekWindow';
 import { Stamp } from '../components/Stamp';
 import { SettleItem, ClaimRow } from '../components/SettlePanel';
 import { LayerTower } from '../components/LayerTower';
+import { GapChart } from '../components/GapChart';
+import { WeekStrip } from '../components/WeekStrip';
 import { fmtClock, fmtCountdown, fmtPx, fmtStamp, fmtUsdg, short } from '../lib/format';
 import { LAYER_STATES } from '../lib/treaty';
 import { explainError } from '../lib/revert';
+import { RECORDED, REFERENCE, TABLES, backtest, extremes, fmtBps, fmtDay, type Ticker } from '../lib/gaps';
+
+const usd0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const usd2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const toUsd = (v: bigint) => Number(v) / 1e6;
 
 export function Overview() {
-  useEffect(() => { document.title = 'Heracles: book'; }, []);
+  useEffect(() => { document.title = 'Heracles: weekend-gap cover for perp LP vaults'; }, []);
   const conn = useConnection();
+  const client = usePublicClient() as PublicClient | undefined;
   const now = useNow();
   const q = useBook(conn.address);
+  const quote = useReferenceQuote();
+  const win = useWeekWindow(client, now);
+  const [ticker, setTicker] = useState<Ticker>('SPY');
+  const table = TABLES.find((t) => t.ticker === ticker)!;
+  const ext = useMemo(() => extremes(table.weekends), [table]);
+  const bt = useMemo(() => backtest(table.weekends, REFERENCE.exposure, REFERENCE.retention, REFERENCE.limit), [table]);
+  const spyFeed = q.data?.value.markets[0];
+  const book = q.data?.value;
 
   return (
     <>
-      <h1 className="visually-hidden">Heracles: the book</h1>
+      <header className="lead">
+        <h1>Weekend-gap cover for perp LP vaults</h1>
+        <p>
+          A stock perp vault stays exposed while the market is shut. When a stock reopens on Monday
+          away from Friday's close, the vault keeps the first loss and a Heracles layer pays the
+          next slice, priced on chain from 504 recorded weekends and settled from Monday's first
+          Chainlink round.
+        </p>
+      </header>
 
-      {/* The figure leads, one line of context under it, no h1 wrapping it
-          (gmx-pools study.md, signature move 1). */}
-      <div className="headline">
-        {q.data ? (
-          <>
-            <span className="big">{fmtUsdg(q.data.value.capacity.balance)}<small>USDG</small></span>
-            <p>Pool balance for excess-of-loss reinsurance on perp vault risk, quoted live by the Stylus pricer.</p>
-            <p className="stamp" style={{ marginTop: 6 }}><Stamp block={q.data.block} label="book read at" /></p>
-          </>
-        ) : q.error ? (
-          <p className="prose err" role="alert"><b>{explainError(q.error).name}</b> {explainError(q.error).words}</p>
-        ) : (
-          <p className="prose">Reading the treaty book at the latest block…</p>
-        )}
+      <div className="mbar">
+        <div className="mtabs" role="tablist" aria-label="Market">
+          {TABLES.map((t) => (
+            <button
+              key={t.ticker}
+              role="tab"
+              type="button"
+              aria-selected={t.ticker === ticker}
+              className={t.ticker === ticker ? 'on' : undefined}
+              onClick={() => setTicker(t.ticker)}
+            >
+              {t.ticker}
+              {t.ticker === 'SPY' && <small>live</small>}
+            </button>
+          ))}
+        </div>
+        <dl className="mstats">
+          <div>
+            <dt>Worst weekend</dt>
+            <dd><span className="num dn">{fmtBps(ext.down.gap)}</span><small>{fmtDay(ext.down.friday)}</small></dd>
+          </div>
+          <div>
+            <dt>Biggest up gap</dt>
+            <dd><span className="num up">{fmtBps(ext.up.gap)}</span><small>{fmtDay(ext.up.friday)}</small></dd>
+          </div>
+          <div>
+            <dt>Gaps past 1%</dt>
+            <dd><span className="num">{ext.beyond1pct}</span><small>of {table.weekends.length} weekends</small></dd>
+          </div>
+          <div>
+            <dt>{ticker === 'SPY' ? 'SPY/USD feed' : `${ticker} feed`}</dt>
+            <dd>
+              {ticker !== 'SPY' ? (
+                <small>not on Sepolia; fork-tested</small>
+              ) : spyFeed ? (
+                <><span className="num">{fmtPx(spyFeed.latest.answer)}</span><small>{fmtStamp(spyFeed.latest.updatedAt).slice(5, 16)} UTC</small></>
+              ) : q.error ? (
+                <small>read failed</small>
+              ) : (
+                <small>reading</small>
+              )}
+            </dd>
+          </div>
+        </dl>
       </div>
 
-      <details className="how">
-        <summary>How it works</summary>
-        <p>
-          A vault declares its Friday exposure across the Chainlink equity feeds, the Stylus
-          pricer quotes the layer from 504 historical weekend gaps, USDG writers fund the
-          limit, and the first fresh Monday round settles it. No price setter, no adjuster.
-        </p>
-      </details>
+      <div className="desk">
+        <section className="panel" aria-labelledby="chart-h">
+          <div className="panel-head">
+            <h2 id="chart-h">{ticker}: every weekend since {fmtDay(table.weekends[0].friday).slice(-4)}, and the layer across it</h2>
+          </div>
+          <GapChart table={table} layer={REFERENCE} />
+        </section>
 
-      {q.data && (
-        <div className="sheet">
-          <div>
-            <section className="sec block" aria-label="Layers on the book">
-              <div className="sec-head">
-                <h2>Layers on the book</h2>
-              </div>
-              <div className="sec-body">
-                <div className="ltable">
-                  <div className="ltable-head" role="row">
-                    <span>Market</span>
-                    <span>Exposure</span>
-                    <span>Retention / Limit</span>
-                    <span>Premium</span>
-                    <span>Fixing countdown</span>
-                    <span>State</span>
-                  </div>
-                  {q.data.value.layers.length === 0 ? (
-                    <div className="ltable-row empty">
-                      <div className="ltable-grid">
-                        <span className="cell market">
-                          <span className="market-icon" aria-hidden="true">S</span>SPY
-                        </span>
-                        <span className="cell note">{bindWindowNote(now)}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    q.data.value.layers.map((l) => (
-                      <LayerRow key={l.id.toString()} layer={l} book={q.data!.value} now={now} />
-                    ))
-                  )}
-                </div>
-              </div>
-            </section>
+        <aside className="panel ticket" aria-labelledby="ticket-h">
+          <h2 id="ticket-h" className="ticket-h">Reference layer</h2>
+          <p className="terms">
+            A vault long <b className="num">{usd0.format(REFERENCE.exposure)}</b> USDG of {ticker} keeps the
+            first <b className="num">{usd0.format(REFERENCE.retention)}</b> of a weekend loss; the layer pays the
+            next <b className="num">{usd0.format(REFERENCE.limit)}</b>.
+          </p>
+          {ticker === 'SPY' ? (
+            <SpyQuote quote={quote} bt={bt} />
+          ) : (
+            <>
+              <p className="prose tight">
+                Not quotable on this deploy: the Sepolia pricer holds the SPY table only
+                (<code>tableIdAt(1)</code> reverts <code>MissingTable</code>). The same layer
+                run over <code>{table.file}</code> at the neutral 1.0x volatility scale:
+              </p>
+              <span className="fig">{usd2.format(bt.el)}<small>USDG expected loss</small></span>
+              <dl className="tk">
+                <dt>TVaR95</dt><dd className="num">{usd2.format(bt.tvar95)}</dd>
+                <dt>Weekends it pays</dt><dd><span className="num">{bt.paid}</span> of 504</dd>
+                <dt>Full limit</dt><dd><span className="num">{bt.exhausted}</span> of 504</dd>
+              </dl>
+            </>
+          )}
+          <div className="ticket-cta">
+            <Link className="btn" to="/bind">Price your own layer</Link>
+            <Link className="btn ghost" to="/write">Write capacity</Link>
+          </div>
+          <p className="fine">
+            The Stylus pricer runs this quote with 8.01x less L2 execution gas than its Solidity twin
+            on the same call (block 313,704,736, <code>docs/pricing.md</code>).
+          </p>
+        </aside>
+      </div>
 
-            <section className="sec block" aria-label="Markets">
-              <div className="sec-head">
-                <h2>Feed prices</h2>
-              </div>
-              <div className="sec-body">
-                <dl className="kv">
-                  {q.data.value.markets.map((m) => (
-                    <div key={m.address} style={{ display: 'contents' }}>
-                      <dt><a href={explorer.address(m.address)} target="_blank" rel="noreferrer">SPY feed</a></dt>
-                      <dd>
-                        <span className="num">{fmtPx(m.latest.answer)}</span>{' '}
-                        <span className="muted">updated {fmtStamp(m.latest.updatedAt)}</span>
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
+      <div className="desk lower">
+        <section className="panel" aria-labelledby="week-h">
+          <div className="panel-head"><h2 id="week-h">This cover week</h2></div>
+          {win ? <WeekStrip win={win} now={now} /> : <p className="prose">Reading the week window from the treaty.</p>}
+        </section>
+
+        <section className="panel" aria-labelledby="book-h">
+          <div className="panel-head">
+            <h2 id="book-h">The book</h2>
+            {q.data && <span className="right"><Stamp block={q.data.block} label="read at" /></span>}
+          </div>
+          {q.error ? (
+            <p className="prose err" role="alert"><b>{explainError(q.error).name}</b> {explainError(q.error).words}</p>
+          ) : !book ? (
+            <p className="prose">Reading the treaty book at the latest block.</p>
+          ) : (
+            <>
+              <dl className="tk">
+                <dt>Layers bound</dt><dd className="num">{book.layers.length}</dd>
+                <dt>Writer capacity</dt><dd><span className="num">{fmtUsdg(book.capacity.balance)}</span> USDG</dd>
+                <dt>Free to bind</dt><dd><span className="num">{fmtUsdg(book.capacity.free)}</span> USDG</dd>
+              </dl>
+              {book.capacity.balance === 0n && book.layers.length === 0 && (
                 <p className="prose">
-                  Sepolia carries one live equity feed, so this deploy binds a single market.
-                  The four-market book (NVDA, AAPL, SPY, TSLA) is proven on a fork of Arbitrum One state.
+                  Nothing is bound on this deployment yet, and no writer has deposited, so a layer
+                  cannot bind until one does. <Link to="/write">Be the first writer</Link>.
                 </p>
-              </div>
-            </section>
-          </div>
+              )}
+            </>
+          )}
+        </section>
+      </div>
 
-          <div className="rail">
-            <section className="sec block" aria-label="Writer capacity">
-              <div className="sec-head">
-                <h2>Writer capacity</h2>
-              </div>
-              <div className="sec-body">
-                <div className="cell">
-                  <CapacityStrip
-                    locked={q.data.value.capacity.locked}
-                    owed={q.data.value.capacity.liabilities}
-                    free={q.data.value.capacity.free}
-                    balance={q.data.value.capacity.balance}
-                    pending={q.data.value.capacity.pendingPremium}
-                  />
-                  {q.data.value.capacity.balance === 0n ? (
-                    <p className="prose">The pool is empty. No writer has deposited USDG yet, so no layer can bind.</p>
-                  ) : (
-                    <p className="prose"><Link to="/write">Write capacity</Link> to fund the layer, or withdraw what is free.</p>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            <section className="sec block" aria-label="Contracts">
-              <div className="sec-head">
-                <h2>Contracts</h2>
-              </div>
-              <div className="sec-body">
-                <dl className="kv">
-                  <dt>treaty</dt><dd><a className="tx" href={explorer.address(TREATY_ADDRESS)} target="_blank" rel="noreferrer">{short(TREATY_ADDRESS)}</a></dd>
-                  <dt>capacity</dt><dd><a className="tx" href={explorer.address(CAPACITY_ADDRESS)} target="_blank" rel="noreferrer">{short(CAPACITY_ADDRESS)}</a></dd>
-                  <dt>pricer</dt><dd><a className="tx" href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a></dd>
-                  <dt>USDG</dt><dd><a className="tx" href={explorer.address(USDG_ADDRESS)} target="_blank" rel="noreferrer">{short(USDG_ADDRESS)}</a></dd>
-                </dl>
-              </div>
-            </section>
+      {book && book.layers.length > 0 && (
+        <section className="panel" aria-label="Layers on the book" style={{ marginTop: 16 }}>
+          <div className="panel-head"><h2>Layers on the book</h2></div>
+          <div className="ltable">
+            <div className="ltable-head" role="row">
+              <span>Market</span>
+              <span>Exposure</span>
+              <span>Retention / Limit</span>
+              <span>Premium</span>
+              <span>Fixing countdown</span>
+              <span>State</span>
+            </div>
+            {book.layers.map((l) => (
+              <LayerRow key={l.id.toString()} layer={l} book={book} now={now} />
+            ))}
           </div>
-        </div>
+        </section>
+      )}
+
+      <p className="contracts">
+        Arbitrum Sepolia: treaty <a className="tx" href={explorer.address(TREATY_ADDRESS)} target="_blank" rel="noreferrer">{short(TREATY_ADDRESS)}</a>
+        {' '}· capacity <a className="tx" href={explorer.address(CAPACITY_ADDRESS)} target="_blank" rel="noreferrer">{short(CAPACITY_ADDRESS)}</a>
+        {' '}· pricer <a className="tx" href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>
+        {' '}· USDG <a className="tx" href={explorer.address(USDG_ADDRESS)} target="_blank" rel="noreferrer">{short(USDG_ADDRESS)}</a>
+      </p>
+    </>
+  );
+}
+
+type QuoteQ = ReturnType<typeof useReferenceQuote>;
+
+/** The live Stylus quote on the reference layer, cross-checked against the table in the browser. */
+function SpyQuote({ quote, bt }: { quote: QuoteQ; bt: ReturnType<typeof backtest> }) {
+  if (quote.isLoading) return <p className="prose">Quoting the Stylus pricer at the latest block.</p>;
+  const live = quote.data;
+  const premium = live ? toUsd(live.premium) : RECORDED.premium;
+  const el = live ? toUsd(live.el) : RECORDED.el;
+  const tvar = live ? toUsd(live.tvar) : RECORDED.tvar;
+  const agrees = Math.abs(el - bt.el) < 0.000001 * REFERENCE.limit;
+  return (
+    <>
+      <span className="fig hero">{usd2.format(premium)}<small>USDG premium</small></span>
+      <p className="ratio"><b className="num">{((premium / REFERENCE.limit) * 100).toFixed(2)}%</b> of the limit, for one weekend</p>
+      <dl className="tk">
+        <dt>Expected loss</dt><dd className="num">{usd2.format(el)}</dd>
+        <dt>TVaR95</dt><dd className="num">{usd2.format(tvar)}</dd>
+        <dt>Weekends it pays</dt><dd><span className="num">{bt.paid}</span> of 504</dd>
+        <dt>Full limit</dt><dd><span className="num">{bt.exhausted}</span> of 504</dd>
+      </dl>
+      {live ? (
+        <p className="src">
+          Stylus pricer <a className="tx" href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a> at
+          block <a className="num" href={explorer.block(live.block)} target="_blank" rel="noreferrer">#{live.block.toLocaleString('en-US')}</a>.
+          {agrees
+            ? ' Rerun in this browser over SPY.json, the expected loss matches.'
+            : ` Browser rerun at 1.0x volatility gives ${usd2.format(bt.el)}; the gap is the live volatility scale.`}
+        </p>
+      ) : (
+        <p className="src err-inline">
+          Live quote failed ({quote.error ? explainError(quote.error).name : 'no client'}); showing the recorded quote at
+          block 313,690,038 (README).
+        </p>
       )}
     </>
   );
@@ -262,12 +351,3 @@ export function CapacityStrip({ locked, owed, free, balance, pending }: { locked
   );
 }
 
-/** Mirrors Treaty.weekWindow: binding is open from Monday 00:00 UTC until Friday 19:30 UTC. */
-function bindWindowNote(now: number): string {
-  const day = (new Date(now * 1000).getUTCDay() + 6) % 7;
-  const monday = Math.floor(now / 86400 - day) * 86400;
-  const cutoff = monday + 4 * 86400 + 19.5 * 3600;
-  return now < cutoff
-    ? 'No layers yet this week. Binding is open until Fri 19:30 UTC.'
-    : 'No layers this week. Binding reopens Mon 00:00 UTC.';
-}

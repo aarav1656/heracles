@@ -9,38 +9,20 @@ import { useTx } from '../hooks/useTx';
 import { useOnChain } from '../components/Wallet';
 import { Stamp } from '../components/Stamp';
 import { TxNote } from '../components/TxNote';
-import { LayerTower } from '../components/LayerTower';
+import { GapChart } from '../components/GapChart';
+import { WeekStrip } from '../components/WeekStrip';
+import { useWeekWindow, reopensAt as reopenOf } from '../hooks/useWeekWindow';
+import { Link } from 'react-router-dom';
+import { TABLES, backtest, fmtBps } from '../lib/gaps';
+
+const spy = TABLES[0];
 import { fmtClock, fmtCountdown, fmtUsdg, parseExposure, parseUsdg, short } from '../lib/format';
 import { explainError } from '../lib/revert';
 import { useConnection } from 'wagmi';
 
 type Quote = { premium: bigint; el: bigint; tvar: bigint; block: bigint };
-type Window = { cutoff: number; expiry: number; ref: number };
-
-/**
- * The week's take cutoff, Friday reference (`fridayCloseOf`), and Monday fixing, all read from
- * the contract's own calendar so the DST-aware close/expiry math is never duplicated here.
- */
-function useWeekWindow(client: PublicClient | undefined, now: number): Window | undefined {
-  const [win, setWin] = useState<Window>();
-  useEffect(() => {
-    if (!client) return;
-    let live = true;
-    client.readContract({ address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'weekWindow', args: [BigInt(now)] })
-      .then(async (r) => {
-        const [cutoff, expiry] = r as unknown as [bigint, bigint];
-        const ref = await client.readContract({ address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'fridayCloseOf', args: [cutoff] });
-        if (!live) return;
-        setWin({ cutoff: Number(cutoff), expiry: Number(expiry), ref: Number(ref as bigint) });
-      })
-      .catch(() => { if (live) setWin(undefined); });
-    return () => { live = false; };
-  }, [client, Math.floor(now / 30)]);
-  return win;
-}
-
 export function Bind() {
-  useEffect(() => { document.title = 'Heracles: treaty'; }, []);
+  useEffect(() => { document.title = 'Heracles: price and bind a layer'; }, []);
   const conn = useConnection();
   const me = useOnChain();
   const client = usePublicClient() as PublicClient | undefined;
@@ -50,9 +32,9 @@ export function Bind() {
   const now = useNow();
   const win = useWeekWindow(client, now);
 
-  const [exposures, setExposures] = useState<string[]>(() => FEED_ADDRESSES.map(() => '-100'));
-  const [retention, setRetention] = useState('2');
-  const [limit, setLimit] = useState('10');
+  const [exposures, setExposures] = useState<string[]>(() => FEED_ADDRESSES.map(() => '2000000'));
+  const [retention, setRetention] = useState('20000');
+  const [limit, setLimit] = useState('60000');
   const [formError, setFormError] = useState<string>();
   const [quote, setQuote] = useState<Quote>();
   const [quoteError, setQuoteError] = useState<string>();
@@ -62,7 +44,7 @@ export function Bind() {
   // Binding reopens when the next ISO week begins (Monday 00:00 UTC), not at `win.expiry`
   // (Monday 13:30 UTC, the fixing time for layers bound in a prior week). Friday 19:30 UTC
   // + 2 days 4.5 hours = the following Monday 00:00 UTC.
-  const reopensAt = win !== undefined ? win.cutoff + 2 * 86400 + 4.5 * 3600 : undefined;
+  const reopensAt = win !== undefined ? reopenOf(win) : undefined;
 
   const parsed = useMemo(() => {
     try {
@@ -128,238 +110,149 @@ export function Bind() {
     });
   };
 
+  const terms = useMemo(
+    () => (parsed.exp && parsed.ret !== undefined && parsed.lim !== undefined
+      ? { exposure: Number(parsed.exp[0] ?? 0n) / 1e6, retention: Number(parsed.ret) / 1e6, limit: Number(parsed.lim) / 1e6 }
+      : undefined),
+    [parsed],
+  );
+  const bt = useMemo(() => (terms ? backtest(spy.weekends, terms.exposure, terms.retention, terms.limit) : undefined), [terms]);
+
   return (
     <>
-      <div className="title-block">
-        <span className="item">01</span>
-        <div>
-          <h1>Bind a treaty</h1>
-          <p>
-            Declare the vault's Friday net exposure per market, a retention the vault keeps,
-            and the limit writers cover. The contract sets the Friday 19:30 UTC cutoff and
-            the Monday 13:30 UTC expiry itself. The premium is quoted live by the deployed
-            pricer and pulled into capacity in the same transaction.
-          </p>
-          {book.data && <p className="stamp" style={{ marginTop: 10 }}><Stamp block={book.data.block} label="read at" /></p>}
-        </div>
-      </div>
+      <header className="lead">
+        <h1>Price a layer</h1>
+        <p>
+          Declare the vault's Friday net exposure, the retention it keeps, and the limit writers
+          cover. The band on the chart is what you are buying; the deployed Stylus pricer quotes it
+          live, and bind pulls the premium into capacity in the same transaction.
+        </p>
+      </header>
 
-      <div className="sheet trade">
-        <div>
-          <section className="sec block" aria-label="The layer being priced">
-            <div className="sec-head">
-              <span className="item">02</span>
-              <h2>The layer you are pricing</h2>
+      <div className="desk">
+        <div className="stack">
+          <section className="panel" aria-labelledby="bchart-h">
+            <div className="panel-head">
+              <h2 id="bchart-h">Your layer across 504 SPY weekends</h2>
+              {book.data && <span className="right"><Stamp block={book.data.block} label="book at" /></span>}
             </div>
-            <div className="sec-body">
-              {quoting ? (
-                <p className="prose">Quoting the Stylus pricer…</p>
-              ) : quoteError ? (
-                <p className="prose err" role="alert"><b>Quote</b> {quoteError}</p>
-              ) : parsed.error ? (
-                <p className="prose">Fill in exposure, retention, and limit to draw the layer.</p>
-              ) : (
-                <LayerTower
-                  name="New layer"
-                  who={<>take closes {win ? fmtClock(win.cutoff) : 'pending'} UTC · fixing {win ? fmtClock(win.expiry) : 'pending'} UTC</>}
-                  exposure={parsed.exp![0] ?? 0n}
-                  retention={parsed.ret!}
-                  limit={parsed.lim!}
-                  premium={effective ?? quote?.premium ?? 0n}
-                  tag="quoted"
-                />
-              )}
-            </div>
+            {terms ? (
+              <GapChart table={spy} layer={terms} />
+            ) : (
+              <p className="prose">Fill in exposure, retention and limit to draw the layer.</p>
+            )}
           </section>
-        </div>
 
-        <div className="rail">
-          <section className="sec block" aria-label="Exposure and terms">
-            <div className="sec-head">
-              <span className="item">03</span>
-              <h2>Exposure and terms</h2>
-            </div>
-            <div className="sec-body">
-              <div className="form">
-                {FEED_ADDRESSES.map((f, i) => (
-                  <div className="field" key={f}>
-                    <label htmlFor={`exp-${i}`}>SPY net notional, USDG (negative is short)</label>
-                    <input
-                      id={`exp-${i}`}
-                      inputMode="decimal"
-                      value={exposures[i] ?? ''}
-                      onChange={(e) => setExposures((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))}
-                    />
-                    <span className="hint">Signed: a short vault loses when the market rises. Feed <a className="tx" href={explorer.address(f)} target="_blank" rel="noreferrer">{short(f)}</a>.</span>
-                  </div>
-                ))}
-                <div className="field two">
-                  <span className="lab">Layer, USDG</span>
-                  <div className="field">
-                    <label htmlFor="ret">Retention (vault keeps)</label>
-                    <input id="ret" inputMode="decimal" value={retention} onChange={(e) => setRetention(e.target.value)} />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="lim">Limit (writers cover)</label>
-                    <input id="lim" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} />
-                  </div>
-                </div>
-                {formError && <p className="prose err" role="alert"><b>Check</b> {formError}</p>}
-              </div>
-
-              <div className="quote" aria-live="polite">
-                <span className="lab">Live premium</span>
-                {quoting ? (
-                  <span className="prose">Quoting the Stylus pricer…</span>
-                ) : quoteError ? (
-                  <span className="prose err" role="alert"><b>Quote</b> {quoteError}</span>
-                ) : quote && effective !== undefined && floor !== undefined ? (
-                  <>
-                    <span className="fig">{fmtUsdg(effective)}<small>USDG</small></span>
-                    <span className="prose">
-                      {floorApplies
-                        ? `${floorPct}% rate-on-line floor applies (pricer quoted ${fmtUsdg(quote.premium)}).`
-                        : `Pricer quote applies (floor is ${fmtUsdg(floor)}).`}{' '}
-                      Expected loss <span className="num">{fmtUsdg(quote.el)}</span> ·
-                      TVaR95 <span className="num">{fmtUsdg(quote.tvar)}</span> ·
-                      quoted at block <span className="num">#{quote.block.toLocaleString('en-US')}</span>.
-                    </span>
-                  </>
-                ) : (
-                  <span className="prose">Fill in exposure, retention, and limit to quote.</span>
+          <section className="panel" aria-labelledby="bweek-h">
+            <div className="panel-head"><h2 id="bweek-h">This cover week</h2></div>
+            {!win ? (
+              <p className="prose">Reading the week window from the treaty.</p>
+            ) : (
+              <>
+                <WeekStrip win={win} now={now} />
+                {closed && (
+                  <p className="prose" role="status">
+                    Binding for this weekend closed at <span className="num">{fmtClock(win.cutoff)} UTC</span>. Cover for
+                    next week opens Monday 00:00 UTC, in <span className="num">{fmtCountdown((reopensAt ?? win.expiry) - now)}</span>.
+                  </p>
                 )}
-              </div>
-              <p className="fine">
-                Pricer <a className="tx" href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>,
-                priced on-chain by the Rust (Stylus) pricer, measured at 8.01x less L2 execution gas
-                than its Solidity twin on the same call.
-              </p>
-              <p className="prose">
-                The premium never falls below 0.5% of the limit. This is excess-of-loss tail cover on
-                a weekend gap, not smart-contract cover.
-              </p>
-            </div>
+              </>
+            )}
           </section>
+        </div>
 
-          <section className="sec block" aria-label="Week clock">
-            <div className="sec-head">
-              <span className="item">04</span>
-              <h2>Week clock</h2>
+        <aside className="panel ticket" aria-labelledby="terms-h">
+          <h2 id="terms-h" className="ticket-h">Terms</h2>
+          <div className="form">
+            {FEED_ADDRESSES.map((f, i) => (
+              <div className="field" key={f}>
+                <label htmlFor={`exp-${i}`}>SPY net exposure, USDG</label>
+                <input
+                  id={`exp-${i}`}
+                  inputMode="decimal"
+                  value={exposures[i] ?? ''}
+                  onChange={(e) => setExposures((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))}
+                />
+                <span className="hint">Positive is long and loses on a down gap; negative is short. Feed <a className="tx" href={explorer.address(f)} target="_blank" rel="noreferrer">{short(f)}</a>.</span>
+              </div>
+            ))}
+            <div className="field two">
+              <div className="field">
+                <label htmlFor="ret">Retention, vault keeps</label>
+                <input id="ret" inputMode="decimal" value={retention} onChange={(e) => setRetention(e.target.value)} />
+              </div>
+              <div className="field">
+                <label htmlFor="lim">Limit, writers cover</label>
+                <input id="lim" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} />
+              </div>
             </div>
-            <div className="sec-body">
-              {!win ? (
-                <p className="prose">Reading the week window from the treaty…</p>
-              ) : (
-                <>
-                  <WeekClock win={win} now={now} />
-                  {closed ? (
-                    <p className="prose" role="status">
-                      Cover for next week opens Monday 00:00 UTC, in <span className="num">{fmtCountdown((reopensAt ?? win.expiry) - now)}</span>.
-                      The take window for this week closed Friday at <span className="num">{fmtClock(win.cutoff)} UTC</span>.
-                    </p>
-                  ) : (
-                    <p className="prose" role="status">
-                      Take closes Friday at <span className="num">{fmtClock(win.cutoff)} UTC</span> (in <span className="num">{fmtCountdown(win.cutoff - now)}</span>).
-                      Fixing opens Monday at <span className="num">{fmtClock(win.expiry)} UTC</span> (in <span className="num">{fmtCountdown(win.expiry - now)}</span>).
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          </section>
+            {formError && <p className="prose err" role="alert"><b>Check</b> {formError}</p>}
+          </div>
 
-          {closed ? null : (
-            <section className="sec block" aria-label="Bind">
-              <div className="sec-head">
-                <span className="item">05</span>
-                <h2>Bind</h2>
-              </div>
-              <div className="sec-body">
-                <div className="cell">
-                  {!me.ready && <p className="prose">{me.reason}</p>}
-                  {effective !== undefined && effective > 0n && (
-                    <dl className="kv">
-                      <dt>premium due</dt><dd><span className="num">{fmtUsdg(effective)} USDG</span></dd>
-                      <dt>your allowance</dt><dd><span className="num">{fmtUsdg(allowance)} USDG</span> <span className="muted">to capacity</span></dd>
-                    </dl>
-                  )}
-                  <div className="actions" style={{ marginTop: 11 }}>
-                    {needsApprove && (
-                      <button className="btn ghost" disabled={!me.ready || approveTx.busy} onClick={approve}>
-                        approve {effective !== undefined ? fmtUsdg(effective) : ''} USDG
-                      </button>
-                    )}
-                    <button className="btn" disabled={!me.ready || tx.busy || !!formError || effective === undefined || needsApprove} onClick={bind}>
-                      bind layer
-                    </button>
-                  </div>
-                  {!needsApprove && effective !== undefined && effective > 0n && (
-                    <p className="prose">Allowance covers the premium. Binding pulls it into capacity in the same transaction.</p>
-                  )}
-                  <TxNote status={approveTx.status} hash={approveTx.hash} error={approveTx.error} />
-                  <TxNote status={tx.status} hash={tx.hash} error={tx.error} />
-                </div>
-              </div>
-            </section>
+          <div className="quote" aria-live="polite">
+            <span className="lab">Premium, live</span>
+            {quoting ? (
+              <span className="prose tight">Quoting the Stylus pricer.</span>
+            ) : quoteError ? (
+              <span className="prose err" role="alert"><b>Quote</b> {quoteError}</span>
+            ) : quote && effective !== undefined && floor !== undefined ? (
+              <>
+                <span className="fig hero" title={`${fmtUsdg(effective)} USDG`}>{(Number(effective) / 1e6).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<small>USDG premium</small></span>
+                <dl className="tk">
+                  <dt>Expected loss</dt><dd className="num">{fmtUsdg(quote.el)}</dd>
+                  <dt>TVaR95</dt><dd className="num">{fmtUsdg(quote.tvar)}</dd>
+                  {bt && <><dt>Starts paying at</dt><dd className="num">{fmtBps(bt.attachBps)}</dd></>}
+                  {bt && <><dt>Weekends it pays</dt><dd><span className="num">{bt.paid}</span> of 504</dd></>}
+                </dl>
+                <p className="src">
+                  {floorApplies
+                    ? `The ${floorPct}% rate-on-line floor applies (pricer quoted ${fmtUsdg(quote.premium)}). `
+                    : `Pricer quote applies (floor ${fmtUsdg(floor)}). `}
+                  Pricer <a className="tx" href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a> at
+                  block <span className="num">#{quote.block.toLocaleString('en-US')}</span>.
+                </p>
+              </>
+            ) : (
+              <span className="prose tight">Fill in exposure, retention and limit to quote.</span>
+            )}
+          </div>
+
+          {book.data && parsed.lim !== undefined && parsed.lim > book.data.value.capacity.free && (
+            <p className="prose err" role="alert">
+              <b>CapacityExceeded</b> The limit is larger than the free writer capacity
+              ({fmtUsdg(book.data.value.capacity.free)} USDG at block #{book.data.block.toLocaleString('en-US')}). <Link to="/write">Write capacity</Link> first.
+            </p>
           )}
 
-          <section className="sec block" aria-label="Capacity headroom">
-            <div className="sec-head">
-              <span className="item">06</span>
-              <h2>Capacity headroom</h2>
-            </div>
-            <div className="sec-body">
-              {book.isLoading ? (
-                <p className="prose">Reading capacity…</p>
-              ) : book.error ? (
-                <p className="prose err" role="alert"><b>{explainError(book.error).name}</b> {explainError(book.error).words}</p>
-              ) : book.data ? (
-                <dl className="kv">
-                  <dt>free</dt><dd><span className="num">{fmtUsdg(book.data.value.capacity.free)} USDG</span></dd>
-                  <dt>locked</dt><dd><span className="num">{fmtUsdg(book.data.value.capacity.locked)} USDG</span></dd>
-                  <dt>owed, unclaimed</dt><dd><span className="num">{fmtUsdg(book.data.value.capacity.liabilities)} USDG</span></dd>
+          {closed ? null : (
+            <div className="bindbox">
+              {!me.ready && <p className="prose tight">{me.reason}</p>}
+              {effective !== undefined && effective > 0n && (
+                <dl className="tk">
+                  <dt>Premium due</dt><dd><span className="num">{fmtUsdg(effective)}</span> USDG</dd>
+                  <dt>Your allowance</dt><dd><span className="num">{fmtUsdg(allowance)}</span> USDG</dd>
                 </dl>
-              ) : null}
-              {book.data && parsed.lim !== undefined && parsed.lim > book.data.value.capacity.free && (
-                <p className="prose err" role="alert"><b>CapacityExceeded</b> The limit is larger than the free writer capacity.</p>
               )}
+              <div className="actions">
+                {needsApprove && (
+                  <button className="btn ghost" disabled={!me.ready || approveTx.busy} onClick={approve}>
+                    Approve {effective !== undefined ? fmtUsdg(effective) : ''} USDG
+                  </button>
+                )}
+                <button className="btn wide" disabled={!me.ready || tx.busy || !!formError || effective === undefined || needsApprove} onClick={bind}>
+                  Bind layer
+                </button>
+              </div>
+              <TxNote status={approveTx.status} hash={approveTx.hash} error={approveTx.error} />
+              <TxNote status={tx.status} hash={tx.hash} error={tx.error} />
             </div>
-          </section>
-        </div>
+          )}
+          <p className="fine">
+            Tail cover on a weekend gap, not smart-contract cover. The premium never falls below
+            0.5% of the limit.
+          </p>
+        </aside>
       </div>
     </>
-  );
-}
-
-/** The treaty calendar as a span: take cutoff, reference opens, fixing, and where now sits. */
-function WeekClock({ win, now }: { win: Window; now: number }) {
-  const from = win.cutoff;
-  const to = win.expiry + 2 * 86400;
-  const span = to - from || 1;
-  const at = (t: number) => `${Math.min(100, Math.max(0, ((t - from) / span) * 100)).toFixed(2)}%`;
-  const showNow = now >= from && now <= to;
-  return (
-    <div className="clock">
-      <div className="clock-plot" role="img" aria-label={`Take closes ${fmtClock(win.cutoff)} UTC, reference opens at Friday's close ${fmtClock(win.ref)} UTC, fixing ${fmtClock(win.expiry)} UTC.`}>
-        <i className="cut" style={{ left: at(win.cutoff) }} />
-        <i className="ref" style={{ left: at(win.ref) }} />
-        <i className="fix" style={{ left: at(win.expiry) }} />
-        {showNow && <i className="now" style={{ left: at(now) }} />}
-      </div>
-      <dl className="clock-key">
-        <div>
-          <dt>take closes</dt>
-          <dd className="num">{fmtClock(win.cutoff)} UTC</dd>
-        </div>
-        <div>
-          <dt>reference opens</dt>
-          <dd className="num">{fmtClock(win.ref)} UTC</dd>
-        </div>
-        <div>
-          <dt>fixing</dt>
-          <dd className="num">{fmtClock(win.expiry)} UTC</dd>
-        </div>
-      </dl>
-    </div>
   );
 }

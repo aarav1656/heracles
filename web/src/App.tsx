@@ -48,9 +48,9 @@ export function App() {
             <div className="side">
               <NavLink to="/" className="brand">Heracles</NavLink>
               <nav aria-label="Sections">
-                <NavLink to="/" end>{NavIcon.book}Book</NavLink>
-                <NavLink to="/bind">{NavIcon.bind}Bind</NavLink>
-                <NavLink to="/write">{NavIcon.capacity}Capacity</NavLink>
+                <NavLink to="/" end>{NavIcon.book}Weekend gaps</NavLink>
+                <NavLink to="/bind">{NavIcon.bind}Price a layer</NavLink>
+                <NavLink to="/write">{NavIcon.capacity}Write capacity</NavLink>
                 <a className="ext" href={explorer.address(TREATY_ADDRESS)} target="_blank" rel="noreferrer">{NavIcon.contract}Contract</a>
               </nav>
               <div className="netline">
@@ -59,7 +59,6 @@ export function App() {
             </div>
             <div style={{ flex: '1 1 auto', minWidth: 0 }}>
               <div className="topbar">
-                <span className="stamp">Excess-of-loss cover for perp vault LP risk</span>
                 <Wallet />
               </div>
               <div className="content">
@@ -69,9 +68,8 @@ export function App() {
                   <Route path="/write" element={<Write />} />
                 </Routes>
                 <footer className="foot">
-                  <span>Heracles on Arbitrum Sepolia.</span>
+                  <span>Heracles: excess-of-loss cover for the weekend gap, for the LP vaults of stock perp exchanges on Arbitrum.</span>
                   <a href={explorer.address(TREATY_ADDRESS)} target="_blank" rel="noreferrer">Treaty contract</a>
-                  <span>Excess-of-loss reinsurance for perp LP vaults, settled by the first Monday round after a gap.</span>
                 </footer>
               </div>
             </div>
