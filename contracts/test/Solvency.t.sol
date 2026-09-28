@@ -7,6 +7,7 @@ import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
+import {nTableIds} from "./utils/TableIdsFixture.sol";
 
 /// Solvency fuzz: across many layers spanning multiple markets, with randomized exposures and
 /// randomized Monday prices, the pool must never be asked to pay out more than it holds, and
@@ -34,7 +35,7 @@ contract SolvencyTest is Test {
 
     function setUp() public {
         usdg = new MockUSDG();
-        pricer = new Pricer(new uint8[](0));
+        pricer = new Pricer(nTableIds(N_MARKETS));
 
         address[] memory feedAddrs = new address[](N_MARKETS);
         for (uint256 i; i < N_MARKETS; i++) {

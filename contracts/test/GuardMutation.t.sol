@@ -7,6 +7,7 @@ import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
+import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
 
 /// Orchestrator Item 3 / judging doc B.1.1: three money-path guards, and every `onlyTreaty` entry
 /// point, had zero test references and all three hand mutants in the judging review survived the
@@ -41,7 +42,7 @@ contract GuardMutationTest is Test {
 
     function setUp() public {
         usdg = new MockUSDG();
-        pricer = new Pricer(new uint8[](0));
+        pricer = new Pricer(oneTableId());
         feed = new MockFeed();
         feed.set(1, FRIDAY_PRICE, CUTOFF - 1 hours);
 
@@ -112,7 +113,10 @@ contract GuardMutationTest is Test {
         address[] memory feeds = new address[](2);
         feeds[0] = address(feed);
         feeds[1] = address(feed2);
-        Treaty t2 = new Treaty(address(usdg), address(pricer), feeds, 50, address(0));
+        // pricer (setUp) is a single-market Pricer; this layer spans 2 markets, so it needs its
+        // own Pricer configured with 2 table ids (P2 re-review: MissingTable otherwise).
+        Pricer pricer2 = new Pricer(nTableIds(2));
+        Treaty t2 = new Treaty(address(usdg), address(pricer2), feeds, 50, address(0));
         Capacity cap2 = t2.capacity();
 
         usdg.mint(writer, 1_000_000e6);

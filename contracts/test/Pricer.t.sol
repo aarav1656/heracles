@@ -4,12 +4,13 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
+import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 contract PricerTest is Test {
     Pricer pricer;
 
     function setUp() public {
-        pricer = new Pricer(new uint8[](0));
+        pricer = new Pricer(oneTableId());
     }
 
     // Neutral (1.0x) volScalePpm vector, matching Pricer.PPM (internal, not visible here).
@@ -100,7 +101,7 @@ contract PricerTest is Test {
 
     /// P2 (docs/security/capacity-review.md): table selection is by explicit `marketTableIds`, not
     /// exposure array position. Two separately constructed pricers, same single-market exposure at
-    /// index 0, one wired to the NVDA table (default, empty ids) and one explicitly wired to SPY.
+    /// index 0, one explicitly wired to NVDA (id 0) and one explicitly wired to SPY.
     function test_perMarketTableSelectionDiffers() public {
         Pricer spyPricer = new Pricer(_ids1(2));
         int256[] memory exposure = new int256[](1);
@@ -203,5 +204,42 @@ contract PricerTest is Test {
         (uint256 pNeutral,,) = pricer.priceCore(exposure, neutralScale, 20_000e6, 60_000e6);
         (uint256 pHigh,,) = pricer.priceCore(exposure, highScale, 20_000e6, 60_000e6);
         assertGt(pHigh, pNeutral);
+    }
+
+    /// P2 re-review (docs/security/capacity-review.md "Re-review (2026-09-28)"): an empty
+    /// `tableIds` array must revert the constructor, not silently reproduce the old positional
+    /// default mapping.
+    function test_constructorRevertsOnEmptyTableIds() public {
+        vm.expectRevert(Pricer.BadTableId.selector);
+        new Pricer(new uint8[](0));
+    }
+
+    /// P2 re-review: any configured table id above 3 must revert the constructor, not silently
+    /// fall back to pricing that market on NVDA.
+    function test_constructorRevertsOnBadTableId() public {
+        vm.expectRevert(Pricer.BadTableId.selector);
+        new Pricer(_ids1(4));
+    }
+
+    /// P2 re-review: `tableIdAt` must revert past the configured array, not fall back to the old
+    /// position-only default (0 NVDA, 1 AAPL, 2 SPY, 3 TSLA, else NVDA). pricer (setUp) is
+    /// constructed with a single-entry tableIds array, so index 0 is in range and index 1 is not.
+    function test_tableIdAtRevertsOutOfRange() public {
+        assertEq(pricer.tableIdAt(0), 0);
+        vm.expectRevert(Pricer.MissingTable.selector);
+        pricer.tableIdAt(1);
+    }
+
+    /// P2 re-review: a quote spanning more markets than the deploy configured must revert
+    /// (`MissingTable`, via `tableIdAt`), not silently price the uncovered market on NVDA by
+    /// falling back to its array position.
+    function test_priceCoreRevertsWhenMarketsExceedConfiguredTableIds() public {
+        // pricer (setUp) is constructed with a single-entry tableIds array, covering market 0
+        // only.
+        int256[] memory exposure = new int256[](2);
+        exposure[0] = 2_000_000e6;
+        exposure[1] = 1_000_000e6;
+        vm.expectRevert(Pricer.MissingTable.selector);
+        pricer.priceCore(exposure, _neutral(2), 20_000e6, 60_000e6);
     }
 }
