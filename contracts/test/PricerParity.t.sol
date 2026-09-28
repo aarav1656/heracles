@@ -11,10 +11,14 @@ import {Pricer} from "../src/Pricer.sol";
 /// same fuzzed inputs. Requires `ffi = true` in foundry.toml; local/CI only, no deploy involved.
 contract PricerParityTest is Test {
     Pricer pricer;
+    Pricer spyPricer;
     string constant CLI_BIN = "../pricer/pricer_cli/target/release/pricer-cli";
 
     function setUp() public {
-        pricer = new Pricer();
+        pricer = new Pricer(new uint8[](0));
+        uint8[] memory spyIds = new uint8[](1);
+        spyIds[0] = 2;
+        spyPricer = new Pricer(spyIds);
         string[] memory build = new string[](5);
         build[0] = "cargo";
         build[1] = "build";
@@ -30,16 +34,17 @@ contract PricerParityTest is Test {
         return e;
     }
 
-    function _runCli(int256 exposure, uint256 volScalePpm, uint256 retention, uint256 limit)
+    function _runCli(int256 exposure, uint256 volScalePpm, uint256 retention, uint256 limit, string memory tableIdsCsv)
         internal
         returns (uint256 premium, uint256 el, uint256 tvar95)
     {
-        string[] memory argv = new string[](5);
+        string[] memory argv = new string[](6);
         argv[0] = CLI_BIN;
         argv[1] = vm.toString(retention);
         argv[2] = vm.toString(limit);
         argv[3] = vm.toString(exposure);
         argv[4] = vm.toString(volScalePpm);
+        argv[5] = tableIdsCsv;
         bytes memory out = vm.ffi(argv);
         (premium, el, tvar95) = abi.decode(out, (uint256, uint256, uint256));
     }
@@ -60,11 +65,59 @@ contract PricerParityTest is Test {
             (uint256 solPremium, uint256 solEl, uint256 solTvar) =
                 pricer.priceCore(exposure, scale, retentions[i], limits[i]);
             (uint256 rsPremium, uint256 rsEl, uint256 rsTvar) =
-                _runCli(exposures[i], 1_000_000, retentions[i], limits[i]);
+                _runCli(exposures[i], 1_000_000, retentions[i], limits[i], "");
             assertEq(solPremium, rsPremium, "premium mismatch");
             assertEq(solEl, rsEl, "el mismatch");
             assertEq(solTvar, rsTvar, "tvar95 mismatch");
         }
+    }
+
+    /// P2 table-id parity: an explicit SPY table id (tableIds=[2]) must give bit-identical
+    /// Solidity/Rust quotes too, not just the default (empty-ids, NVDA-fallback) path above.
+    function test_explicitSpyTableIdMatchesRustExactly() public {
+        int256[] memory exposure = new int256[](1);
+        exposure[0] = 2_000_000_000_000;
+        uint256[] memory scale = new uint256[](1);
+        scale[0] = 1_000_000;
+        (uint256 solPremium, uint256 solEl, uint256 solTvar) = spyPricer.priceCore(exposure, scale, 20_000_000_000, 60_000_000_000);
+        (uint256 rsPremium, uint256 rsEl, uint256 rsTvar) = _runCli(2_000_000_000_000, 1_000_000, 20_000_000_000, 60_000_000_000, "2");
+        assertEq(solPremium, rsPremium, "premium mismatch");
+        assertEq(solEl, rsEl, "el mismatch");
+        assertEq(solTvar, rsTvar, "tvar95 mismatch");
+    }
+
+    /// Reviewer acceptance numbers (docs/security/capacity-review.md "Pricing (item 2)", README
+    /// example: long $2M, retention $20k, limit $60k, 1.0x scale), Solidity and Rust must agree
+    /// bit-for-bit even though neither is tuned to match the reviewer's independently cent-rounded
+    /// figures (NVDA 6,576.75, SPY 1,676.72; our exact integers are 6,576.744381 and 1,676.722158,
+    /// see docs/pricing.md for the rounding-accumulation explanation on the NVDA side).
+    function test_acceptanceNumbersMatchRustExactly() public {
+        int256[] memory exposure = new int256[](1);
+        exposure[0] = 2_000_000_000_000;
+        uint256[] memory scale = new uint256[](1);
+        scale[0] = 1_000_000;
+
+        (uint256 nvdaPremium, uint256 nvdaEl, uint256 nvdaTvar) =
+            pricer.priceCore(exposure, scale, 20_000_000_000, 60_000_000_000);
+        (uint256 rsNvdaPremium, uint256 rsNvdaEl, uint256 rsNvdaTvar) =
+            _runCli(2_000_000_000_000, 1_000_000, 20_000_000_000, 60_000_000_000, "");
+        assertEq(nvdaPremium, 6_576_744_381, "NVDA premium acceptance number");
+        assertEq(nvdaEl, 5_040_079_365, "NVDA el acceptance number");
+        assertEq(nvdaTvar, 54_728_000_000, "NVDA tvar95 acceptance number");
+        assertEq(nvdaPremium, rsNvdaPremium, "NVDA Sol/Rust premium mismatch");
+        assertEq(nvdaEl, rsNvdaEl, "NVDA Sol/Rust el mismatch");
+        assertEq(nvdaTvar, rsNvdaTvar, "NVDA Sol/Rust tvar95 mismatch");
+
+        (uint256 spyPremium, uint256 spyEl, uint256 spyTvar) =
+            spyPricer.priceCore(exposure, scale, 20_000_000_000, 60_000_000_000);
+        (uint256 rsSpyPremium, uint256 rsSpyEl, uint256 rsSpyTvar) =
+            _runCli(2_000_000_000_000, 1_000_000, 20_000_000_000, 60_000_000_000, "2");
+        assertEq(spyPremium, 1_676_722_158, "SPY premium acceptance number");
+        assertEq(spyEl, 1_051_190_476, "SPY el acceptance number");
+        assertEq(spyTvar, 20_368_000_000, "SPY tvar95 acceptance number");
+        assertEq(spyPremium, rsSpyPremium, "SPY Sol/Rust premium mismatch");
+        assertEq(spyEl, rsSpyEl, "SPY Sol/Rust el mismatch");
+        assertEq(spyTvar, rsSpyTvar, "SPY Sol/Rust tvar95 mismatch");
     }
 
     /// Fuzzed single-market parity across exposure, retention, limit and volatility scale, bounded
@@ -84,7 +137,7 @@ contract PricerParityTest is Test {
         scaleArr[0] = volScalePpm;
 
         (uint256 solPremium, uint256 solEl, uint256 solTvar) = pricer.priceCore(expArr, scaleArr, retention, limit);
-        (uint256 rsPremium, uint256 rsEl, uint256 rsTvar) = _runCli(exposure, volScalePpm, retention, limit);
+        (uint256 rsPremium, uint256 rsEl, uint256 rsTvar) = _runCli(exposure, volScalePpm, retention, limit, "");
 
         assertEq(solPremium, rsPremium, "premium mismatch");
         assertEq(solEl, rsEl, "el mismatch");
