@@ -133,9 +133,10 @@ export function useBook(account: Address | undefined) {
 }
 
 /** Live quote from the deployed Stylus pricer. Returns undefined while inputs are incomplete. */
-export function quoteLive(client: PublicClient, exposure: bigint[], retention: bigint, limit: bigint) {
+export function quoteLive(client: PublicClient, exposure: bigint[], retention: bigint, limit: bigint, blockNumber?: bigint) {
   return client.readContract({
     address: PRICER_ADDRESS, abi: pricerAbi,
     functionName: 'quote', args: [exposure, FEED_ADDRESSES.slice(0, exposure.length), retention, limit],
+    blockNumber,
   });
 }
