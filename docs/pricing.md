@@ -278,6 +278,19 @@ than "try an opt-level and a features flag" that Stylus's own deployment-verific
 tooling ties reproducibility to, and it was not asked for. Reporting the numbers, not
 cutting behaviour: **stops at 2 fragments, 26,119 bytes compressed.**
 
+**Gap tables narrowed to `i16`** (all 2,016 values lie in -1,490..1,549 bps, so the
+narrowing is lossless; the one read site widens with `as i128`): **25,760 bytes compressed,
+still 2 fragments**. Parity fuzz (256 runs), fixed cases, acceptance numbers, RR3 and RR4
+all pass unchanged, so no quote moved.
+
+**2 fragments is deployable on Arbitrum Sepolia.** `cargo stylus deploy --estimate-gas
+--no-verify` against `sepolia-rollup.arbitrum.io` (2026-09-28, ArbOS 61, read live as
+`arbOSVersion()` = 116) ran `eth_estimateGas` for each fragment deploy and for the root
+contract deploy, and all succeeded. The total it printed (141,502,659,062,039 "gas",
+4,423.9 ETH) is a cargo-stylus 0.10.9 display bug, not a chain answer:
+`stylus-tools-0.10.9/src/core/deployment/mod.rs` adds `status.suggest_fee()` (the activation
+data fee in wei, about 1.415e14 here) to the gas-unit sum before multiplying by gas price.
+
 The previously-published **4.06x** Stylus-vs-Solidity call-gas ratio
 (`spikes/stylus-pricer/FINDINGS.md`) predates this rewrite (single table, no
 cost-of-capital load, no volatility scale, no checked-arithmetic overhead) and is **not
