@@ -83,11 +83,27 @@ next trading day's open (Monday, or later on a holiday Monday) and compute
 Solidity, `table_ids` in Rust), a constructor-supplied array, not by exposure array
 position (docs/security/capacity-review.md "Re-review (2026-09-28)" P2: the testnet
 deploy has a single SPY feed at index 0, and position-based selection priced it on the
-NVDA table). Table id 0 = NVDA, 1 = AAPL, 2 = SPY, 3 = TSLA, any other id or any market
-index past the array's length falls back to `_defaultTableId`/`default_table_id`, which
-reproduces the old position-only mapping exactly (0 NVDA, 1 AAPL, 2 SPY, 3 TSLA, else
-NVDA), so a deployment that passes an empty id array keeps its old, pre-P2-fix behaviour
-unchanged.
+NVDA table). Table id 0 = NVDA, 1 = AAPL, 2 = SPY, 3 = TSLA.
+
+**Fail closed, no fallback (P2 re-review, docs/security/capacity-review.md "Re-review
+(2026-09-28)").** The positional fallback (`_defaultTableId`/`default_table_id`) and the
+id-value fallback to NVDA for any id > 3 have both been deleted; there is no longer any
+path that silently reprices an unmapped or misconfigured market. In both languages:
+
+- Constructor/`price_core` reverts (`BadTableId` in Solidity, an `Err` in Rust) if
+  `tableIds`/`table_ids` is empty or any entry is not 0-3.
+- `tableIdAt`/`table_id_at` reverts (`MissingTable`) if `i` is past the configured
+  array, instead of returning `_defaultTableId(i)`. `_tableFor`/`priceCore`/`quote` in
+  Solidity route through this same getter, so a quote spanning more markets than the
+  deploy configured reverts at the same single guard rather than needing a duplicate
+  length check.
+- `price_core` (Rust) additionally checks `table_ids.len() >= exposure.len()` directly
+  (it has no constructor to gate at deploy time, since it is a pure function called
+  directly by the Stylus wrapper and by `pricer_cli`/tests), returning `MissingTable`
+  on the same condition.
+
+A deployment must now pass an explicit, correctly-sized table id array; there is no
+"leave it empty and get the old default" option left.
 
 ## On-chain volatility scale
 
@@ -191,22 +207,25 @@ Reproduce the NVDA "after" row:
 20000000000 60000000000 2000000000000 1000000 ""`, then `abi.decode` the printed 96-byte
 hex as `(uint256,uint256,uint256)`, or equivalently call
 `pricer.priceCore([2_000_000_000_000], [1_000_000], 20_000_000_000, 60_000_000_000)` on a
-`Pricer` constructed with `new uint8[](0)` (default NVDA-at-index-0) in Solidity. For the
-SPY row, pass `"2"` as the CLI's table-ids arg, or construct `Pricer` with `[2]`.
+`Pricer` constructed with `[0]` (NVDA at index 0; P2 re-review, empty arrays now revert
+the constructor) in Solidity. For the SPY row, pass `"2"` as the CLI's table-ids arg, or
+construct `Pricer` with `[2]`.
 `contracts/test/PricerParity.t.sol`'s `test_acceptanceNumbersMatchRustExactly` asserts
 both rows bit-for-bit against Solidity and Rust together.
 
 ## Gas (Stylus vs Solidity)
 
 `cargo stylus check` (non-deploying, run against `sepolia-rollup.arbitrum.io`) confirms
-the current wasm binary: **26.2 KB (26,245 bytes, 2 fragments)**, wasm activation data fee
-0.000120 ETH; `cargo stylus check` passes (exit 0). This grew from the pre-P1/P2/P4-fix
-21.3 KB (21,309 bytes, 1 fragment) figure because of the `StorageBytes table_ids` field,
-the new `#[constructor]`, the U80 (not u64) round-id arithmetic, and the fail-closed
-`Result` propagation on the outer feed read (docs/security/capacity-review.md P1/P2/P4);
-`cargo stylus check` itself is the authoritative pass/fail gate for the wasm size limit,
-and it still passes with 2 fragments, but the binary no longer fits in the single 24 KiB
-(24,576 byte) fragment the pre-fix build did.
+the current wasm binary: **26.6 KB (26,553 bytes, 2 fragments)**, wasm data fee 0.000125
+ETH; `cargo stylus check` passes (exit 0). This grew from the pre-P1/P2/P4-fix 21.3 KB
+(21,309 bytes, 1 fragment) figure because of the `StorageBytes table_ids` field, the new
+`#[constructor]`, the U80 (not u64) round-id arithmetic, and the fail-closed `Result`
+propagation on the outer feed read (docs/security/capacity-review.md P1/P2/P4); the P2
+re-review's `BadTableId`/`MissingTable` fail-closed constructor and `tableIdAt` guard
+(replacing the positional/id-value fallback) added another 308 bytes on top of that,
+26,245 to 26,553. `cargo stylus check` itself is the authoritative pass/fail gate for the
+wasm size limit, and it still passes with 2 fragments, but the binary no longer fits in
+the single 24 KiB (24,576 byte) fragment the pre-fix build did.
 
 The previously-published **4.06x** Stylus-vs-Solidity call-gas ratio
 (`spikes/stylus-pricer/FINDINGS.md`) predates this rewrite (single table, no
@@ -232,11 +251,13 @@ size/activation-fee numbers above, which do not require a call, are reported. Tr
   (falls back toward neutral) rather than crossing into the wrong phase's round ids; it does
   not silently read wrong data, but it can under-sample right after a phase change.
   Mirrored identically in both implementations.
-- **NVDA-fallback beyond 4 tables.** `_tableFor`/`table_for` only has real, independently
-  sourced tables for ids 0-3 (NVDA/AAPL/SPY/TSLA); any market whose explicit table id (or
-  default fallback, for `i >= 4`) is not one of those four falls back to NVDA rather than
-  reverting. A caller pricing a market with no real sourced table gets NVDA's historical
-  gap distribution applied to that market's exposure, not that market's own data, until a
-  real table is sourced and added.
+- **Only 4 sourced tables.** `_tableFor`/`table_for` only has real, independently sourced
+  tables for ids 0-3 (NVDA/AAPL/SPY/TSLA). This used to silently fall back to NVDA for any
+  other id or any market position past the configured array; P2 re-review
+  (docs/security/capacity-review.md "Re-review (2026-09-28)") closed that: the constructor
+  now reverts `BadTableId()` on any id > 3, and `tableIdAt`/`table_id_at` reverts
+  `MissingTable()` for any market position not covered by the deploy's table id array. A
+  fifth market still needs a real sourced table added before it can be priced at all; it
+  can no longer be priced silently on NVDA's data instead.
 - **Gas ratio unmeasured post-rewrite.** See "Gas" above: the 4.06x figure is retracted,
   not replaced, pending a permitted deployment/devnode run.
