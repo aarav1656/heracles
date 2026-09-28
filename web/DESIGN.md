@@ -1,11 +1,104 @@
-# Heracles web: rebuilt on GMX's Pools and Trade design
+# Heracles web: a trade desk for the weekend gap
 
-Replaces the cold-paper placing slip. This reads as a dashboard inside the GMX
-family: a fixed left sidebar, a dark navy surface, rounded card rows instead
-of ruled lines, a blue primary action, and a big on-chain figure leading the
-page instead of a headline. The reader is still a vault risk lead, a multisig
-signer, or a USDG writer, and every number on the page is still a direct
-contract read at a stamped block. Only the visual language changes.
+The skin is GMX's (sidebar, navy surface, 4px instrument buttons, a numerals face split
+from the UI face; tokens below). The product UX is GMX Trade's reading order applied to a
+different market: the market is the weekend gap, the chart is every recorded weekend, the
+order ticket prices a layer across that chart, and the book of positions sits underneath.
+The reader is a vault risk lead, a multisig signer, or a USDG writer. Every figure on
+screen is a live contract read at a stamped block or a row of a committed repo file named
+next to it.
+
+## First screen contract
+
+**The sentence a judge must get in 5 seconds.** "Weekend-gap cover for perp LP vaults":
+when a stock reopens on Monday away from Friday's close, the vault keeps the first loss
+and a Heracles layer pays the next slice, priced on chain from 504 recorded weekends.
+This is the page's `<h1>` plus one sentence, the only prose above the fold.
+
+**What the first screen shows, in reading order (1440x900, verified by screenshot):**
+
+1. `<h1>` and the one-sentence lede.
+2. Market bar (GMX Trade's stat header): tabs SPY (marked live), NVDA, AAPL, TSLA, one per
+   pricing table, then that table's worst weekend, biggest up gap, count of gaps past 1%,
+   and the SPY/USD feed price.
+3. The noun: every weekend of the selected table as one bar (Friday close to next open, in
+   percent), the reference layer as a band across them from its attach gap to its
+   exhaust gap. Bars that reach into the band are the weekends it would have paid (blue),
+   bars through it used the full limit (red). The readout above the plot names the
+   weekend under the pointer or keyboard cursor, defaulting to the worst on record.
+4. The ticket rail: the live Stylus premium on the reference layer, its rate on line,
+   EL, TVaR95, how many of 504 weekends it pays and exhausts, the block it was quoted at,
+   then the two actions.
+
+**Hero figures and their sources:**
+
+| Figure | Value at build time | Source |
+|---|---|---|
+| Premium on the reference layer | 1,676.72 USDG | live `Pricer.quote([2,000,000e6], [SPY feed], 20,000e6, 60,000e6)` at the latest block, block number printed beside it (`hooks/useReferenceQuote.ts`); on failure the page says so and shows the README's recorded quote at block 313,690,038 |
+| EL / TVaR95 | 1,051.19 / 20,368.00 | same live call |
+| Weekends it pays / full limit | 36 / 2 of 504 | `evidence/gap-tables/SPY.json`, `Pricer.priceCore`'s payout rule at 1.0x volatility (`lib/gaps-core.ts`); the page states when the browser's EL matches the live pricer's |
+| Worst SPY weekend | −10.45%, 13 Mar 2020 | `evidence/gap-tables/SPY.json` (source api.nasdaq.com, fetched 2026-09-28) |
+| Gaps past 1% | 64 of 504 (SPY) | same file |
+| SPY/USD price | e.g. 767.38 | `latestRoundData()` on the Sepolia SPY feed, inside the pinned book read |
+| Stylus gas | 8.01x less L2 execution gas | `docs/pricing.md` "Gas", block 313,704,736; fine print, not a hero |
+
+The reference layer is the README's own example (long 2,000,000 USDG SPY, retention
+20,000, limit 60,000): the first number a visitor sees is a real, non-zero price for real
+cover, not a balance.
+
+**Primary action:** "Price your own layer" (to `/bind`, prefilled with the reference
+layer). Secondary: "Write capacity".
+
+**Honest state, lower down:** "This cover week" (the treaty's own `weekWindow` and
+`fridayCloseOf`) and "The book" (layers bound, writer capacity, free to bind, all from
+the pinned book read) sit below the fold. On this deploy both read zero, and the page says
+so in one plain sentence with a link to become the first writer. An empty pool is never a
+headline.
+
+**Not on the first screen, on purpose:** the pool balance, contract addresses (one line at
+the foot), the tower drawing (kept for a bound layer's details row).
+
+## Flows
+
+- **`/` Weekend gaps.** Job: prove the product exists and what it costs. Read the gap
+  history, switch tables to see NVDA/AAPL/TSLA price the same layer very differently
+  (TSLA pays on 122 of 504 weekends against SPY's 36), then leave through the ticket. For
+  the three non-SPY tables the rail says plainly that the Sepolia pricer holds SPY only
+  (`tableIdAt(1)` reverts `MissingTable`) and shows the table's EL/TVaR95 instead of a
+  premium. A bound layer, when one exists, appears as a positions table with its settle
+  and claim actions (`SettleItem`, `ClaimRow`, unchanged).
+- **`/bind` Price a layer.** Job: the order ticket. Left column: the same chart drawing
+  the buyer's own band, redrawn on every keystroke (sign flips move it to the up-gap
+  side), then the cover week. Right rail: exposure, retention, limit (prefilled with the
+  reference layer), the live premium with EL, TVaR95, attach gap and weekends paid, the
+  rate-on-line floor note, a `CapacityExceeded` warning when the limit is above free
+  capacity, then approve and bind (`useTx`, contract calls unchanged). Mobile order: chart,
+  ticket, week.
+- **`/write` Write capacity.** Job: tell a writer what they are paid and what they can
+  lose before asking for USDG. The panel draws a writer's running result over the 504
+  SPY weekends at today's live premium on the reference layer, with the worst weekend
+  (−58,323 USDG, twice, 6 and 13 Mar 2020) and the deepest drawdown shaded; the caption
+  states it is in sample by construction and not a forecast. Rail: deposit with permit
+  (`useDepositWithPermit`) and withdraw (`Capacity.withdraw`), quick-fill chips on real
+  balances. Below: the pool strip, stated as empty when it is.
+
+## Product study (GMX as a product, not a skin)
+
+Read live in the `deepsurge` profile on 2026-09-29 (`app.gmx.io/trade`) and from
+`docs/design-refs/gmx-{trade,pools}/study.md`:
+
+- Reading order on Trade: market selector and live price, a stat header of market-wide
+  numbers, the chart, then your own positions, with the order ticket in a right rail
+  (direction, amounts, quick percentages, one CTA, then a consequence summary:
+  liquidation price, fees).
+- Density: 11px uppercase captions over 13-15px figures, 8/4/12px spacing leaders.
+- Empty states: "No open positions" as plain text inside the positions table, never a
+  headline. The first screen leads with the market's numbers, which are never empty.
+- Pools leads with a market-wide figure (TVL), then rows.
+
+Heracles maps each piece: the market is the weekend gap, the stat header is the table's
+extremes, the chart is 504 weekends, the ticket's consequence summary is EL, TVaR95 and
+weekends paid, and the positions table is the book.
 
 Primary reference: the GMX Pools route at `app.gmx.io/#/pools`, captured as
 reference screenshots and design tokens (desktop, mobile).
@@ -92,25 +185,13 @@ mobile pattern is a slide-out drawer, which this project does not build since
 there is no secondary content to hide behind one (three links fit a wrapped
 bar without needing an off-canvas menu).
 
-**Book** (`Overview.tsx`) maps to the Pools route: a headline figure (the
-pool's USDG balance, a direct `Capacity.balanceOf`-chain read, already in
-`useBook`) leads the page with free/locked/owed as its sub-stats and a thin
-proportion bar underneath, in place of GMX's period-tab row. The period tabs
-(Last 30d/90d/180d/Total) switch a time series this contract does not expose;
-inventing tab behaviour with no data behind it would be exactly the fake
-metric the brief forbids, so the tabs are dropped and the sub-stats plus the
-strip carry their job instead. "Layers on the book" and "Writer capacity"
-render as the two GMX-style panels, each a rounded card, each row inside them
-a translucent-wash card rather than a ruled line (signature move 2).
+**Weekend gaps** (`Overview.tsx`) maps to the Trade route, not Pools: market bar, gap
+chart, ticket rail, then the week and the book below. See "First screen contract".
 
-**Bind** (`Bind.tsx`) maps to the Trade route: the layer tower sits where the
-chart sits, full width in the main column, in the reference's colour
-language. The exposure/retention/limit form, the live premium quote, the
-week clock, and the bind action move into a fixed-width right rail, mirroring
-the order form's margin/size/leverage/CTA/liquidation-summary stack
-(reference study, gmx-trade "Component archetypes"). `LayerTower.tsx`'s markup and
-`tower-geometry.ts` are unchanged; only the CSS the classnames resolve to
-changes; contract calls, exposure math, and the quote pipeline are untouched.
+**Price a layer** (`Bind.tsx`) maps to the Trade route: the gap chart with the buyer's
+band sits where the price chart sits; the terms, live premium and bind action sit in the
+right rail, mirroring the order form's inputs/CTA/consequence-summary stack. Contract
+calls, exposure parsing and the quote pipeline are untouched.
 
 **Write** (`Write.tsx`) is the pool deposit panel: deposit and withdraw stay
 a left-column form, the pool's capacity strip stays a right-rail card. Both
@@ -122,11 +203,8 @@ it), wired to real balances already read by `useBook`, not new numbers.
 
 ## Signature moves applied
 
-1. The Book page leads with a raw numeral, no semantic h1 wrapping it; the
-   number is the headline the way GMX's TVL is (reference study move 1). A real
-   `<h1>` still exists for the page's own accessible name, styled as a small
-   eyebrow label, so markup and visual hierarchy diverge on purpose the same
-   way GMX's does.
+1. Superseded: the first screen no longer leads with the pool balance. It leads with a
+   real `<h1>`, then the gap chart and the live premium (see "First screen contract").
 2. Every row (layer rows, contract rows, table rows) is separated by
    `--wash` over the navy base, never by a hairline (move 2).
 3. Numerals split from UI text into their own face, Archivo Variable
@@ -141,15 +219,24 @@ it), wired to real balances already read by `useBook`, not new numbers.
 
 ## What stayed
 
-Every hook, every contract call, every handler, every loading/empty/error
-branch, and every figure the chain reports are unchanged; `src/hooks`,
-`src/lib`, `src/abi`, `src/chain.ts`, and `scripts/` were not touched. The
+Every contract call, every handler, every loading/empty/error branch, and every figure
+the chain reports are unchanged. Additions: `lib/gaps.ts` (imports the committed gap
+tables), `lib/gaps-core.ts` (the pricer's payout rule, tested against the pricer's
+recorded outputs in `lib/gaps.test.ts`), `hooks/useReferenceQuote.ts`, and
+`hooks/useWeekWindow.ts` (moved out of Bind). `quoteLive` gained an optional block number. The
 tower's geometry (`tower-geometry.ts`) and its test are unchanged; only the
 CSS painting its existing classnames moved from the cold-paper palette to
 the tokens above. Copy was rewritten for the new layout (panel titles,
-button labels) but no fact, no contract name, and no measured figure (the
-4.06x Stylus gas figure, the 0.5% rate-on-line floor, the Sherlock cover-cost
-range) was changed or dropped.
+button labels) but no contract name or measured figure was invented; the gas
+figure is the current 8.01x from `docs/pricing.md` (the older 4.06x was measured on a
+superseded pricer).
+
+## Chart tokens
+
+`--pay: #8C97FF` (paid weekends, the brand-mark lavender already in the stylesheet),
+`--band: rgba(120,133,255,0.09)` with a dashed `--band-edge` line at attach and exhaust,
+`--negative` for weekends that used the full limit, `--text-3` for losses the vault keeps,
+`--text-4` for gains on the covered side.
 
 ## States, focus, and motion
 
@@ -158,5 +245,7 @@ error with the decoded revert name; a missing value is still a dash with a
 reason, never a zero. Focus is a 3px `--focus` ring at 2px offset on every
 control (`:focus-visible`), visible against `--bg` and `--bg-2` alike. Motion
 stays two primitives, a 120ms colour/opacity transition and a 1px press, both
-inside `prefers-reduced-motion: reduce`. No italic headings, no emoji icons,
+inside `prefers-reduced-motion: reduce`. The gap chart is keyboard-operable (a slider:
+arrows step a weekend, PageUp/PageDown a year, Home/End the ends) with the readout in an
+`aria-live` line. No italic headings, no emoji icons,
 no em dashes.
