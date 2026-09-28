@@ -72,7 +72,7 @@ h1, h2, h3 { margin: 0; font-weight: 700; font-style: normal; }
   height: 100vh;
   overflow-y: auto;
 }
-.brand { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; text-decoration: none; color: var(--text); }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; text-decoration: none; color: var(--text); }
 .brand b { color: #8C97FF; font-weight: 700; }
 .side nav { display: flex; flex-direction: column; gap: 2px; }
 .side nav a, .side .ext { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-2); font-size: 14px; padding: 9px 10px; border-radius: var(--radius-input); }
@@ -251,6 +251,8 @@ h1, h2, h3 { margin: 0; font-weight: 700; font-style: normal; }
 /* Page lead: one h1 and one sentence of product, never a number that is empty. */
 .lead { max-width: 76ch; }
 .lead h1 { font-family: var(--display); font-weight: 700; font-size: 26px; line-height: 1.15; letter-spacing: -0.012em; overflow-wrap: anywhere; min-width: 0; }
+.lead.row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; max-width: none; }
+.lead.row p { margin: 0; color: var(--text-3); }
 .lead p { margin: 8px 0 0; color: var(--text-2); font-size: 15px; max-width: 72ch; text-wrap: pretty; }
 
 /* Market bar: GMX trade's stat header. Tabs pick the table; stats are rows of that table. */
@@ -260,6 +262,7 @@ h1, h2, h3 { margin: 0; font-weight: 700; font-style: normal; }
 .mtabs button:hover { color: var(--text); background: var(--wash); }
 .mtabs button:active { background: var(--bg-3); }
 .mtabs button.on { color: var(--text); background: var(--bg-3); }
+.mstats .live { font-style: normal; margin-left: 6px; color: var(--positive); }
 .mtabs small { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--positive); }
 .mstats { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0; }
 .mstats div { min-width: 0; }
@@ -297,6 +300,8 @@ h1, h2, h3 { margin: 0; font-weight: 700; font-style: normal; }
 .ticket-cta .btn { text-align: center; }
 .btn.wide { width: 100%; text-align: center; }
 .bindbox { margin-top: 14px; display: grid; gap: 10px; }
+.shortfall { flex-basis: 100%; margin: 0; font-size: 13px; color: var(--text-2); }
+.shortfall b { color: var(--text); }
 .bindbox .tk { margin-top: 0; }
 .quote { display: grid; gap: 4px; padding: 14px 0 0; border-top: 1px solid var(--border-soft); margin-top: 14px; }
 .quote .lab, .lab { color: var(--text-3); font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
@@ -322,7 +327,7 @@ code { font-family: var(--mono); font-size: 0.9em; color: var(--text-2); overflo
 .gap-field rect.band { fill: var(--band); }
 .gap-field line.edge-line { stroke: var(--band-edge); stroke-width: 1; stroke-dasharray: 4 3; }
 .bar.g { fill: var(--text-4); }
-.bar.k { fill: var(--text-3); }
+.bar.k { fill: var(--text-4); }
 .bar.p { fill: var(--pay); }
 .bar.x { fill: var(--negative); }
 .gap-edges { position: absolute; top: 0; bottom: 0; left: 100%; width: 112px; pointer-events: none; }
@@ -340,7 +345,7 @@ code { font-family: var(--mono); font-size: 0.9em; color: var(--text-2); overflo
 .gap-key .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
 .sw.p { background: var(--pay); }
 .sw.x { background: var(--negative); }
-.sw.k { background: var(--text-3); }
+.sw.k { background: var(--text-4); outline: 1px solid var(--text-3); outline-offset: -1px; }
 .sw.g { background: var(--text-4); }
 .gap-src { flex-basis: 100%; color: var(--text-3); font-size: 12px; }
 
@@ -364,17 +369,19 @@ code { font-family: var(--mono); font-size: 0.9em; color: var(--text-2); overflo
 .week-rule { margin: 0; color: var(--text-3); font-size: 12.5px; max-width: 72ch; }
 
 /* Writer path: the running result of writing one layer every weekend. */
-.path { display: grid; gap: 14px; }
-.path-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 20px; }
-.path-figs > div { display: grid; gap: 6px; min-width: 0; }
-.path-figs .fig { font-size: 26px; }
-.path-figs .fig small { display: block; margin: 6px 0 0; font-size: 12px; }
-.path-plot { position: relative; height: 240px; margin-right: 64px; }
-.path-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.path-plot polyline { fill: none; stroke: var(--pay); stroke-width: 1.5; }
-.path-plot line.zero { stroke: var(--border); stroke-width: 1; }
-.path-plot rect.dd { fill: rgba(255, 80, 106, 0.10); }
-.path-end { position: absolute; left: calc(100% + 8px); transform: translateY(-50%); font-size: 13px; color: var(--text); }
+.path { display: grid; gap: 10px; }
+.path-plot { display: grid; grid-template-columns: 52px minmax(0, 1fr) 64px; grid-template-rows: 280px 20px; }
+.path-field { position: relative; min-width: 0; }
+.path-field svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.path-field polyline { fill: none; stroke: var(--pay); stroke-width: 1.5; }
+.path-field line.zero { stroke: var(--border); stroke-width: 1; }
+.path-field line.grid { stroke: var(--border-soft); stroke-width: 1; }
+.path-field rect.dd { fill: rgba(255, 80, 106, 0.08); }
+.path .gap-years { grid-column: 2 / 3; }
+.hit-dot { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--negative); box-shadow: 0 0 0 2px var(--bg-1); }
+.path-key { gap: 6px 20px; }
+.sw.dd { background: rgba(255, 80, 106, 0.30); }
+.path-end { position: absolute; left: calc(100% + 8px); white-space: nowrap; transform: translateY(-50%); font-size: 13px; color: var(--text); }
 
 .contracts { margin: 20px 0 0; color: var(--text-3); font-size: 12.5px; line-height: 1.8; }
 .contracts a { color: var(--text-2); }
@@ -438,9 +445,9 @@ a, .key, .btn, .chip, .mtabs button, .field input, .field select, .settle-item i
   .gap-key { padding-left: 0; }
   .gap-years span:nth-child(even) { display: none; }
   .week-key { grid-template-columns: minmax(0, 1fr); }
-  .path-figs { grid-template-columns: minmax(0, 1fr); }
-  .path-plot { height: 180px; margin-right: 58px; }
-  .fig.hero { font-size: 34px; }
+    .fig.hero { font-size: 34px; }
+  .path-plot { grid-template-columns: 40px minmax(0, 1fr) 48px; grid-template-rows: 220px 20px; }
+  .lead.row p { flex-basis: 100%; }
   .panel { padding: 14px 14px 16px; }
 }
 @media (prefers-reduced-motion: reduce) {

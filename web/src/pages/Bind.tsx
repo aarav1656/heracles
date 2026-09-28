@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom';
 import { TABLES, backtest, fmtBps } from '../lib/gaps';
 
 const spy = TABLES[0];
+const usd2 = (v: bigint) => (Number(v) / 1e6).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 import { fmtClock, fmtCountdown, fmtUsdg, parseExposure, parseUsdg, short } from '../lib/format';
 import { explainError } from '../lib/revert';
 import { useConnection } from 'wagmi';
@@ -32,9 +33,9 @@ export function Bind() {
   const now = useNow();
   const win = useWeekWindow(client, now);
 
-  const [exposures, setExposures] = useState<string[]>(() => FEED_ADDRESSES.map(() => '2000000'));
-  const [retention, setRetention] = useState('20000');
-  const [limit, setLimit] = useState('60000');
+  const [exposures, setExposures] = useState<string[]>(() => FEED_ADDRESSES.map(() => '2,000,000'));
+  const [retention, setRetention] = useState('20,000');
+  const [limit, setLimit] = useState('60,000');
   const [formError, setFormError] = useState<string>();
   const [quote, setQuote] = useState<Quote>();
   const [quoteError, setQuoteError] = useState<string>();
@@ -48,9 +49,9 @@ export function Bind() {
 
   const parsed = useMemo(() => {
     try {
-      const exp = exposures.map(parseExposure);
-      const ret = parseUsdg(retention);
-      const lim = parseUsdg(limit);
+      const exp = exposures.map((x) => parseExposure(x.replace(/,/g, '')));
+      const ret = parseUsdg(retention.replace(/,/g, ''));
+      const lim = parseUsdg(limit.replace(/,/g, ''));
       if (exp.every((e) => e === 0n)) return { error: 'At least one exposure must be non-zero. A zero-exposure bind reverts with BadParams.' };
       if (lim === 0n) return { error: 'The limit must be above zero. A zero limit binds nothing.' };
       return { exp, ret, lim };
@@ -110,6 +111,7 @@ export function Bind() {
     });
   };
 
+  const short_ = book.data && parsed.lim !== undefined && parsed.lim > book.data.value.capacity.free ? book.data.value.capacity.free : undefined;
   const terms = useMemo(
     () => (parsed.exp && parsed.ret !== undefined && parsed.lim !== undefined
       ? { exposure: Number(parsed.exp[0] ?? 0n) / 1e6, retention: Number(parsed.ret) / 1e6, limit: Number(parsed.lim) / 1e6 }
@@ -120,13 +122,9 @@ export function Bind() {
 
   return (
     <>
-      <header className="lead">
+      <header className="lead row">
         <h1>Price a layer</h1>
-        <p>
-          Declare the vault's Friday net exposure, the retention it keeps, and the limit writers
-          cover. The band on the chart is what you are buying; the deployed Stylus pricer quotes it
-          live, and bind pulls the premium into capacity in the same transaction.
-        </p>
+        <p>The band is what you buy. Change the terms and it moves across 504 weekends.</p>
       </header>
 
       <div className="desk">
@@ -197,10 +195,10 @@ export function Bind() {
               <span className="prose err" role="alert"><b>Quote</b> {quoteError}</span>
             ) : quote && effective !== undefined && floor !== undefined ? (
               <>
-                <span className="fig hero" title={`${fmtUsdg(effective)} USDG`}>{(Number(effective) / 1e6).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<small>USDG premium</small></span>
+                <span className="fig hero" title={`${fmtUsdg(effective)} USDG`}>{usd2(effective)}<small>USDG premium</small></span>
                 <dl className="tk">
-                  <dt>Expected loss</dt><dd className="num">{fmtUsdg(quote.el)}</dd>
-                  <dt>TVaR95</dt><dd className="num">{fmtUsdg(quote.tvar)}</dd>
+                  <dt>Expected loss</dt><dd className="num">{usd2(quote.el)}</dd>
+                  <dt>TVaR95</dt><dd className="num">{usd2(quote.tvar)}</dd>
                   {bt && <><dt>Starts paying at</dt><dd className="num">{fmtBps(bt.attachBps)}</dd></>}
                   {bt && <><dt>Weekends it pays</dt><dd><span className="num">{bt.paid}</span> of 504</dd></>}
                 </dl>
@@ -217,30 +215,30 @@ export function Bind() {
             )}
           </div>
 
-          {book.data && parsed.lim !== undefined && parsed.lim > book.data.value.capacity.free && (
-            <p className="prose err" role="alert">
-              <b>CapacityExceeded</b> The limit is larger than the free writer capacity
-              ({fmtUsdg(book.data.value.capacity.free)} USDG at block #{book.data.block.toLocaleString('en-US')}). <Link to="/write">Write capacity</Link> first.
-            </p>
-          )}
 
           {closed ? null : (
             <div className="bindbox">
               {!me.ready && <p className="prose tight">{me.reason}</p>}
-              {effective !== undefined && effective > 0n && (
+              {me.ready && effective !== undefined && effective > 0n && (
                 <dl className="tk">
                   <dt>Premium due</dt><dd><span className="num">{fmtUsdg(effective)}</span> USDG</dd>
                   <dt>Your allowance</dt><dd><span className="num">{fmtUsdg(allowance)}</span> USDG</dd>
                 </dl>
               )}
               <div className="actions">
-                {needsApprove && (
+                {short_ !== undefined ? (
+                  <p className="shortfall" role="status">
+                    Needs <b className="num">{usd2(parsed.lim!)}</b> USDG of free capacity; the pool has <b className="num">{usd2(short_)}</b> at
+                    block #{book.data!.block.toLocaleString('en-US')}. <Link to="/write">Write capacity</Link>
+                  </p>
+                ) : null}
+                {me.ready && needsApprove && (
                   <button className="btn ghost" disabled={!me.ready || approveTx.busy} onClick={approve}>
                     Approve {effective !== undefined ? fmtUsdg(effective) : ''} USDG
                   </button>
                 )}
-                <button className="btn wide" disabled={!me.ready || tx.busy || !!formError || effective === undefined || needsApprove} onClick={bind}>
-                  Bind layer
+                <button className="btn wide" disabled={!me.ready || tx.busy || !!formError || effective === undefined || needsApprove || short_ !== undefined} onClick={bind}>
+                  {short_ !== undefined ? 'Bind layer: not enough capacity' : 'Bind layer'}
                 </button>
               </div>
               <TxNote status={approveTx.status} hash={approveTx.hash} error={approveTx.error} />

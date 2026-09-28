@@ -21,6 +21,7 @@ import { RECORDED, REFERENCE, TABLES, backtest, extremes, fmtBps, fmtDay, type T
 const usd0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const usd2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const toUsd = (v: bigint) => Number(v) / 1e6;
+const age = (s: number) => (s >= 86400 ? `${Math.floor(s / 86400)}d ${Math.floor((s % 86400) / 3600)}h` : s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m` : `${Math.max(0, Math.floor(s / 60))}m`);
 
 export function Overview() {
   useEffect(() => { document.title = 'Heracles: weekend-gap cover for perp LP vaults'; }, []);
@@ -42,10 +43,8 @@ export function Overview() {
       <header className="lead">
         <h1>Weekend-gap cover for perp LP vaults</h1>
         <p>
-          A stock perp vault stays exposed while the market is shut. When a stock reopens on Monday
-          away from Friday's close, the vault keeps the first loss and a Heracles layer pays the
-          next slice, priced on chain from 504 recorded weekends and settled from Monday's first
-          Chainlink round.
+          When a stock reopens on Monday away from Friday's close, the vault keeps the first loss
+          and a Heracles layer pays the next slice. Priced on chain from 504 recorded weekends.
         </p>
       </header>
 
@@ -61,7 +60,6 @@ export function Overview() {
               onClick={() => setTicker(t.ticker)}
             >
               {t.ticker}
-              {t.ticker === 'SPY' && <small>live</small>}
             </button>
           ))}
         </div>
@@ -79,12 +77,12 @@ export function Overview() {
             <dd><span className="num">{ext.beyond1pct}</span><small>of {table.weekends.length} weekends</small></dd>
           </div>
           <div>
-            <dt>{ticker === 'SPY' ? 'SPY/USD feed' : `${ticker} feed`}</dt>
+            <dt>{ticker === 'SPY' ? <>SPY/USD feed <em className="live">live</em></> : `${ticker} feed`}</dt>
             <dd>
               {ticker !== 'SPY' ? (
                 <small>not on Sepolia; fork-tested</small>
               ) : spyFeed ? (
-                <><span className="num">{fmtPx(spyFeed.latest.answer)}</span><small>{fmtStamp(spyFeed.latest.updatedAt).slice(5, 16)} UTC</small></>
+                <><span className="num">{fmtPx(spyFeed.latest.answer)}</span><small title={fmtStamp(spyFeed.latest.updatedAt)}>round {age(now - Number(spyFeed.latest.updatedAt))} old</small></>
               ) : q.error ? (
                 <small>read failed</small>
               ) : (
@@ -131,10 +129,6 @@ export function Overview() {
             <Link className="btn" to="/bind">Price your own layer</Link>
             <Link className="btn ghost" to="/write">Write capacity</Link>
           </div>
-          <p className="fine">
-            The Stylus pricer runs this quote with 8.01x less L2 execution gas than its Solidity twin
-            on the same call (block 313,704,736, <code>docs/pricing.md</code>).
-          </p>
         </aside>
       </div>
 
@@ -227,6 +221,8 @@ function SpyQuote({ quote, bt }: { quote: QuoteQ; bt: ReturnType<typeof backtest
           {agrees
             ? ' Rerun in this browser over SPY.json, the expected loss matches.'
             : ` Browser rerun at 1.0x volatility gives ${usd2.format(bt.el)}; the gap is the live volatility scale.`}
+          {' '}The same call costs 8.01x less L2 execution gas in Stylus than in its Solidity twin
+          (block <a className="num" href={explorer.block(313_704_736n)} target="_blank" rel="noreferrer">#313,704,736</a>, <code>docs/pricing.md</code>).
         </p>
       ) : (
         <p className="src err-inline">

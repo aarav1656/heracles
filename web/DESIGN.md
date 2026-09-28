@@ -46,6 +46,10 @@ The reference layer is the README's own example (long 2,000,000 USDG SPY, retent
 20,000, limit 60,000): the first number a visitor sees is a real, non-zero price for real
 cover, not a balance.
 
+**Page openings differ by job:** `/` stacks the `<h1>` over a two-line lede (the one
+page that must explain the product); `/bind` and `/write` set the `<h1>` and a one-line
+job statement on a single baseline.
+
 **Primary action:** "Price your own layer" (to `/bind`, prefilled with the reference
 layer). Secondary: "Write capacity".
 
@@ -71,16 +75,18 @@ the foot), the tower drawing (kept for a bound layer's details row).
   the buyer's own band, redrawn on every keystroke (sign flips move it to the up-gap
   side), then the cover week. Right rail: exposure, retention, limit (prefilled with the
   reference layer), the live premium with EL, TVaR95, attach gap and weekends paid, the
-  rate-on-line floor note, a `CapacityExceeded` warning when the limit is above free
-  capacity, then approve and bind (`useTx`, contract calls unchanged). Mobile order: chart,
+  rate-on-line floor note, then approve (only once a wallet is connected) and bind; when
+  the limit exceeds free capacity the bind button says so and the line above it states
+  both figures at the read block (`useTx`, contract calls unchanged). Mobile order: chart,
   ticket, week.
 - **`/write` Write capacity.** Job: tell a writer what they are paid and what they can
-  lose before asking for USDG. The panel draws a writer's running result over the 504
-  SPY weekends at today's live premium on the reference layer, with the worst weekend
-  (−58,323 USDG, twice, 6 and 13 Mar 2020) and the deepest drawdown shaded; the caption
-  states it is in sample by construction and not a forecast. Rail: deposit with permit
-  (`useDepositWithPermit`) and withdraw (`Capacity.withdraw`), quick-fill chips on real
-  balances. Below: the pool strip, stated as empty when it is.
+  lose before asking for USDG. The panel is titled "In-sample backtest, not a forecast"
+  and draws a writer's running result over the 504 SPY weekends at today's live premium
+  on the reference layer, with y and year axes, red dots on the two full-limit weekends
+  (−58,323 USDG each, 6 and 13 Mar 2020) and the deepest drawdown shaded and keyed below.
+  Rail: deposit with permit (`useDepositWithPermit`, amount starts empty) and withdraw
+  (`Capacity.withdraw`), quick-fill chips on real balances. Below: the pool, one plain
+  sentence while it is empty, the free/locked/owed strip once it is not.
 
 ## Product study (GMX as a product, not a skin)
 

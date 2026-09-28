@@ -46,7 +46,15 @@ export function App() {
         <BrowserRouter>
           <div className="shell">
             <div className="side">
-              <NavLink to="/" className="brand">Heracles</NavLink>
+              <NavLink to="/" className="brand">
+                {/* A price line broken by the weekend: Friday's close, the gap, Monday's open. */}
+                <svg viewBox="0 0 22 16" width="22" height="16" aria-hidden="true">
+                  <path d="M1 5h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M13 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M11 5.5v6" style={{ stroke: 'var(--pay)' }} strokeWidth="2" strokeDasharray="1.6 1.6" />
+                </svg>
+                Heracles
+              </NavLink>
               <nav aria-label="Sections">
                 <NavLink to="/" end>{NavIcon.book}Weekend gaps</NavLink>
                 <NavLink to="/bind">{NavIcon.bind}Price a layer</NavLink>

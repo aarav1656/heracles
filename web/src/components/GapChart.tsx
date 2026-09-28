@@ -119,10 +119,16 @@ export function GapChart({ table, layer }: { table: GapTable; layer?: LayerTerms
                 <line className="edge-line" x1={0} x2={ws.length} y1={clampY(bt.exhaustBps)} y2={clampY(bt.exhaustBps)} vectorEffect="non-scaling-stroke" />
               </>
             )}
-            {ws.map((wk, i) => {
-              const top = Math.min(y(0), y(wk.gap));
-              return <rect key={wk.friday} className={`bar ${kind(i)}`} x={i + 0.14} width={0.72} y={top} height={Math.max(0.35, Math.abs(y(wk.gap) - y(0)))} />;
-            })}
+            {/* Paid weekends drawn last and wider, so 36 of 504 read as marks, not hairlines. */}
+            {[false, true].map((hot) =>
+              ws.map((wk, i) => {
+                const kd = kind(i);
+                if ((kd === 'p' || kd === 'x') !== hot) return null;
+                const top = Math.min(y(0), y(wk.gap));
+                const wd = hot ? 2.4 : 0.72;
+                return <rect key={wk.friday} className={`bar ${kd}`} x={i + 0.5 - wd / 2} width={wd} y={top} height={Math.max(0.35, Math.abs(y(wk.gap) - y(0)))} />;
+              }),
+            )}
             <line className="cursor" x1={at + 0.5} x2={at + 0.5} y1={0} y2={100} vectorEffect="non-scaling-stroke" />
           </svg>
           {bt && (
