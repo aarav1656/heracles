@@ -291,15 +291,23 @@ contract deploy, and all succeeded. The total it printed (141,502,659,062,039 "g
 `stylus-tools-0.10.9/src/core/deployment/mod.rs` adds `status.suggest_fee()` (the activation
 data fee in wei, about 1.415e14 here) to the gas-unit sum before multiplying by gas price.
 
-The previously-published **4.06x** Stylus-vs-Solidity call-gas ratio
-(`spikes/stylus-pricer/FINDINGS.md`) predates this rewrite (single table, no
-cost-of-capital load, no volatility scale, no checked-arithmetic overhead) and is **not
-valid for the current contract**. Re-measuring it honestly requires a live call-gas
-comparison (e.g. a local Stylus devnode or a Sepolia deployment calling both `quote()`
-implementations with mocked/live feeds), which this task's scope explicitly excludes
-("Do NOT deploy"). No new Stylus call-gas ratio is claimed here; only the wasm
-size/activation-fee numbers above, which do not require a call, are reported. Treat the
-4.06x figure as retracted until it is re-measured against this contract.
+**Measured call gas, current contract (2026-09-28, Arbitrum Sepolia, block 313,704,736).**
+The deployed Stylus pricer (`0xbe99217180a5fcb83372375b0928c971dfa71f88`) and its Solidity
+twin (`0x6aAf1b58939d55d1142a34aE02903bB788E9e771`, deployed by
+`contracts/script/DeployPricerTwin.s.sol` with the same table ids) were given the same
+`quote([2,000,000 USDG long], [SPY/USD feed], retention 20,000, limit 60,000)` call at the
+same block. Both returned identical outputs (premium 1,676,722,158 base units, EL
+1,051,190,476, TVaR95 20,368,000,000). Gas from NodeInterface `gasEstimateComponents`
+(`0x...C8`), which splits out the L1 data component:
+
+| | total gas | L1 component | L2 execution gas |
+|---|---|---|---|
+| Stylus | 584,865 | 6,421 | 578,444 |
+| Solidity twin | 4,639,494 | 6,629 | 4,632,865 |
+
+L2 execution is **8.01x** cheaper in Stylus (7.93x on total gas). This single-market call
+replaces the earlier 4.06x figure, which was measured on an older, single-table version of
+the pricer. Multi-market calls were not measured.
 
 ## Limitations
 
