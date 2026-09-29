@@ -95,13 +95,14 @@ contract TreatyReReviewTest is Test, TreatyFixture {
     /// P5: `setReference` used to accept the first fresh round at or after Friday's close with no
     /// upper bound. A feed whose heartbeat pauses over the weekend (no round between close and the
     /// next live session) let that next print, here, Monday's post-news open, stand in for
-    /// Friday's close, silently absorbing the weekend gap this treaty exists to cover. Fixed
-    /// `setReference` now reverts `BadRound` when the candidate round is later than
-    /// `close + REFERENCE_MAX_DELAY` (24h), so the stale round can no longer be used as the
-    /// reference at all; the layer is left to `cancel` once GRACE after expiry passes instead of
-    /// settling against a wrong price.
+    /// Friday's close, silently absorbing the weekend gap this treaty exists to cover. v3's rule
+    /// takes the round already in effect at close instead: round 1 here, printed an hour before
+    /// close, is still accepted as the reference even after the late round exists, and the layer
+    /// settles off round 1's pre-weekend price, not round 2's post-gap one. Round 2 itself (the
+    /// weekend-gap round) is never a valid reference: it prints after close, so `setReference`
+    /// rejects it outright regardless of round 1's presence.
     function test_RR2_referenceMustNotAbsorbWeekendGap() public {
-        feed.set(1, 770e8, FRI + 19 hours);
+        feed.set(1, 770e8, FRI + 19 hours); // in effect at close (close is FRI + 20h, DST)
         vm.warp(FRI + 19 hours + 1);
         uint256 id = _bind(1_000_000e6);
         // First round after close lands ~52h late (weekend heartbeat pause): Sunday 20:05 ET /
@@ -109,7 +110,18 @@ contract TreatyReReviewTest is Test, TreatyFixture {
         feed.set(2, 708e8, MON + 5 minutes);
         vm.warp(MON + 10 minutes);
         vm.expectRevert(Treaty.BadRound.selector);
-        treaty.setReference(id, 0, 2);
-        assertFalse(treaty.referenceSet(id, 0), "a stale round must never become the reference");
+        treaty.setReference(id, 0, 2); // the late round can never become the reference
+        assertFalse(treaty.referenceSet(id, 0));
+
+        treaty.setReference(id, 0, 1); // the round genuinely in effect at close still can
+        assertTrue(treaty.referenceSet(id, 0));
+        assertEq(treaty.fridayPrice(id, 0), 770e8, "reference must be the pre-weekend price, not round 2's");
+
+        feed.set(3, 700e8, EXPIRY + 5 minutes); // Monday's real post-expiry print settles the layer
+        vm.warp(EXPIRY + 10 minutes);
+        treaty.fix(id, 0, 3);
+        (,,,,, Treaty.State st,,,,, uint256 payout) = treaty.layers(id);
+        assertEq(uint8(st), uint8(Treaty.State.Settled));
+        assertGt(payout, 0, "the weekend gap off round 1's price must still pay out");
     }
 }

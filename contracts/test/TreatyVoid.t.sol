@@ -54,9 +54,9 @@ contract TreatyVoidTest is Test, TreatyFixture {
     /// the time); the buyer's payout path stays open and settles.
     function testFuzz_V1_voidNeverHitsReferenceableMarket(uint8 which, uint32 later) public {
         (Treaty t,) = _deploy(1);
-        feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
+        feed.set(P1 | 1, 770e8, CLOSE - 3 hours); // the round genuinely in effect at close
         uint256 id = _bind(t, 1);
-        feed.set(P1 | 2, 770e8, CLOSE + 35 hours); // on time, 1h under the bound
+        feed.set(P1 | 2, 770e8, CLOSE + 35 hours); // first round after close, well after MAX_ROUND_AGE
         feed.set(P1 | 3, 770e8, CLOSE + 59 hours);
         feed.set(P1 | 4, 700e8, EXPIRY + 5 minutes); // -9%: ITM
         feed.set(P1 | 5, 700e8, EXPIRY + 1 days);
@@ -64,7 +64,7 @@ contract TreatyVoidTest is Test, TreatyFixture {
         uint80 r = P1 | uint80(bound(which, 0, 6));
         vm.expectRevert();
         t.voidReference(id, 0, r);
-        t.setReference(id, 0, P1 | 2);
+        t.setReference(id, 0, P1 | 1);
         t.fix(id, 0, P1 | 4);
         (,,,,, Treaty.State st,,,,,) = t.layers(id);
         assertEq(uint8(st), uint8(Treaty.State.Settled));
@@ -74,17 +74,17 @@ contract TreatyVoidTest is Test, TreatyFixture {
     /// but only because setReference is equally impossible in the new phase (checked first).
     function test_V2_phaseChangeVoidOnlyWhenUnreferenceable() public {
         (Treaty t,) = _deploy(1);
-        feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
+        feed.set(P1 | 1, 770e8, CLOSE - 3 hours); // would have been in effect at close...
         uint256 id = _bind(t, 1);
-        feed.set(P1 | 2, 771e8, CLOSE + 1 hours); // referenceable in phase 1, nobody calls it
-        feed.set(P2 | 1, 771e8, CLOSE - 1 hours);
+        feed.set(P1 | 2, 771e8, CLOSE + 1 hours); // ...but the phase already crossed
+        feed.set(P2 | 1, 771e8, CLOSE + 2 hours); // phase 2's own first round prints after close: stranded
         feed.set(P2 | 2, 771e8, CLOSE + 40 hours);
         vm.warp(CLOSE + 41 hours);
         vm.expectRevert(Treaty.BadRound.selector);
-        t.setReference(id, 0, P1 | 2); // wrong phase
+        t.setReference(id, 0, P1 | 1); // old phase, unreachable via the current-phase lookup
         vm.expectRevert(Treaty.BadRound.selector);
-        t.setReference(id, 0, P2 | 2); // late
-        t.voidReference(id, 0, P2 | 2);
+        t.setReference(id, 0, P2 | 2); // current phase but late
+        t.voidReference(id, 0, P2 | 1); // phase proof: phase 2's own first round is already post-close
         vm.expectRevert(Treaty.ReferenceIsVoid.selector);
         t.setReference(id, 0, P2 | 2);
     }
@@ -93,16 +93,15 @@ contract TreatyVoidTest is Test, TreatyFixture {
     /// capital unlocked, gate reopens.
     function test_V3_voidPlusReferencedOtherOnlyCancels() public {
         (Treaty t, Capacity c) = _deploy(2);
-        feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
-        feedB.set(P1 | 1, 100e8, CLOSE - 1);
+        feed.set(P1 | 1, 770e8, CLOSE - 3 hours); // market0: fresh, in effect at close
+        feedB.set(P1 | 1, 100e8, CLOSE - 27 hours); // market1: silent for >26h before close
         uint256 id = _bind(t, 2);
         uint256 buyerAfterBind = usdg.balanceOf(buyer);
         feed.set(P1 | 2, 771e8, CLOSE + 1 hours);
-        vm.warp(CLOSE + 2 hours);
-        t.setReference(id, 0, P1 | 2);
-        feedB.set(P1 | 2, 90e8, CLOSE + 40 hours);
+        feedB.set(P1 | 2, 90e8, CLOSE + 40 hours); // market1's next round only prints after close
         vm.warp(CLOSE + 41 hours);
-        t.voidReference(id, 1, P1 | 2);
+        t.setReference(id, 0, P1 | 1); // market0 settles off the round in effect at close
+        t.voidReference(id, 1, P1 | 1); // market1: stale proof
         feed.set(P1 | 3, 700e8, EXPIRY + 5 minutes);
         vm.warp(EXPIRY + 1 hours);
         vm.expectRevert(Treaty.ReferenceNotSet.selector);
@@ -121,13 +120,12 @@ contract TreatyVoidTest is Test, TreatyFixture {
     /// succeed and let cancel unlock the vault instead of leaving the layer Bound forever.
     function test_V4_lateZeroAnswerRoundIsVoidableThenCancels() public {
         (Treaty t, Capacity c) = _deploy(1);
-        feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
+        feed.set(P1 | 1, 0, CLOSE - 27 hours); // the round in effect at close: stale AND a bad answer
         uint256 id = _bind(t, 1);
-        feed.set(P1 | 2, 0, CLOSE + 40 hours);
         vm.warp(CLOSE + 41 hours);
         vm.expectRevert(Treaty.BadRound.selector);
-        t.setReference(id, 0, P1 | 2);
-        t.voidReference(id, 0, P1 | 2);
+        t.setReference(id, 0, P1 | 1);
+        t.voidReference(id, 0, P1 | 1);
         vm.warp(EXPIRY + 3 days);
         t.cancel(id);
         (,,,,, Treaty.State st,,,,,) = t.layers(id);

@@ -474,6 +474,7 @@ contract Treaty is ReentrancyGuard {
         // then the opposite of rule 5.
         uint80 checkedLatest = _latestInPhase(feed, roundId);
         (,,, uint256 updatedAt,) = feed.getRoundData(roundId);
+        if (updatedAt == 0) revert BadRound(); // no round ever printed at this id: nothing to void
         if (updatedAt > closeTs) revert BadRound();
         if (roundId != checkedLatest) {
             (,,, uint256 nextUpdatedAt,) = feed.getRoundData(roundId + 1);
