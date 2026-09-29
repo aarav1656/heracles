@@ -196,8 +196,7 @@ button { font-family: inherit; }
 .buybox .wallet-menu { width: 100%; }
 .wn { font-size: 12px; line-height: 18px; color: var(--ink-2); margin: 12px 4px 0; }
 .buybox .prose { font-size: 12px; line-height: 18px; margin: 10px 4px 0; }
-.claim { display: flex; gap: 10px; margin: 14px 4px 0; font-size: 12px; line-height: 18px; color: var(--ink-2); }
-.claim svg { flex: none; width: 16px; height: 16px; margin-top: 1px; fill: none; stroke: var(--teal); stroke-width: 1.5; stroke-linecap: round; }
+.claim { margin: 14px 4px 0; font-size: 12px; line-height: 18px; color: var(--ink-2); }
 .claim b { color: var(--ink); }
 .box.form { display: grid; gap: 14px; }
 .box.sub { margin-top: 28px; }
@@ -387,6 +386,7 @@ a, .btn, .buy, .key, .tabs button, .sg button, .seg button, .pills a, .field inp
   .shell { margin: 0 6px; padding: 24px 16px 28px; border-radius: 14px; }
   .hero { font-size: 34px; line-height: 1.05; gap: 4px 10px; }
   .badge { display: none; }
+  .wide-only { display: none; }
   .meta { gap: 6px 16px; margin: 14px 0 0 2px; font-size: 12px; }
   .meta > :nth-child(n + 3) { display: none; }
   .desc { margin-top: 14px; }

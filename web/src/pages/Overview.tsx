@@ -120,7 +120,7 @@ export function Overview() {
             <small>
               {parsed.error ? parsed.error
                 : live.error ? <>Quote failed: {live.error}</>
-                : quote ? <>{stale ? 'Stylus pricer, re-quoting' : price?.floored ? 'Stylus pricer minimum' : 'Stylus pricer, live'} at block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">{quote.block.toLocaleString('en-US')}</a></>
+                : quote ? <><span className="wide-only">{stale ? 'Stylus pricer, re-quoting' : price?.floored ? 'Stylus pricer minimum' : 'Stylus pricer, live'} at </span>block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">{quote.block.toLocaleString('en-US')}</a></>
                 : 'Quoting from the Stylus pricer'}
             </small>
           </div>
@@ -177,7 +177,6 @@ export function Overview() {
         <BuyCover terms={terms} quote={quote} book={q.data} win={win} now={now} />
 
         <div className="claim">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" /><path d="M10 9v5M10 6.2v.1" /></svg>
           <p>
             <b>No loss to prove.</b> Monday's feed and the position the vault declared fix the payout; nobody
             reads its books. Once the week settles, the vault collects in one transaction.
@@ -216,7 +215,7 @@ export function Overview() {
 
       <div className="bar">
         <div>{unbacked ? 'No writer backing yet' : <>Premium<b>{price ? `${usd2.format(toUsd(price.premium))} USDG` : '…'}</b></>}</div>
-        {unbacked ? <Link className="buy" to="/write">Write cover</Link> : <a className="buy" href="#buy">Buy cover</a>}
+        {unbacked ? <button className="buy" disabled>Buy cover</button> : <a className="buy" href="#buy">Buy cover</a>}
       </div>
     </div>
   );

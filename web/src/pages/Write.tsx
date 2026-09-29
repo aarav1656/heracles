@@ -84,17 +84,17 @@ export function Write() {
         <div className="kpi" aria-live="polite">
           <div>
             <p>Backing the cover</p>
-            <strong>{cap ? usd0.format(toUsd(cap.balance)) : '…'}<span> USDG</span></strong>
+            <strong>{cap ? <>{usd0.format(toUsd(cap.balance))}<span> USDG</span></> : '…'}</strong>
             <small>{book.data ? <Stamp block={book.data.block} label="Read at block" /> : 'Reading the pool'}</small>
           </div>
           <div>
             <p>Free for new cover</p>
-            <strong>{cap ? usd0.format(toUsd(cap.free)) : '…'}<span> USDG</span></strong>
+            <strong>{cap ? <>{usd0.format(toUsd(cap.free))}<span> USDG</span></> : '…'}</strong>
             <small>{cap ? `${usd0.format(toUsd(cap.locked))} locked under bound covers` : ' '}</small>
           </div>
           <div>
             <p>Premium waiting</p>
-            <strong>{cap ? usd0.format(toUsd(cap.pendingPremium)) : '…'}<span> USDG</span></strong>
+            <strong>{cap ? <>{usd0.format(toUsd(cap.pendingPremium))}<span> USDG</span></> : '…'}</strong>
             <small>paid in by covers not yet settled</small>
           </div>
         </div>
@@ -123,7 +123,7 @@ export function Write() {
         {me.address ? (
           <button className="buy" disabled={!me.ready || permitTx.busy || !!amountError || !parsed} onClick={deposit}>Deposit USDG</button>
         ) : (
-          <Wallet label="Deposit USDG" className="buy" />
+          <Wallet label="Connect to deposit" className="buy" />
         )}
         {me.address && !me.ready && <p className="wn">{me.reason}</p>}
         <TxNote status={permitTx.status} hash={permitTx.hash} error={permitTx.error} />

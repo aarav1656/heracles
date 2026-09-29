@@ -63,7 +63,7 @@ export function BuyCover({ terms, quote, book, win, now }: {
       {short ? (
         <button className="buy" disabled>Buy cover</button>
       ) : !me.address ? (
-        <Wallet label="Buy cover" className="buy" />
+        <Wallet label="Connect to buy" className="buy" />
       ) : needsApprove ? (
         <button className="buy" disabled={!me.ready || approveTx.busy} onClick={approve}>
           Approve {fmtUsdg(price!.premium)} USDG
