@@ -3,13 +3,13 @@
 Named for the hero whose labours go beyond ordinary strength: this layer carries loss
 beyond the vault's own capital.
 
-Excess-of-loss reinsurance for the LP vaults of stock and RWA perp exchanges on
-Arbitrum. A vault's risk lead transfers the tail loss the vault takes when a market
-reopens with a gap, per market, above a retention, up to a limit. A Stylus contract
-prices the layer on chain from 504 historical weekend gaps, USDG writers fund it, and
-the claim pays out from the first fresh Monday oracle round. No offchain price setter,
-no claims adjuster. The weekend gap is the mechanism of the loss; the product is the
-reinsurance layer that pays it. Heracles (contract `Treaty`): `contracts/src/Treaty.sol`.
+Parametric excess-of-loss cover for the LP vaults of stock and RWA perp exchanges on
+Arbitrum. A vault declares its position size per market; if a market opens Monday far
+from Friday's close, Heracles works out the loss those positions would take from the
+price feed and pays the slice of it above a retention, up to a limit. The payout comes
+from the feed, not from the vault's own books. A Stylus contract prices the layer on
+chain from 504 historical weekend gaps, USDG writers fund it, and settlement uses the
+first fresh Monday oracle round. No offchain price setter, no claims adjuster. Heracles (contract `Treaty`): `contracts/src/Treaty.sol`.
 
 Live app: https://heracles-virid-seven.vercel.app (reads the book below from the chain; screenshots of all three routes at 1440 and 390 px in `evidence/web-{book,bind,write}-{1440,390}.png`).
 
@@ -119,7 +119,8 @@ Sequencer Uptime feed and settles in real Paxos USDG on testnet
    settles, so a deposit made right before a bind gets none of its premium.
 4. `fix(id, marketIdx, roundId)` per market applies the same fixing rule (first
    round with `updatedAt >= expiry`, previous round strictly before expiry). Once every market is fixed the layer settles: payout
-   is the realized loss above retention, clamped at the layer's own locked limit, never
+   is the loss computed from the declared exposure and the feed's gap, above retention,
+   clamped at the layer's own locked limit, never
    at the pool's total assets. `Capacity.totalAssets()` nets out both `owed` (a
    settled-but-unclaimed payout) and `pendingPremium`, so withdrawals price pro rata
    across writers regardless of order; active `locked` capital is still counted at face

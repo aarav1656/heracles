@@ -2,13 +2,13 @@
 
 ## Tagline
 
-Excess-of-loss reinsurance for stock and RWA perp LP vaults, priced on-chain
+Parametric weekend-gap cover for stock and RWA perp LP vaults, priced on-chain
 
 ## Description
 
-Heracles is an excess-of-loss reinsurance layer for the LP vaults behind stock and RWA perpetual exchanges on Arbitrum. A vault's risk lead locks a per-market exposure list against a retention and a limit, and the treaty pays out from the first fresh Chainlink round after Monday's open if the market gapped against the vault over the weekend. Writers fund the layer in USDG through an ERC-4626 capacity vault and earn the premium.
+Heracles is parametric excess-of-loss cover for the LP vaults behind stock and RWA perpetual exchanges on Arbitrum. The payout is worked out from the price feed and the position size the vault declares, not from the vault's own books. A vault's risk lead locks a per-market exposure list against a retention and a limit, and the treaty pays out from the first fresh Chainlink round after Monday's open if the market gapped against the vault over the weekend. Writers fund the layer in USDG through an ERC-4626 capacity vault and earn the premium.
 
-Named for the hero whose labours carried a weight beyond his own strength, Heracles carries the loss beyond a vault's own capital, the tail past a first-loss buffer. Pricing runs on chain in a Rust Stylus contract, re-run at every bind against 504 historical weekend gaps. There is no offchain price setter and no claims adjuster: a bind, a locked Chainlink round, and a payout that either exists or does not.
+Named for the hero whose labours carried a weight beyond his own strength, Heracles carries the slice of a weekend gap beyond what a vault chooses to keep itself. Pricing runs on chain in a Rust Stylus contract, re-run at every bind against 504 historical weekend gaps. There is no offchain price setter and no claims adjuster: a bind, a locked Chainlink round, and a payout that either exists or does not.
 
 ## Problem
 
@@ -28,13 +28,13 @@ premium = EL + 0.03 * (TVaR95 - EL) + 0.04 * limit * 7/365
 
 the expected loss across all 504 scenarios, plus 3% of the tail mass above it (the worst 5%, TVaR95), plus a capital charge of 4% annualised on the locked limit for the real seven-day lock. The quote floors at 50 basis points of the limit, so a zero premium can never bind. A Solidity twin computes the identical formula for a parity check; the deployed pricer runs the Rust version.
 
-Once bound, the reference price for each market is not the caller's spot. It is set via `setReference(id, marketIdx, roundId)`, which only accepts the first round at or after the Friday 4:00pm New York close, landing within 36h of it; a later first round lets anyone void that market, and the layer can then only be cancelled with the premium refunded. Writers deposit USDG into the ERC-4626 `Capacity` vault; a bind locks the limit out of free capacity and pulls the premium in the same transaction, but the premium sits in `pendingPremium`, excluded from share pricing, until the layer settles. `fix(id, marketIdx, roundId)` applies the same rule per market, the first round with `updatedAt >= expiry`, and once every market is fixed the layer settles: payout is the realized loss above retention, clamped at the layer's own locked limit. Buyer and writer both pull their own claim rather than being pushed a payment, and `claimTo` lets the claim owner redirect payout to another address.
+Once bound, the reference price for each market is not the caller's spot. It is set via `setReference(id, marketIdx, roundId)`, which only accepts the first round at or after the Friday 4:00pm New York close, landing within 36h of it; a later first round lets anyone void that market, and the layer can then only be cancelled with the premium refunded. Writers deposit USDG into the ERC-4626 `Capacity` vault; a bind locks the limit out of free capacity and pulls the premium in the same transaction, but the premium sits in `pendingPremium`, excluded from share pricing, until the layer settles. `fix(id, marketIdx, roundId)` applies the same rule per market, the first round with `updatedAt >= expiry`, and once every market is fixed the layer settles: payout is the loss computed from the declared exposure and the feed's gap, above retention, clamped at the layer's own locked limit. Buyer and writer both pull their own claim rather than being pushed a payment, and `claimTo` lets the claim owner redirect payout to another address.
 
 ## What is novel
 
 Nexus Mutual, Sherlock, InsurAce and Unslashed all run pooled capital against smart-contract or depeg risk, with a governance vote, an arbitration panel, or a community/oracle-assisted process standing between a loss and a payout. Heracles has none of that: settlement is a pure function of the next Chainlink round after Monday's open. Neptune Mutual and Risk Harbor already proved the general shape of oracle-triggered, adjuster-free payout, so "no adjuster" alone is not the differentiator. What none of them do is price the specific instrument here: a per-market weekend gap, recomputed on chain from public historical data at every bind, rather than an off-chain-set underwriting rate.
 
-Re Protocol, Nayms (rebranded OnRe), and Ensuro sell tokenized access to real, regulated reinsurance treaties, institutional capital backing an off-chain insurer's book that gets reported back on chain. Heracles backs an exposure that is already on chain: a Chainlink feed on an Arbitrum vault, not a policy administrator's ledger. The risk and the settlement data live in the same place.
+Re Protocol, Nayms (rebranded OnRe), and Ensuro sell tokenized access to real, regulated reinsurance treaties, institutional capital backing an off-chain insurer's book that gets reported back on chain. Heracles is parametric, not an indemnity treaty. It pays from the price gap a Chainlink feed shows on the positions a vault declared, so there is no loss to adjust and no policy administrator's ledger to trust. The risk and the settlement data live in the same place, on Arbitrum.
 
 ## Stack
 
