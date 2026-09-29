@@ -446,3 +446,241 @@ Numbers: `/tmp/heracles-rr/econ.py` on `evidence/gap-tables/*.json`.
 - The Stylus panic is shown with a standalone repro of the same expression and types, not with a deployed Stylus call.
 - The benchmark comparison (cat bond spreads, Nexus, Sherlock) was not re-fetched in this re-review.
 - Mainnet Arbitrum One equity-feed weekend and holiday heartbeat behaviour was not read. Only Sepolia SPY rounds 2320-2362 were read.
+
+## Round 6: v3 books, tranches and oracle rules (2026-09-30)
+
+Scope: `contracts/src` changes from 178f92d to d4a3dc7 (v2 to v3: books, first-loss and senior tranches, round-in-effect reference rule, stale and phase void proofs, bind freshness, cancel liveness), read against docs/design/v3.md decisions 1 to 3 and its invariant table (C1, H1, F3, M1, E1, T1 to T5). Reviewer: independent adversarial review, lane L6. No repo file other than this section was edited. Nothing committed, pushed or deployed.
+
+Scratch: `/tmp/l6` (repo `contracts/src`, `contracts/test`, `foundry.toml` copied, `lib` symlinked; `diff -r /tmp/l6/src contracts/src` identical). All findings tests are in `/tmp/l6/test/L6Review.t.sol`. Fix prototype plus one mutation: `/tmp/l6fix` (same test file, patched `src`). Repo suites run in the scratch copy on the unchanged source: Books, Tranche, TrancheAdditivity, Liveness, TreatyVoid, ReferenceRule, Treaty, CapacityC1, WeekWindow, 52 passed, 0 failed.
+
+### Verdict: FIX FIRST before the verified redeploy (two small changes in `cancel`/`claimTo`, prototyped green)
+
+Nothing found moves money to the wrong party. T1, T3, T4, T5 (for Treaty's own flows) and "both vaults' gates open and close together" hold under a fuzz that goes red when the waterfall is mutated. The v3 money paths are sound. The open problems are liveness: `cancel` is the only exit for an unfixable layer, and it now depends on three things that can fail forever: a push transfer to the buyer, an immutable liveness feed, and the market feed staying readable. When any of them fails, the layer stays `Bound`, its cutoff bucket never drains, and `gateActive()` stays true in both vaults of that book. `maxDeposit`, `maxMint` and `maxRedeem` then return 0 for every writer, free capital included, with no admin path out.
+
+| # | Severity | Where | One line |
+|---|---|---|---|
+| L6-1 | Medium | Treaty.sol:681-682, Capacity.sol:277-283 | Issuer freeze of the buyer (USDC blacklist, USDG asset protection) makes `cancel` revert forever and freezes the whole book |
+| L6-2 | Medium | Treaty.sol:671-675, 727-728 | No time-bounded exit: a stopped liveness feed, or a market feed whose reads revert, freezes the book forever |
+| L6-3 | Low | Treaty.sol:539, 610, 710-713 (and 634-637, 728-735) | A fresh in-effect round with an out-of-range answer can be neither referenced nor voided (Monday twin: first post-expiry round out of range) |
+| L6-4 | Low | Treaty.sol:547, 610, 681-682 | Holiday-Friday weeks void predictably, so a bind shuts both gates about 90h at zero net premium |
+| I-1 | Info | Treaty.sol:85-88, 496-498 | T5 holds for Treaty's own flows only; a direct transfer strands tokens with no sweep |
+| I-2 | Info | see list | Unproven observations |
+
+### Medium
+
+#### L6-1. A frozen buyer bricks `cancel` and the whole book (Treaty.sol:681-682, Capacity.sol:277-283)
+
+- Root cause: `cancel` pushes the premium refund to `L.buyer` inside the same call that unlocks both slices. If that transfer reverts, the unlock reverts with it. v2 had the same push (M3), but v3 adds a USDC book, and Circle blacklists addresses routinely. Paxos USDG has an equivalent freeze. L4 fixed the same problem for `claim` with `claimTo`. `cancel` never got the equivalent.
+- Sequence: (1) a buyer binds in the USDC book. (2) The layer becomes unfixable: a dead feed, a voided reference, or any L6-3 case. (3) Circle blacklists the buyer before anyone cancels. (4) Every `cancel` reverts in `refundPremium`. The layer stays `Bound` and both vaults' cutoff buckets stay nonzero, so `gateActive()` is true forever. Every writer in the USDC book, first loss and senior, can neither deposit nor withdraw, including capital that was never locked.
+- Test (`test_L6_1_frozenBuyerBricksCancelAndBook`), red on current code: `first-loss writer frozen forever: 0 <= 0`. Control `test_L6_1_control_cancelWorksWhenBuyerNotFrozen` is green, so only the freeze blocks the exit.
+
+```solidity
+function _deadFeedLayer(FreezableToken tok) internal returns (uint256 id) {
+    live = new MockFeed();
+    _deploy(address(tok), address(new MockFeed()), address(live));
+    _fund(address(tok));
+    feed.set(1, 770e8, THU_HB);
+    id = _bind();
+    feed.set(2, 771e8, FRI + 19 hours); // in effect at close, fresh
+    vm.warp(CLOSE + 1);
+    t.setReference(id, 0, 2);
+    // the equity feed dies after Friday: no Monday round ever prints
+    live.set(1, 1e8, EXPIRY + 3 days + 29 days);
+    vm.warp(EXPIRY + 3 days + 30 days);
+}
+
+function test_L6_1_frozenBuyerBricksCancelAndBook() public {
+    FreezableToken tok = new FreezableToken();
+    uint256 id = _deadFeedLayer(tok);
+    tok.freeze(buyer); // issuer freezes the buyer after bind (Circle blacklist, Paxos freeze)
+    try t.cancel(id) {} catch {}
+    assertGt(fl.maxRedeem(writer), 0, "first-loss writer frozen forever");
+    assertGt(sr.maxRedeem(writer), 0, "senior writer frozen forever");
+}
+```
+
+- Fix (prototyped in `/tmp/l6fix`, test green): in `cancel`, stop pushing the refund. Move each slice's premium out of `pendingPremium` and into `owed` (a new three-line `Capacity.cancelPremium`), and let the buyer pull it through `claimTo(id, to)` for a `Cancelled` layer, paying `premiumJunior`/`premiumSenior` through the existing `payOut`. T5 is unchanged, since Treaty still never holds a balance.
+
+#### L6-2. No time-bounded exit from an unfixable layer (Treaty.sol:671-675, 727-728)
+
+- Root cause: `cancel` requires `livenessFeed.updatedAt >= expiry + 26h` (line 673) and `!_anyMarketFixable` (line 675). `_isMarketDead` calls `feed.latestRoundData()` without `try` (line 728). No elapsed time ever lifts either condition. `livenessFeed` is immutable.
+- Sequence A: Chainlink deprecates the Arbitrum Sepolia USDC/USD feed (testnet feeds are retired routinely, and a retirement usually stops a network's equity feed too, which is the one case where `cancel` is needed). Any layer whose equity feed stops after Friday can then never be cancelled. The book is frozen as in L6-1.
+- Sequence B: a market feed's proxy starts reverting on reads after the reference is set. `_isMarketDead` reverts, so `cancel` reverts forever.
+- Tests, red on current code:
+  - `test_L6_2a_stoppedLivenessFeedBricksBookForever`: `book frozen a year after expiry: liveness feed stopped: 0 <= 0` (cancel reverts `StillFixable` 365 days after expiry)
+  - `test_L6_2b_revertingMarketFeedBricksBookForever`: `book frozen a year after expiry: market feed reverts: 0 <= 0`
+  - Control `test_L6_2_control_cancelWorksWhileLivenessFeedPrints` is green.
+
+```solidity
+function _stuckSetup(address feed_, uint256 livenessLastPrint) internal returns (uint256 id) {
+    MockUSDG usdg = new MockUSDG();
+    live = new MockFeed();
+    _deploy(address(usdg), feed_, address(live));
+    _fund(address(usdg));
+    live.set(1, 1e8, livenessLastPrint);
+    feed.set(1, 770e8, THU_HB);
+    id = _bind();
+    feed.set(2, 771e8, FRI + 19 hours);
+    vm.warp(CLOSE + 1);
+    t.setReference(id, 0, 2);
+}
+
+function test_L6_2a_stoppedLivenessFeedBricksBookForever() public {
+    // USDC/USD liveness feed's last print is Friday 11:39 UTC, then it is deprecated
+    uint256 id = _stuckSetup(address(new MockFeed()), FRI + 11 hours + 39 minutes);
+    vm.warp(EXPIRY + 365 days);
+    (bool ok, bytes memory ret) = address(t).call(abi.encodeCall(Treaty.cancel, (id)));
+    if (!ok) assertEq(bytes4(ret), Treaty.StillFixable.selector);
+    assertGt(fl.maxRedeem(writer), 0, "book frozen a year after expiry: liveness feed stopped");
+}
+
+function test_L6_2b_revertingMarketFeedBricksBookForever() public {
+    BreakableFeed bf = new BreakableFeed();
+    uint256 id = _stuckSetup(address(bf), EXPIRY + 40 days);
+    bf.breakIt(); // proxy decommissioned after the reference was set
+    vm.warp(EXPIRY + 365 days);
+    try t.cancel(id) {} catch {}
+    assertGt(sr.maxRedeem(writer), 0, "book frozen a year after expiry: market feed reverts");
+}
+```
+
+- Fix (prototyped, both tests green): skip the liveness and `_anyMarketFixable` checks once `block.timestamp >= expiry + 30 days`. A live 24h-heartbeat feed has printed dozens of post-expiry rounds by then, so anyone who wanted the layer fixed has had 30 days to do it, and the halted-chain race the liveness check guards cannot last that long. This does not reopen F1: bind freshness already refuses new layers on a dead feed.
+
+### Low
+
+#### L6-3. An out-of-range in-effect answer is neither referenceable nor voidable (Treaty.sol:539, 610, 710-713)
+
+- Root cause: `setReference` rejects the in-effect round on its answer (line 539). `voidReference` only accepts it when it is stale (line 610). A fresh round with `answer <= 0` or `answer > uint64.max` matches neither. `_anyMarketFixable` counts an unreferenced, non-void market as fixable (line 712), so `cancel` reverts `StillFixable` forever. Monday twin, unchanged from v2: when the first round at or after expiry is out of range and a good round follows it, `fix` rejects both (`BadRound`, then `NotFirstRound`). `_isMarketDead` reads only the latest round, so it calls the market live.
+- Trigger needs Chainlink to publish an out-of-range answer. OCR2 `minAnswer` normally prevents this, hence Low. The impact is the same permanent book freeze as L6-1.
+- Tests, red on current code:
+  - `test_L6_3_badAnswerInEffectRoundIsUnvoidable`: `book frozen: reference neither settable nor voidable: 0 <= 0`
+  - `test_L6_3b_badAnswerFirstMondayRoundIsUnfixableAndUncancellable`: `book frozen: first Monday round unusable, market not dead: 0 <= 0`
+
+```solidity
+function test_L6_3_badAnswerInEffectRoundIsUnvoidable() public {
+    MockUSDG usdg = new MockUSDG();
+    live = new MockFeed();
+    _deploy(address(usdg), address(new MockFeed()), address(live));
+    _fund(address(usdg));
+    live.set(1, 1e8, EXPIRY + 40 days);
+    feed.set(1, 770e8, THU_HB);
+    uint256 id = _bind();
+    feed.set(2, 0, FRI + 19 hours + 45 minutes); // in effect at close, fresh, answer 0
+    feed.set(3, 772e8, FRI + 3 days + 4 minutes); // Sunday-night reopen
+    feed.set(4, 760e8, EXPIRY + 1 hours); // Monday, first after open
+    vm.warp(EXPIRY + 3 days + 30 days);
+
+    vm.expectRevert(Treaty.BadRound.selector);
+    t.setReference(id, 0, 2); // rule 2, answer
+    vm.expectRevert(Treaty.BadRound.selector);
+    t.setReference(id, 0, 1); // rule 4, superseded before close
+    vm.expectRevert(Treaty.BadTiming.selector);
+    t.voidReference(id, 0, 2); // not stale
+    vm.expectRevert(Treaty.BadRound.selector);
+    t.voidReference(id, 0, 1); // rule 4
+
+    try t.cancel(id) {} catch {}
+    assertGt(fl.maxRedeem(writer), 0, "book frozen: reference neither settable nor voidable");
+}
+
+function test_L6_3b_badAnswerFirstMondayRoundIsUnfixableAndUncancellable() public {
+    MockUSDG usdg = new MockUSDG();
+    live = new MockFeed();
+    _deploy(address(usdg), address(new MockFeed()), address(live));
+    _fund(address(usdg));
+    live.set(1, 1e8, EXPIRY + 40 days);
+    feed.set(1, 770e8, THU_HB);
+    uint256 id = _bind();
+    feed.set(2, 771e8, FRI + 19 hours);
+    vm.warp(CLOSE + 1);
+    t.setReference(id, 0, 2);
+    feed.set(3, 0, EXPIRY + 10 minutes);
+    feed.set(4, 760e8, EXPIRY + 1 hours);
+    vm.warp(EXPIRY + 3 days + 30 days);
+
+    vm.expectRevert(Treaty.BadRound.selector);
+    t.fix(id, 0, 3);
+    vm.expectRevert(Treaty.NotFirstRound.selector);
+    t.fix(id, 0, 4);
+    try t.cancel(id) {} catch {}
+    assertGt(fl.maxRedeem(writer), 0, "book frozen: first Monday round unusable, market not dead");
+}
+```
+
+- Fix: the L6-2 backstop turns both green (prototyped). A tighter fix is a third void proof in `voidReference`: the round that passes rules 2 (phase) to 4 has an out-of-range answer.
+
+#### L6-4. Holiday-Friday weeks void predictably, so the gate closes for free (Treaty.sol:547, 610, 681-682)
+
+- Root cause: rule 5 voids any week whose in-effect round is more than 26h old at the close. On an exchange-holiday Friday (2026-12-25 and 2027-01-01 are both Fridays; Good Friday is 2027-03-26), a feed that pauses with the market has its last print on Thursday. Bind freshness is checked only at bind time, so a Thursday bind passes. The layer then voids and cancels with a full refund. The design's generalised L2 rule ("no vault's gate can be closed for free") does not hold on those weeks. Both gates stay shut from Friday 19:30 until `expiry + GRACE` (Thursday 13:30), about 90h instead of the usual 66h. The same predictability lets a writer who is also the buyer harvest E1 entrants on those weeks.
+- Test `test_L6_4_holidayFridayVoidShutsGatesForFree`, red on current code: `both gates shut Fri 19:30 to Thu 13:30 at zero net premium: 0 <= 0`. The test also asserts that both gates are still shut on Monday evening and on Thursday one second before the cancel.
+
+```solidity
+function test_L6_4_holidayFridayVoidShutsGatesForFree() public {
+    MockUSDG usdg = new MockUSDG();
+    live = new MockFeed();
+    _deploy(address(usdg), address(new MockFeed()), address(live));
+    _fund(address(usdg));
+    // Feed pauses on the exchange holiday: last print Thursday 16:18 UTC, next Sunday night.
+    feed.set(1, 770e8, THU_HB);
+    uint256 before = usdg.balanceOf(buyer);
+    uint256 id = _bind(); // Thursday 17:00 UTC, feed 42 min old: bind freshness passes
+    feed.set(2, 700e8, FRI + 3 days + 4 minutes); // Sunday-night reopen, 9% gap
+    feed.set(3, 690e8, EXPIRY + 5 minutes);
+
+    vm.warp(CLOSE + 1);
+    assertTrue(fl.gateActive() && sr.gateActive());
+    vm.expectRevert(Treaty.BadRound.selector);
+    t.setReference(id, 0, 1); // rule 5: 27h42m before close
+    t.voidReference(id, 0, 1);
+
+    vm.warp(EXPIRY + 6 hours); // a settled week would have reopened by now
+    assertTrue(fl.gateActive() && sr.gateActive(), "gates still shut Monday evening");
+    live.set(1, 1e8, FRI + 5 days + 11 hours + 39 minutes); // Wed 11:39 heartbeat
+    vm.warp(EXPIRY + 3 days - 1);
+    assertTrue(fl.gateActive(), "gates still shut Thursday morning");
+    vm.warp(EXPIRY + 3 days);
+    t.cancel(id);
+
+    uint256 netPremium = before - usdg.balanceOf(buyer);
+    assertGt(netPremium, 0, "both gates shut Fri 19:30 to Thu 13:30 at zero net premium");
+}
+```
+
+- Likelihood depends on how the real feed behaves on holidays, which was not read. The Sepolia SPY feed prints every 24h through weekends, so it probably never voids. The RHC feeds stop for 52 to 56h every weekend, so they may void. Fix: on a void-driven cancel, keep each slice's capital charge (the pricer's `limit * 4% * 7/365` term) in its vault and refund only the rest. Alternatively, `bind` reverts in weeks whose Friday is an NYSE holiday (fixed dates plus Good Friday). Not prototyped. The L6-1 prototype turns this test green only incidentally, because the refund becomes a pull, so it is not evidence for either fix.
+
+### Info
+
+- I-1. T5 holds for every Treaty-initiated flow (bind pulls `premium`, then the vaults pull `premiumJunior + premiumSenior == premium` exactly; a failed or short pull, including a fee-on-transfer token, reverts the whole bind). A plain `transfer` to Treaty, or a buyer's `claimTo(id, treaty)`, leaves a balance that nothing can move. Test `test_L6_info_T5_donationStrandsBalance`, red: `Treaty balance nonzero after a plain transfer: 1000000 != 0`. Harmless to the protocol. Only the sender loses.
+- I-2 (unproven, no failing test):
+  - `voidReference` is not gated by `_requireSequencerUp` while `setReference` is (Treaty.sol:534 vs 576-614). The void proof is objective timestamp data, so the missing gate changes nothing today. It is inert on Sepolia and RHC (`sequencerUptimeFeed == 0`).
+  - The constructor accepts the same asset twice (Treaty.sol:273-287), which creates two books over one token. T4 still holds per vault. This is a config footgun only.
+  - `referencedCount`/`fixedCount` are `uint8` (Treaty.sol:104-105) and the constructor does not bound `feeds.length`. With 256 or more markets `fix` can never run. Deploys use 1 or 4 markets.
+  - Senior premium versus its own sub-quote: `premiumSenior = max(qTotal, floor) - qJunior`. With comonotone slice payouts, `floor(a+b) >= floor(a)+floor(b)` on every division, so it can fall short of `quote(R+J, L-J)` only by integer flooring, a few base units. The floor top-up only adds to the senior slice. This was not fuzzed beyond the repo's `TrancheAdditivity`.
+  - The minimum nonzero slice premium is 1 base unit. The junior capital charge reaches 1 at `J >= 1,304` base units, and the H2 floor keeps total dust binds at `>= 0.5%` of the limit. A dust bind still shuts both gates for the normal settlement window at negligible cost. This is the same economics as v2 and is bounded by H1.
+  - The two `quote` calls double the pricer cost of `bind`. `markets` is fixed at deploy, so an attacker cannot grow it. Not measured at 4 markets with the Solidity twin.
+  - Four fresh vaults per deploy and no seed deposit in `script/Deploy.s.sol`: the classic first-depositor donation grief applies to each (OZ offset 0). This predates v3.
+
+### E1 (known open): confirmed unchanged in kind
+
+An entrant between bind and cutoff pays `totalAssets() + pendingPremium` in one vault and loses that vault's share of the premium on a cancel. This is per vault, exactly as the design states. No new path makes it worse in kind. In degree, the first-loss vault carries about 61% of the premium on 30% of the capital (README layer), so its pending premium per unit of capital is about 3.7x the senior's, and an entrant into the first-loss vault loses about 3.7x more per dollar on a cancel. L6-4 makes such cancels predictable on holiday weeks.
+
+### Checked and holding
+
+- T1 (Treaty.sol:794-795): `testFuzz_L6_holding_T1_gateTogether_T5` covers retention 0 to 100k, limit 10k to 200k, Monday moves -30% to +30%, and 256 runs, green. It asserts `pj + ps == p`, `pj <= J`, `ps <= L - J`, and `ps > 0 => pj == J`. Mutation in `/tmp/l6fix` (senior slice paid first) makes it red: `T1 senior pays only after junior exhausted: 20484083040 != 57000064201`. The repo's `Tranche.t.sol` is also green.
+- T2 (Treaty.sol:449-470): `premiumSenior = premium - premiumJunior` by construction, and the fuzz asserts the sum. `premiumJunior == 0 || premiumSenior == 0` reverts. `TrancheAdditivity` is green.
+- T3 and M1 per vault: after bind the fuzz asserts `fl.locked == J`, `sr.locked == L - J` and each `pendingPremium` equals its slice. After settle it asserts both `locked` are drained, each `owed` equals its slice payout, and pending premium is released.
+- Claim: `buyerClaimed` is set before the vault calls, under `nonReentrant`. The fuzz asserts the buyer receives exactly `payout` across both vaults, both `owed` drain to 0 and not below it (`payOut` also caps at `owed`), and a second `claim` reverts `NothingToClaim`.
+- Both gates move together (H1 per book): every `lock`/`unlock`/`settle` passes the same `L.fridayCutoff` to both vaults with nonzero amounts (Treaty.sol:447, 490-491, 679-680, 807-808), so the `cutoffs` arrays and cursors evolve identically. The fuzz asserts both shut at the cutoff and both open after `fix`. A JIT deposit into one vault only is therefore impossible.
+- T4: every vault call goes through `books[L.book]` (bind 489-498, cancel 678-682, settle 806-813, claim 759-761), and allowances are granted per book asset. `Books.t.sol::test_T4` is green.
+- T5 (Treaty-initiated flows): the fuzz asserts a Treaty balance of 0 after bind and after settle and claim. `Books.t.sol` T5 tests are green.
+- Round selection (Treaty.sol:537-547, 602-610): within a phase, rules 3 and 4 pick exactly one round, given contiguous round ids and monotone `updatedAt` (OCR2 `transmissionTimestamp` is the block time). `nextUpdatedAt == 0` only happens for `roundId >= latest`, where the answer or `updatedAt == 0` check reverts first. A caller cannot choose a different round. `Liveness.t.sol::testFuzz_setAndVoidExclusive` and `TreatyVoid.t.sol::testFuzz_V1_voidNeverHitsReferenceableMarket` are green.
+- Void and set are exclusive: the flags at lines 526, 530, 580 and 581, plus the phase proof (the phase's first round is after close, so no current-phase round is at or before close).
+- Overflow: `|exposure| <= 1e30` and the price difference is at most `2^64`, so the product is at most 1.8e49, below int256's ceiling. `limit * juniorShareBps` and the pricer's capital-charge product revert far above any lockable limit.
+- Reentrancy: every state-changing Treaty entry point is `nonReentrant`, every vault money function is `onlyTreaty`, and both book tokens have no transfer hooks.
+
+### Blind spots
+
+- Real feed behaviour on exchange holidays (Christmas 2026 and New Year 2027 are Fridays) and Chainlink proxy behaviour after deprecation (returns stale data or reverts) were not read. L6-2 and L6-4 likelihood rest on them.
+- Only the Solidity pricer twin, one market and mock feeds. The Stylus pricer, 4-market layers and the RHC fork were not replayed. No invariant campaign was run this round. The fuzz is one layer per run.
+- The Circle USDC and Paxos USDG freeze semantics were modelled with a mock, not read live.
+- The fix prototype was checked only against `L6Review.t.sol`, not against the repo suites. It changes the cancel refund from push to pull, so `Books.t.sol::test_T5_treatyBalanceZeroAfterCancel` and any test that expects an immediate refund need updating.
