@@ -1,11 +1,9 @@
 # Heracles web: the underwriter's exhibit
 
-Locked 2026-09-29 for branch `ui-v2`, after the mockup round. Research behind every choice:
-`design-research/REFS.md` (10 references, screenshots in `design-research/refs/`),
-extracted systems in `design-research/tokens-mercury*.json`, `tokens-morpho.json`,
-`tokens-owid.json`, the replaced UI and its tells in `design-research/negative/`, the three
-directions and the judge's pick in `design-research/mockups/PICK.md`. Identity claimed in
-`.progress/ui-v2-registry.md` (row "Heracles"), distinct from Payday and Janus.
+Locked 2026-09-29 for branch `ui-v2`, after the mockup round. Design references studied:
+Mercury, Morpho and Our World in Data (extracted token systems from each). Warm paper,
+serif exhibit, one deep teal accent, distinct from the dark-dashboard default this
+project replaced.
 
 ## Art direction
 
@@ -92,7 +90,7 @@ Money figures set their decimals small: 0.62em on a raised baseline (Mercury's
 | | `--ink-3` | `#7F7A6E` | captions, losses the vault keeps |
 | | `--ink-4` | `#B9B3A5` | gains on the covered side, disabled |
 | | `--rule` | `rgba(28,26,22,0.14)` | hairlines, 1px |
-| 10 accent | `--layer` | `#0B6B6B` | **the layer, only the layer**: band edges, paid slices, the note naming it, the swatch beside its terms. Deep reinsurance teal (Swiss Re's own is `rgb(0,110,115)`); vermilion belongs to Payday and amber to Janus in the registry |
+| 10 accent | `--layer` | `#0B6B6B` | **the layer, only the layer**: band edges, paid slices, the note naming it, the swatch beside its terms. Deep reinsurance teal (Swiss Re's own is `rgb(0,110,115)`) |
 | | `--layer-wash` | `rgba(11,107,107,0.09)` | the band's fill |
 
 Primary buttons are ink: the accent never means "click". Errors are ink with a 2px ink rule

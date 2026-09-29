@@ -26,7 +26,7 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 /// of the live feeds this treaty cannot yet price.
 contract GapTreatyForkTest is Test {
     string constant RPC = "https://arb1.arbitrum.io/rpc";
-    // Judging doc B.1.3 / orchestrator Item 3: forking at "latest" with no pinned block meant this
+    // forking at "latest" with no pinned block meant this
     // suite's result silently depended on whatever round Arbitrum One's live feeds happened to be
     // on when CI ran, and reproducing a failure required forking at the same unrecorded moment.
     // Pinned to a real Arbitrum One block read via `cast block-number` on 2026-09-28
@@ -67,7 +67,7 @@ contract GapTreatyForkTest is Test {
     address writer = makeAddr("writer");
     address buyer = makeAddr("buyer");
 
-    // Judging doc B.1.3 / orchestrator Item 3: this suite used to `vm.skip(true)` when the RPC
+    // this suite used to `vm.skip(true)` when the RPC
     // was unreachable, so CI stayed green with zero fork coverage. `vm.createSelectFork` is now
     // called directly, with no try/catch: an unreachable RPC reverts `setUp` and every test in
     // this contract reports FAIL, not SKIP, which is the outcome that actually surfaces the

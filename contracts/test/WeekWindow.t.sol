@@ -53,7 +53,7 @@ contract WeekWindowTest is Test {
         _check(1_791_763_140, 1_791_574_200, 1_791_811_800, true);
     }
 
-    /// Item 6 / judging doc B.2: the week actually containing the March 2026 DST switch (Sunday
+    /// the week actually containing the March 2026 DST switch (Sunday
     /// 2026-03-08 07:00 UTC). Friday 2026-03-06 is still EST (`fridayCloseOf` = 21:00 UTC close);
     /// the following Monday 2026-03-09 is already EDT (13:30 UTC open), `fridayCutoff` itself
     /// stays DST-independent at 19:30 UTC either way, only `expiry`'s time-of-day flips.

@@ -29,7 +29,7 @@ interface AggregatorV3Interface {
 /// the weekend: `fix()` takes the first round with `updatedAt >= expiry` (Monday's open, DST-aware,
 /// previous round strictly before `expiry`), and `setReference` takes the first round with
 /// `updatedAt >= fridayCloseOf(fridayCutoff)` (Friday's official close, also DST-aware, previous
-/// round strictly before that close) -- see `_isUsDst`/`fridayCloseOf` (Item 6 / judging doc B.2).
+/// round strictly before that close) -- see `_isUsDst`/`fridayCloseOf`.
 /// This treaty has no corporate-action multiplier check because it binds raw Chainlink equity
 /// feeds directly, not Robinhood-style Stock Tokens with a `uiMultiplier()`; there is no
 /// multiplier to read.
@@ -131,7 +131,7 @@ contract Treaty is ReentrancyGuard {
     // 4=Mon -> 0; unit-tested in contracts/test/WeekWindow.t.sol across 3 weeks, a year boundary
     // and both weekend days).
     //
-    // Item 6 / judging doc B.2: NYSE's Friday close and Monday open are fixed in *US Eastern*
+    // NYSE's Friday close and Monday open are fixed in *US Eastern*
     // clock time (4:00pm / 9:30am ET), not fixed UTC offsets; UTC drifts by an hour twice a year
     // as the US switches DST. `FRIDAY_CUTOFF_TOD` (the bind deadline) is left DST-independent on
     // purpose: 19:30 UTC is strictly earlier than the close under either regime (20:00 UTC EDT,
@@ -241,9 +241,8 @@ contract Treaty is ReentrancyGuard {
     }
 
     /// Friday's official US market-close instant (4:00pm ET) for the week containing
-    /// `fridayCutoff` (any timestamp that same UTC day works; DST never changes mid-day). Item 6 /
-    /// judging doc B.2: this, not "the last round before Saturday 00:00 UTC", is what
-    /// `setReference` now waits for.
+    /// `fridayCutoff` (any timestamp that same UTC day works; DST never changes mid-day). This,
+    /// not "the last round before Saturday 00:00 UTC", is what `setReference` now waits for.
     function fridayCloseOf(uint256 fridayCutoff) public pure returns (uint256 closeTs) {
         uint256 fridayDay = fridayCutoff / 1 days;
         uint256 fridayMidnight = fridayDay * 1 days;
@@ -366,7 +365,7 @@ contract Treaty is ReentrancyGuard {
     /// (Friday's official US market close, 4:00pm ET, DST-aware) and `updatedAt <= fridayCloseOf +
     /// REFERENCE_MAX_DELAY`, whose predecessor round is strictly before that close
     /// (`NotFirstRound`) -- the same "first fresh round" shape as `fix`'s Monday rule below, just
-    /// anchored to Friday's close instead of Monday's open. Item 6 / judging doc B.2: replaces the
+    /// anchored to Friday's close instead of Monday's open. Replaces the
     /// earlier "last round before Saturday 00:00 UTC" rule, which both used a fixed UTC offset
     /// (wrong under DST) and picked the wrong instant (the research this repo cites,
     /// contracts/../evidence/auction-and-pricing.md, is about the *official close*, not an
@@ -598,7 +597,7 @@ contract Treaty is ReentrancyGuard {
         for (uint256 i; i < n; i++) {
             int256 friday = int256(uint256(fridayPrice[id][i]));
             int256 monday = int256(uint256(mondayPrice[id][i]));
-            // Slither divide-before-multiply / judging doc B.4 (Treaty.sol:357-358 pre-fix): the
+            // Slither divide-before-multiply (Treaty.sol:357-358 pre-fix): the
             // old two-step computation truncated the gap to whole bps (`* 10000 / friday`) before
             // multiplying by exposure, losing up to 0.005% of the true gap per market, always
             // rounded toward the writers (up to ~100 USDG of error on 1e12 exposure). One division

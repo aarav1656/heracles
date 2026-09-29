@@ -44,7 +44,7 @@ first Chainlink round with `updatedAt >= Friday's official close (20:00 UTC EDT 
 21:00 UTC EST)`**, not the last round printed before that time. `Treaty.setReference`
 now implements exactly this rule (`contracts/src/Treaty.sol`, DST-aware via
 `_isUsDst`); see `contracts/test/ReferenceRule.t.sol` for the round-selection and
-bind-cutoff tests, and the judging note `docs/judging/heracles.md` section B.2 for the
+bind-cutoff tests, and `docs/security/capacity-review.md` for the
 live-feed evidence that motivated the fix.
 
 Blind spot: the gap table above is one feed (Nasdaq daily bars) and Friday-close

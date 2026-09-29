@@ -9,12 +9,12 @@ import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
 
-/// Orchestrator Item 3 / judging doc B.1.1: three money-path guards, and every `onlyTreaty` entry
-/// point, had zero test references and all three hand mutants in the judging review survived the
+/// Three money-path guards, and every `onlyTreaty` entry
+/// point, had zero test references and all three hand mutants survived the
 /// full suite (73/73 green with the check deleted). Each test below is written to go red the
 /// moment its named guard is deleted, and mutation-proven by hand (delete the line, run this
-/// file's matching test, confirm red; restore, confirm green), see the final report for the
-/// transcript of that run. `WrongState`, which the judging doc also flags at zero references, gets
+/// file's matching test, confirm red; restore, confirm green), see SECURITY-REVIEW.md for the
+/// transcript of that run. `WrongState`, which was also at zero references, gets
 /// its own guard tests at the bottom.
 contract GuardMutationTest is Test {
     uint256 constant T0 = 1_790_000_000; // a Monday; that week's Fri 19:30/Mon 13:30 below
@@ -82,8 +82,8 @@ contract GuardMutationTest is Test {
         treaty.fix(id, 0, 3);
     }
 
-    // --- Guard #1: Treaty.sol's `NotFirstRound` on setReference (judging doc Mutant A, carried
-    // forward under Item 6's DST-aware rule) -------------------------------------------------
+    // --- Guard #1: Treaty.sol's `NotFirstRound` on setReference (carried
+    // forward under the DST-aware rule) -------------------------------------------------
     // setReference must reject a round whose predecessor is not strictly before Friday's close
     // (REF_TIME); otherwise a caller could walk `roundId` forward past the true first
     // post-close print and pick whichever later one favours their side. The old "last round
@@ -103,7 +103,7 @@ contract GuardMutationTest is Test {
         treaty.setReference(id, 0, 3); // round 2 (its predecessor) is not strictly before REF_TIME
     }
 
-    // --- Guard #2: Treaty.sol:256, `AlreadyFixed` (judging doc Mutant B) -----------------------
+    // --- Guard #2: Treaty.sol:256, `AlreadyFixed` -----------------------
     // Calling setReference twice on the same market must revert, not silently push
     // `referencedCount` past what markets.length actually supports (on a multi-market layer that
     // leaves another market's reference permanently unset, so fix() can never satisfy
@@ -146,10 +146,10 @@ contract GuardMutationTest is Test {
         t2.setReference(id, 0, 2); // same market (0) a second time; market 1 is still unset
     }
 
-    // --- Guard #3: Capacity.payOut `onlyTreaty` (judging doc Mutant C, named guard) -------------
+    // --- Guard #3: Capacity.payOut `onlyTreaty` (named guard) -------------
     // Setting up real `owed` capital first (via a full settle) means a deleted modifier does not
     // just change which error fires, it lets `attacker` actually walk away with writer capital,
-    // which is the exploit the judging doc describes, not just a different revert selector.
+    // not just trigger a different revert selector.
     function test_capacity_payOut_onlyTreaty_guard() public {
         uint256 id = _bindReferenceAndFix();
         uint256 owed = capacity.owed();
@@ -162,7 +162,7 @@ contract GuardMutationTest is Test {
         id; // silence unused warning if optimizer reorders
     }
 
-    // The same gap, per the judging doc, covers every other onlyTreaty entry point.
+    // The same gap covers every other onlyTreaty entry point.
     function test_capacity_lock_onlyTreaty_guard() public {
         vm.prank(attacker);
         vm.expectRevert(Capacity.NotTreaty.selector);
@@ -199,7 +199,7 @@ contract GuardMutationTest is Test {
         capacity.refundPremium(buyer, 1);
     }
 
-    // --- WrongState (judging doc B.1.1, zero test references) -----------------------------------
+    // --- WrongState (zero test references) -----------------------------------
     function test_setReference_WrongState_guard() public {
         vm.prank(buyer);
         uint256 id = treaty.bind(_exposure(), RETENTION, LIMIT);

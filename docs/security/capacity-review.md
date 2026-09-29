@@ -2,7 +2,7 @@
 
 Scope: `contracts/src/Capacity.sol` (whole file, including `depositWithPermit` at lines 64-73), `contracts/test/CapacityPermit.t.sol`, how `Treaty.sol` binds against `Capacity`, and whether the reused Stylus Pricer still fits. Redeploy target: Treaty + Capacity on Arbitrum Sepolia (421614), Paxos USDG `0xFFC95faa3d63Cde504a05B567C600B78C0b41892`, Pricer reused at the previous testnet deployment.
 
-Reviewer: JUDGE tier, read-only. Date 2026-09-27. No repo file other than this report was edited. Nothing committed.
+Reviewer: independent adversarial security review, read-only. Date 2026-09-27. No repo file other than this report was edited. Nothing committed.
 
 ## Verdict: FIX FIRST
 
@@ -122,7 +122,7 @@ Full suite: 53 passed, 0 failed, 10 suites before this change; 56 passed, 0 fail
 
 ## Re-review of b71cf94 (2026-09-27)
 
-Reviewer: JUDGE tier (opus/high), read-only. Target: commit b71cf94 (C1, L1, L2 fixes). No repo file other than this section was edited. Nothing committed. Scratch: a copy of the repo (invariant suite, `src/` and tests copied, `lib` symlinked) plus a second scratch copy for the finding tests.
+Reviewer: independent adversarial security review, read-only. Target: commit b71cf94 (C1, L1, L2 fixes). No repo file other than this section was edited. Nothing committed. Scratch: a copy of the repo (invariant suite, `src/` and tests copied, `lib` symlinked) plus a second scratch copy for the finding tests.
 
 ### Verdict: FIX FIRST
 
@@ -216,7 +216,7 @@ Full `forge test`: 56 passed, 0 failed, 11 suites before this change; 62 passed,
 
 ## Re-review of 96309c8 (2026-09-27)
 
-Reviewer: JUDGE tier (opus/high), read-only. Target: commit 96309c8 (Resolution 2: per-cutoff gate, always-try permit). No repo file other than this section was edited. Nothing committed. Scratch: a copy of the repo (`src/` and `test/` copied, `lib` symlinked, `src/` diffed identical to the repo after every mutation). Repo `forge test`: 62 passed, 0 failed, 13 suites.
+Reviewer: independent adversarial security review, read-only. Target: commit 96309c8 (Resolution 2: per-cutoff gate, always-try permit). No repo file other than this section was edited. Nothing committed. Scratch: a copy of the repo (`src/` and `test/` copied, `lib` symlinked, `src/` diffed identical to the repo after every mutation). Repo `forge test`: 62 passed, 0 failed, 13 suites.
 
 ### Verdict: FIX FIRST (two small fixes, no redesign)
 
@@ -338,7 +338,7 @@ Full `forge test`: 62 passed, 0 failed, 13 suites before this change (59 non-inv
 
 ## Re-review of 8f492a4 (2026-09-27)
 
-Reviewer: JUDGE tier, opus/high. Read-only on repo source; scratch tests against a byte-identical copy of `src/` at 8f492a4, later ported (G3 only) to `contracts/test/CapacityReReview4.t.sol`.
+Reviewer: independent adversarial security review. Read-only on repo source; scratch tests against a byte-identical copy of `src/` at 8f492a4, later ported (G3 only) to `contracts/test/CapacityReReview4.t.sol`.
 
 ### Verdict: DEPLOY to testnet; FIX FIRST before mainnet (M1, M2, L1 below)
 

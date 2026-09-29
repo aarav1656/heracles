@@ -26,7 +26,7 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 contract GapTreatyForkLifecycleTest is Test {
     string constant RPC = "https://sepolia-rollup.arbitrum.io/rpc";
     IERC20 constant USDG = IERC20(0xFFC95faa3d63Cde504a05B567C600B78C0b41892);
-    // Judging doc B.1.3 / orchestrator Item 3: same fix as GapTreaty.fork.t.sol, pinned to a real
+    // same fix as GapTreaty.fork.t.sol, pinned to a real
     // Arbitrum Sepolia block read via `cast block-number` on 2026-09-28 (313,609,081), 2,000
     // blocks back for safety margin. Kept close to the tip for the same reason as
     // GapTreaty.fork.t.sol: `sepolia-rollup.arbitrum.io`'s public RPC does not serve archive
@@ -43,7 +43,7 @@ contract GapTreatyForkLifecycleTest is Test {
     uint256 constant LIMIT = 60_000e6;
     int256 constant EXPOSURE = 2_000_000e6; // long: loses when Monday prints below Friday
 
-    // Judging doc B.1.3 / orchestrator Item 3: same fix as GapTreaty.fork.t.sol, no try/catch,
+    // same fix as GapTreaty.fork.t.sol, no try/catch,
     // no `vm.skip`. An unreachable RPC fails `setUp` and every test in this contract, instead of
     // silently reporting SKIP with zero fork coverage.
     function setUp() public {

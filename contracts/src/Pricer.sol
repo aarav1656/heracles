@@ -19,7 +19,7 @@ interface AggregatorV3Interface {
 
 /// @notice Weekend-gap layer pricer, Solidity implementation of IPricer.
 ///
-/// Per-market scenario tables (docs/judging/heracles.md item 5, evidence/auction-and-pricing.md
+/// Per-market scenario tables (evidence/auction-and-pricing.md
 /// section 2): four independently sourced 504-scenario Friday-close-to-Monday-open weekend gap
 /// tables (basis points), one each for NVDA, AAPL, SPY and TSLA, fetched from
 /// api.nasdaq.com's free historical-bars endpoint and re-derivable with
@@ -33,11 +33,11 @@ interface AggregatorV3Interface {
 /// `MissingTable()` if `i` is past `marketTableIds`'s length, so a quote spanning more markets
 /// than the deploy configured reverts instead of silently pricing the extra market on NVDA.
 ///
-/// Volatility scale (item 5): before being applied, every scenario in a market's table is
+/// Volatility scale: before being applied, every scenario in a market's table is
 /// scaled by that market's own realised volatility, read live from its Chainlink feed's last
 /// `VOL_ROUNDS` rounds (`_volScalePpm`), relative to `NORMAL_ROUND_MOVE_BPS` (the ~0.5% round-
-/// to-round deviation threshold measured live against the real Arbitrum One SPY/USD feed,
-/// docs/judging/heracles.md section B.2), bounded to [`MIN_SCALE_PPM`, `MAX_SCALE_PPM`]. This
+/// to-round deviation threshold measured live against the real Arbitrum One SPY/USD feed),
+/// bounded to [`MIN_SCALE_PPM`, `MAX_SCALE_PPM`]. This
 /// makes the quote react to current market conditions instead of always replaying the same
 /// static historical distribution. It is a relative regime-scaling heuristic (scale the whole
 /// historical distribution up or down by how much livelier or calmer the feed has been lately),
@@ -82,11 +82,11 @@ contract Pricer is IPricer {
     uint256 internal constant LOCK_DAYS = 7;
     uint256 internal constant DAYS_PER_YEAR = 365;
 
-    /// Realised-volatility scale (item 5): sampled over the feed's last VOL_ROUNDS rounds,
+    /// Realised-volatility scale: sampled over the feed's last VOL_ROUNDS rounds,
     /// relative to NORMAL_ROUND_MOVE_BPS, bounded to [MIN_SCALE_PPM, MAX_SCALE_PPM].
     uint256 internal constant VOL_ROUNDS = 8;
     /// The live-measured Chainlink deviation threshold on the real Arbitrum One SPY/USD feed
-    /// (docs/judging/heracles.md section B.2, "roughly 0.5%, inferred from consecutive Sep 16
+    /// ("roughly 0.5%, inferred from consecutive Sep 16
     /// rounds 755.40 to 751.61"): a feed moving at exactly its own deviation threshold per round
     /// is defined as the 1.0x "normal" baseline.
     uint256 internal constant NORMAL_ROUND_MOVE_BPS = 50;
@@ -238,8 +238,8 @@ contract Pricer is IPricer {
 
         // premium = el + RISK_LOAD_PPM * (tvar95 - el) + CAPITAL_CHARGE_ANNUAL_PPM * limit *
         // LOCK_DAYS / DAYS_PER_YEAR; each term fully multiplied before its single final division
-        // so neither load is itself divide-before-multiply (docs/judging/heracles.md B.4 flags
-        // exactly this anti-pattern elsewhere in the product).
+        // so neither load is itself divide-before-multiply (the earlier Treaty.sol pnl
+        // computation had exactly this anti-pattern before its own fix, see Treaty.sol).
         uint256 riskLoad = ((tvar95 - el) * RISK_LOAD_PPM) / PPM;
         uint256 capitalCharge = (limit * CAPITAL_CHARGE_ANNUAL_PPM * LOCK_DAYS) / (DAYS_PER_YEAR * PPM);
         premium = el + riskLoad + capitalCharge;

@@ -228,7 +228,7 @@ contract CapacityInvariantTest is Test {
         targetContract(address(h));
     }
 
-    /// Judging doc B.1.2 / orchestrator Item 3: the old `bal == totalAssets + owed + pendingPremium`
+    /// the old `bal == totalAssets + owed + pendingPremium`
     /// line here was a tautology, not an invariant. `totalAssets()` is *defined* as
     /// `balance - owed - pendingPremium` (Capacity.sol:102), so that equation holds by
     /// construction for any `bal`/`owed`/`pendingPremium`, including corrupted ones; no mutation

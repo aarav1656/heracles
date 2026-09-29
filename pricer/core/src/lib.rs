@@ -17,7 +17,7 @@
 //! crate with no cdylib target sidesteps that entirely; `cargo stylus check`/deploy still target
 //! wasm32 explicitly and are unaffected either way.
 //!
-//! Per-market scenario tables (docs/judging/heracles.md item 5): four independently sourced
+//! Per-market scenario tables: four independently sourced
 //! 504-scenario Friday-close-to-Monday-open weekend gap tables (basis points), one each for
 //! NVDA, AAPL, SPY and TSLA, fetched from api.nasdaq.com's free historical-bars endpoint and
 //! re-derivable with `scripts/generate_gap_tables.py` (evidence/gap-tables/{TICKER}.json holds

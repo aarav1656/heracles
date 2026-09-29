@@ -162,7 +162,8 @@ Mutation check (this build): removing the H2 floor turned
 `test_H2_premiumFloorPreventsZeroPremiumLayer` red (`0 <= 0`); removing the H3
 liabilities subtraction in `Capacity.totalAssets()` turned
 `test_H3_lossSharedProRataRegardlessOfWithdrawOrder` red (546% relative error against a
-1% tolerance); restoring both returned the full 45-test suite to green.
+1% tolerance); restoring both returned the full suite to green (`forge test --summary`:
+120 tests, 22 suites, 0 failed, re-run 2026-09-29).
 
 ### Stylus program expiry and reactivation (L3)
 
@@ -178,19 +179,27 @@ either the reactivated address or a fresh one; there is no admin-set pricer swap
 ## Stylus
 
 The Rust Stylus pricer is line-for-line the same formula as the Solidity `Pricer.sol`,
-sharing the identical 504-scenario NVDA gap table, now with checked arithmetic (L1 fix:
+sharing the identical 504-scenario per-market gap tables, with checked arithmetic (L1 fix:
 `checked_mul`/`checked_add`/`checked_sub`, returns an error on overflow instead of
-wrapping; see `pricer::test::test_overflow_reverts`). Bit-for-bit parity was checked on 5
-cases before the fix (Solidity via `forge test`, Stylus via `cargo test`, and both
-re-checked live against the deployed contracts via `cast call`): all three sides returned
-identical premium, el and tvar95; the redeployed pricer still returns nonzero, consistent
-values live post-fix (`quote([2000000000000],20000000000,60000000000)` returns
-`(33664099206, 5040079365, 54728000000)`). The 2026-09-28 redeploy compresses to 25,765
-bytes, split across two fragments behind a 48-byte root contract, activation fee 0.000084
-ETH. The measured Stylus-vs-Solidity gas ratio for that deploy, read live via
-NodeInterface's `gasEstimateComponents` at block 313,704,736, is **8.01x** less L2
-execution gas (7.93x less total gas, single-market call; see `docs/pricing.md` under
-"Gas"). No other Stylus performance number is claimed here.
+wrapping; see `pricer::test::test_overflow_reverts`). The deployed pricer takes the
+4-arg `quote(int256[],address[],uint256,uint256)` shape (the old 3-arg signature from an
+earlier build now reverts on this deployment). Live call, block 313,858,503:
+
+```
+cast call 0xbe99217180a5fcb83372375b0928c971dfa71f88 \
+  "quote(int256[],address[],uint256,uint256)(uint256,uint256,uint256)" \
+  "[2000000000000]" "[0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06]" 20000000000 60000000000 \
+  --rpc-url https://sepolia-rollup.arbitrum.io/rpc
+-> premium 1,676.722158 USDG, EL 1,051.190476 USDG, TVaR95 20,368.000000 USDG
+```
+
+The Solidity twin at `0x6aAf1b58939d55d1142a34aE02903bB788E9e771` returns the identical
+triple for the same call. The 2026-09-28 redeploy compresses to 25,765 bytes, split
+across two fragments behind a 48-byte root contract, activation fee 0.000084 ETH. The
+measured Stylus-vs-Solidity gas ratio for that deploy, read live via NodeInterface's
+`gasEstimateComponents` at block 313,704,736, is **8.01x** less L2 execution gas (7.93x
+less total gas, single-market call; see `docs/pricing.md` under "Gas"). No other Stylus
+performance number is claimed here.
 
 ## What works
 
@@ -210,17 +219,14 @@ execution gas (7.93x less total gas, single-market call; see `docs/pricing.md` u
   live SPY/USD Chainlink feed (`0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06`),
   `minRateOnLineBps = 50`, and `sequencerUptimeFeed = address(0)` (no Arbitrum Sepolia
   equivalent exists; a mainnet deploy passes the real Arbitrum One feed above).
-- Live cycle run against the redeployed contract, all tx hashes in
-  `contracts/deployments/421614.json`: a writer deposit into `Capacity` (confirmed via a
-  post-tx `totalAssets()` read of 45 USDG, not just a receipt), then three forced on-chain
-  transactions proving the fixes are enforced by mined state, not just forge's cheatcode
-  clock: a zero-exposure bind reverts `BadParams` (C1), a zero-limit bind reverts
-  `BadParams`, and a legitimate nonzero bind attempted at the real current
-  `block.timestamp` (already past that week's Friday 19:30 UTC cutoff) reverts
-  `BadTiming` (H1). All three were decoded from live revert data via `cast sig`, not
-  inferred. The full bind-to-claim happy path cannot be demonstrated live in one sitting
-  because it spans a real weekend; it is instead proven exhaustively off-chain (45/45
-  tests) and against real Arbitrum One oracle state in the fork suite.
+- No live cycle has run on this redeployment: `cast call Capacity totalAssets()` and
+  `totalSupply()` both read 0 at block 313,858,431. The deployer wallet holds 0.044 ETH
+  and 0 USDG (`cast balance` / `cast call USDG balanceOf`, same block); the Paxos testnet
+  faucet has not delivered USDG to it. `contracts/deployments/421614.json` lists only the
+  three deploy transactions, no deposit, bind, settle or claim hashes. See "Live testnet
+  state" below for what blocks a deposit and the full bind-to-claim lifecycle is instead
+  proven end to end on a pinned Arbitrum One fork with real Chainlink rounds; see
+  `docs/e2e/` for the command and output.
 
 ## Scope of this deployment
 

@@ -9,7 +9,7 @@ import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
 
-/// Orchestrator Item 3 / judging doc B.4 (Slither divide-before-multiply, Treaty.sol:357-358
+/// (Slither divide-before-multiply, Treaty.sol:357-358
 /// pre-fix): proves the old two-step formula (`gapBps = diff * 10000 / friday; pnl = exposure *
 /// gapBps / 10000;`) and the fixed single-division formula (`pnl = exposure * diff / friday;`,
 /// now live in `Treaty._settle`) are NOT the same function, the old one truncates the gap to

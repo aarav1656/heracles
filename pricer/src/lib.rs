@@ -4,7 +4,7 @@
 //! in `pricer_core` (../core/src/lib.rs; see that module doc for why it's a separate crate: a
 //! cdylib-native-linking issue with a same-package native `pricer_cli` binary). This crate is the
 //! thin Stylus wrapper: it reads each market's live Chainlink feed for a realised-volatility
-//! scale (item 5, docs/judging/heracles.md) and calls `pricer_core::price_core` with it.
+//! scale and calls `pricer_core::price_core` with it.
 //!
 //! Volatility scale: before being applied, every scenario in a market's table is scaled by that
 //! market's own realised volatility, read live from its Chainlink feed's last VOL_ROUNDS rounds

@@ -9,9 +9,9 @@ import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
 
-/// Item 6 / judging doc B.2: `setReference`'s calendar math (`fridayCloseOf`, DST-aware) unit
+/// `setReference`'s calendar math (`fridayCloseOf`, DST-aware) unit
 /// tested directly against known real-world dates, plus the specific Labor Day 2026 holiday
-/// scenario the judging doc's B.2 section cites by name as unaddressed ("a holiday-heartbeat
+/// scenario this test cites as unaddressed ("a holiday-heartbeat
 /// test uses the Labor Day rounds above").
 contract ReferenceRuleTest is Test {
     MockUSDG usdg;

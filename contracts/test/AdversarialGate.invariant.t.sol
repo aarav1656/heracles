@@ -293,7 +293,7 @@ contract AdversarialGateInvariant is Test {
         targetContract(address(h));
     }
 
-    /// Judging doc B.1.2 / orchestrator Item 3: `bal == totalAssets + owed + pendingPremium` was a
+    /// `bal == totalAssets + owed + pendingPremium` was a
     /// tautology, not an invariant (`totalAssets()` is *defined* as `balance - owed -
     /// pendingPremium`, Capacity.sol:102, so it holds for any values including corrupted ones,
     /// and no mutation of the contract's bookkeeping could ever make it fail). Replaced with the
