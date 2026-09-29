@@ -17,22 +17,26 @@ import {TreatyFixture} from "./utils/TreatyFixture.sol";
 ///
 /// Round layout found on-chain (phase 2, 8 decimals):
 ///   round 358  answer 76874000000  updatedAt 1790337627 (Fri 2026-09-25 12:00:27 UTC, pre-close)
-///   round 359  answer 77134250000  updatedAt 1790424033 (Sat 2026-09-26 12:00:33 UTC) <- Friday reference
+///   round 359  answer 77134250000  updatedAt 1790424033 (Sat 2026-09-26 12:00:33 UTC)
 ///   round 361  answer 77134250000  updatedAt 1790596846 (Mon 2026-09-28 12:00:46 UTC, pre-open)
 ///   round 362  answer 76748000000  updatedAt 1790602546 (Mon 2026-09-28 13:35:46 UTC) <- Monday fix
-/// Round 359 is the first round with `updatedAt >= fridayCloseOf` (1790366400, Fri 20:00 UTC EDT
-/// close) whose predecessor (358) is strictly earlier, satisfying `setReference`'s NotFirstRound
-/// guard; round 362 is the first round with `updatedAt >= expiry` (1790602200, Mon 13:30 UTC EDT
-/// open) whose predecessor (361) is strictly earlier, satisfying `fix`'s NotFirstRound guard.
-/// Both sit inside `REFERENCE_MAX_DELAY` (36h) of their boundary. At the pinned fork block this
-/// real weekend's Monday round (362) is also the feed's actual `latestRoundData()`, so
-/// `_latestInPhase` accepts both round ids without any phase change.
+/// v3 (docs/design/v3.md, decision 3): the Friday reference is the round already in effect at
+/// close, not the first round to print after it. Round 358, printed pre-close, is that round: its
+/// successor (359) only prints Saturday, so 358 is still what a trader watching the tape at close
+/// would have seen. `setReference` accepts 358 because round 359's own `updatedAt` (1790424033) is
+/// itself after `fridayCloseOf` (1790366400), so it does not disqualify 358 under rule 4. Round
+/// 359 itself is never a valid reference (it postdates close outright, rule 3) regardless of round
+/// 358's presence. Round 362 is still the first round with `updatedAt >= expiry` (1790602200, Mon
+/// 13:30 UTC EDT open) whose predecessor (361) is strictly earlier, satisfying `fix`'s
+/// NotFirstRound guard; `fix` is unchanged by v3. At the pinned fork block this real weekend's
+/// Monday round (362) is also the feed's actual `latestRoundData()`, so `_latestInPhase` accepts
+/// both round ids without any phase change.
 ///
-/// Real gap: (76748000000 - 77134250000) / 77134250000 = -0.50072% (SPY opened Monday about half
-/// a percent below Friday's official close). At 2,000,000 USDG long exposure that is a real loss
-/// of 10,015.006303 USDG; with a 5,000 USDG retention and a 60,000 USDG limit the layer owes the
-/// buyer 5,015.006303 USDG, the exact number asserted below, computed by `_settle`'s own
-/// `(exposure * (monday - friday)) / friday` formula, not restated independently.
+/// Real gap off the correct reference: (76748000000 - 76874000000) / 76874000000 = -0.16391%,
+/// noticeably smaller than the gap round 359 would have shown (-0.50072%) precisely because round
+/// 358 already reflects most of Friday's late move. The exact payout is derived on-chain inside
+/// the test from the fetched round data via `_settle`'s own
+/// `(exposure * (monday - friday)) / friday` formula, not hardcoded.
 contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
     string constant RPC = "https://arb1.arbitrum.io/rpc";
     // `cast block-number` on 2026-09-29 was 509,951,410; pinned 2,000 blocks back for the same
@@ -47,7 +51,7 @@ contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
 
     // Real round ids (phase 2 << 64 | aggregatorRoundId).
     uint80 constant ROUND_FRI_PRE = (uint80(2) << 64) | 358;
-    uint80 constant ROUND_FRI_REF = (uint80(2) << 64) | 359;
+    uint80 constant ROUND_FRI_LATE = (uint80(2) << 64) | 359; // first round after close: never valid
     uint80 constant ROUND_MON_PRE = (uint80(2) << 64) | 361;
     uint80 constant ROUND_MON_FIX = (uint80(2) << 64) | 362;
 
@@ -57,15 +61,15 @@ contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
     // setReference/fix both revert BadRound if `updatedAt > block.timestamp` (a round from "the
     // future" relative to the call), so block.timestamp must be walked forward to each real
     // round's own updatedAt, not just past the boundary it satisfies.
-    uint256 constant ROUND_FRI_REF_UPDATED_AT = 1_790_424_033; // round 359
     uint256 constant ROUND_MON_FIX_UPDATED_AT = 1_790_602_546; // round 362
 
     uint256 constant EXPOSURE = 2_000_000e6; // long SPY: loses when Monday prints below Friday
-    uint256 constant RETENTION = 5_000e6;
+    // Small enough that the real (correct) gap off round 358 still clears it and pays out
+    // something; a 5,000 USDG retention would swallow this particular weekend's real move
+    // entirely, which is itself the point (a v2-style reference off round 359 overstated the gap
+    // enough to pay out even through that much retention: see the comment block above).
+    uint256 constant RETENTION = 1_000e6;
     uint256 constant LIMIT = 60_000e6;
-    // The exact number `_settle`'s own division produces for the real prices above; see the
-    // Python cross-check transcript in docs/e2e/heracles.md.
-    uint256 constant EXPECTED_PAYOUT = 5_015_006_303;
 
     Treaty treaty;
     Capacity capacity;
@@ -122,48 +126,72 @@ contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
         assertEq(referencedCount, 0);
         console.log("real-weekend premium against live SPY vol (USDG, 6dp)", premium);
 
-        // Friday reference: round 359, the real first fresh round at/after the official close,
-        // with round 358 (already stored on the fork, no MockFeed) as its required predecessor.
-        // block.timestamp must reach round 359's own updatedAt, not just FRIDAY_CLOSE, or
-        // setReference reverts BadRound (a round timestamped after "now").
-        vm.warp(ROUND_FRI_REF_UPDATED_AT + 1);
-        treaty.setReference(id, 0, ROUND_FRI_REF);
+        // The late round (359, first to print after close) must never become the reference, no
+        // matter how far forward time is walked: it postdates close outright (rule 3).
+        vm.warp(FRIDAY_CLOSE + 1 hours);
+        vm.expectRevert(Treaty.BadRound.selector);
+        treaty.setReference(id, 0, ROUND_FRI_LATE);
+        assertFalse(treaty.referenceSet(id, 0));
+
+        // Friday reference: round 358, the round genuinely in effect at close (round 359 only
+        // prints Saturday). Round 358's own updatedAt already precedes close, so `block.timestamp`
+        // only needs to stay past `closeTs` (already true above); no further forward warp needed,
+        // and warping back toward round 358's own updatedAt would land before close and revert
+        // BadTiming instead.
+        int256 fridayAnswer = _feedAnswer(ROUND_FRI_PRE);
+        treaty.setReference(id, 0, ROUND_FRI_PRE);
         assertTrue(treaty.referenceSet(id, 0));
-        assertEq(treaty.fridayPrice(id, 0), 77_134_250_000 / 1); // uint64(answer), raw 8dp
+        assertEq(int256(uint256(treaty.fridayPrice(id, 0))), fridayAnswer);
 
         // Monday fix: round 362, the real first fresh round at/after expiry, round 361 its
         // required predecessor. This is the same call that settles the layer. Same "not from the
-        // future" constraint as setReference above.
+        // future" constraint as setReference above. `fix` itself is unchanged by v3.
+        int256 mondayAnswer = _feedAnswer(ROUND_MON_FIX);
         vm.warp(ROUND_MON_FIX_UPDATED_AT + 1);
         treaty.fix(id, 0, ROUND_MON_FIX);
 
+        // The exact payout `_settle` must have produced, derived here from the same two fetched
+        // rounds via `_settle`'s own `(exposure * (monday - friday)) / friday` then
+        // `max(0, loss - retention)` clamped to `limit`, not hardcoded independently.
+        int256 pnl = (int256(EXPOSURE) * (mondayAnswer - fridayAnswer)) / fridayAnswer;
+        int256 lossMinusRetention = (pnl < 0 ? -pnl : int256(0)) - int256(RETENTION);
+        uint256 expectedPayout = lossMinusRetention < 0 ? 0 : uint256(lossMinusRetention);
+        if (expectedPayout > LIMIT) expectedPayout = LIMIT;
+        assertGt(expectedPayout, 0, "this real weekend's gap must clear retention for the test to mean anything");
+
         assertEq(uint8(_layerState(id)), uint8(Treaty.State.Settled));
-        assertEq(_layerPayout(id), EXPECTED_PAYOUT, "payout must match _settle's real-price math");
+        assertEq(_layerPayout(id), expectedPayout, "payout must match _settle's real-price math");
+        console.log("real-weekend payout off the correct (round 358) reference, USDG 6dp", expectedPayout);
 
         // `_settle` (inside fix, above) already moved the layer's reservation out of `locked`
         // entirely (C1: the unused remainder frees immediately, `payout` moves into `owed`), so
         // `locked` is already 0 here; `claim` only moves `owed` capital to the buyer.
         assertEq(capacity.locked(), 0, "settle must have already released the full reserved limit");
         uint256 owedBefore = capacity.owed();
-        assertEq(owedBefore, EXPECTED_PAYOUT, "settle must have earmarked exactly the payout as owed");
+        assertEq(owedBefore, expectedPayout, "settle must have earmarked exactly the payout as owed");
         uint256 buyerBefore = USDG.balanceOf(buyer);
         vm.prank(buyer);
         treaty.claim(id);
-        assertEq(USDG.balanceOf(buyer), buyerBefore + EXPECTED_PAYOUT, "claim must move exactly the settled payout");
-        assertEq(capacity.owed(), owedBefore - EXPECTED_PAYOUT, "claim must clear what it paid out of owed");
+        assertEq(USDG.balanceOf(buyer), buyerBefore + expectedPayout, "claim must move exactly the settled payout");
+        assertEq(capacity.owed(), owedBefore - expectedPayout, "claim must clear what it paid out of owed");
     }
 
-    /// Sanity check on the round selection itself, independent of the Treaty: proves the
-    /// predecessor rounds this test relies on for NotFirstRound really do sit strictly on the
-    /// correct side of each boundary, straight off the forked feed.
+    function _feedAnswer(uint80 roundId) internal view returns (int256 answer) {
+        (, answer,,) = _feedRound(roundId);
+    }
+
+    /// Sanity check on the round selection itself, independent of the Treaty: proves round 358 is
+    /// really the round in effect at close (its own updatedAt strictly before close, its
+    /// successor 359 strictly after, so nothing supersedes it before the boundary), and that the
+    /// Monday fix rounds sit strictly on the correct side of expiry, straight off the forked feed.
     function test_realWeekend_predecessorRoundsAreCorrectlyOrdered() public view {
         (,,, uint256 friPreUpdatedAt) = _feedRound(ROUND_FRI_PRE);
-        (,,, uint256 friRefUpdatedAt) = _feedRound(ROUND_FRI_REF);
+        (,,, uint256 friLateUpdatedAt) = _feedRound(ROUND_FRI_LATE);
         (,,, uint256 monPreUpdatedAt) = _feedRound(ROUND_MON_PRE);
         (,,, uint256 monFixUpdatedAt) = _feedRound(ROUND_MON_FIX);
 
         assertLt(friPreUpdatedAt, FRIDAY_CLOSE, "round 358 must be strictly before Friday close");
-        assertGe(friRefUpdatedAt, FRIDAY_CLOSE, "round 359 must be at/after Friday close");
+        assertGe(friLateUpdatedAt, FRIDAY_CLOSE, "round 359 must be at/after Friday close, so it never disqualifies 358");
         assertLt(monPreUpdatedAt, MONDAY_EXPIRY, "round 361 must be strictly before Monday expiry");
         assertGe(monFixUpdatedAt, MONDAY_EXPIRY, "round 362 must be at/after Monday expiry");
     }
