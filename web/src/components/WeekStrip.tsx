@@ -9,9 +9,9 @@ import { fmtClock, fmtCountdown } from '../lib/format';
 export function WeekStrip({ win, now }: { win: WeekWindow; now: number }) {
   const when = (t: number) => (t > now ? `in ${fmtCountdown(t - now)}` : fmtCountdown(t - now));
   const rows = [
-    { k: 'Binding closes', t: win.cutoff, note: 'the last moment to bind a layer for this weekend' },
+    { k: 'Last moment to buy', t: win.cutoff, note: 'cover for this weekend can be bought until here' },
     { k: 'Friday reference', t: win.ref, note: 'first feed round after the 4pm New York close' },
-    { k: 'Monday fixing', t: win.expiry, note: 'first feed round after the 9:30 open; the gap is the move between' },
+    { k: 'Monday settlement', t: win.expiry, note: 'first feed round after the 9:30 open; the gap is the move between the two' },
   ];
   const next = rows.findIndex((r) => r.t > now);
   return (

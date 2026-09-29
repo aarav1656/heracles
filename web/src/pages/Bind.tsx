@@ -13,7 +13,7 @@ import { TxNote } from '../components/TxNote';
 import { GapChart } from '../components/GapChart';
 import { useWeekWindow, reopensAt as reopenOf } from '../hooks/useWeekWindow';
 import { Link } from 'react-router-dom';
-import { TABLES, backtest, fmtBps } from '../lib/gaps';
+import { TABLES, backtest } from '../lib/gaps';
 
 const spy = TABLES[0];
 const usd2 = (v: bigint) => (Number(v) / 1e6).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -23,7 +23,7 @@ import { useConnection } from 'wagmi';
 
 type Quote = { premium: bigint; el: bigint; tvar: bigint; block: bigint };
 export function Bind() {
-  useEffect(() => { document.title = 'Heracles: price and bind a layer'; }, []);
+  useEffect(() => { document.title = 'Heracles: price cover for your vault'; }, []);
   const conn = useConnection();
   const me = useOnChain();
   const client = usePublicClient() as PublicClient | undefined;
@@ -123,17 +123,17 @@ export function Bind() {
   return (
     <>
       <header className="argument row">
-        <h1 className="title">Price a layer</h1>
-        <p className="lede">The band is what you buy. Change the terms and it moves across 504 SPY weekends.</p>
+        <h1 className="title">Price cover for your vault</h1>
+        <p className="lede">Declare the vault's position and how much of a gap it keeps; the band shows which weekends the cover would have paid.</p>
       </header>
 
       <div className="desk">
         <div className="main-col">
           <section className="exhibit" aria-labelledby="bchart-h">
             <div className="exhibit-head">
-              <h2 id="bchart-h" className="chart-title">Your layer across 504 SPY weekends</h2>
+              <h2 id="bchart-h" className="chart-title">Your cover across 504 SPY weekends</h2>
             </div>
-            <p className="caveat">Retention sets where the band starts; retention plus limit sets where it ends. A negative exposure (short) moves it to the up-gap side.</p>
+            <p className="caveat">What the vault keeps sets where the band starts; adding the most Heracles pays sets where it ends. A short position moves the band to the up-gap side.</p>
             {terms ? (
               <GapChart table={spy} layer={terms} />
             ) : (
@@ -144,46 +144,46 @@ export function Bind() {
         </div>
 
         <aside className="ticket" aria-labelledby="terms-h">
-          <h2 id="terms-h" className="label"><i className="sw layer" />Terms</h2>
+          <h2 id="terms-h" className="label"><i className="sw layer" />Your cover</h2>
           <div className="form">
             {FEED_ADDRESSES.map((f, i) => (
               <div className="field" key={f}>
-                <label htmlFor={`exp-${i}`}>SPY net exposure, USDG</label>
+                <label htmlFor={`exp-${i}`}>Vault's net SPY position, USDG</label>
                 <input
                   id={`exp-${i}`}
                   inputMode="decimal"
                   value={exposures[i] ?? ''}
                   onChange={(e) => setExposures((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))}
                 />
-                <span className="hint">Positive is long and loses on a down gap; negative is short. Feed <a href={explorer.address(f)} target="_blank" rel="noreferrer">{short(f)}</a>.</span>
+                <span className="hint">Positive if the vault is net long (a lower Monday open is the risk), negative if net short. Price feed <a href={explorer.address(f)} target="_blank" rel="noreferrer">{short(f)}</a>.</span>
               </div>
             ))}
             <div className="two">
               <div className="field">
-                <label htmlFor="ret">Retention, vault keeps</label>
+                <label htmlFor="ret">Vault keeps first</label>
                 <input id="ret" inputMode="decimal" value={retention} onChange={(e) => setRetention(e.target.value)} />
               </div>
               <div className="field">
-                <label htmlFor="lim">Limit, writers cover</label>
+                <label htmlFor="lim">Heracles pays up to</label>
                 <input id="lim" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} />
               </div>
             </div>
+            <p className="hint">Retention and limit, in USDG, on the loss worked out from the feed: Monday gap times declared position.</p>
             {formError && <p className="err" role="alert"><b>Check</b> {formError}</p>}
           </div>
 
           <div className="quote" aria-live="polite">
             {quoting ? (
-              <p className="terms pending">The Stylus pricer is quoting these terms.</p>
+              <p className="terms pending">The on-chain pricer is quoting this cover.</p>
             ) : quoteError ? (
               <p className="err" role="alert"><b>Quote</b> {quoteError}</p>
             ) : quote && effective !== undefined && floor !== undefined ? (
               <>
-                <p className="terms">This layer costs <b><Money v={Number(effective) / 1e6} /> USDG</b> for one weekend.</p>
+                <p className="terms">This cover costs <b><Money v={Number(effective) / 1e6} /> USDG</b> for one weekend.</p>
                 <div className="rows figs">
-                  <div className="row"><span className="k">Expected loss</span><span className="v"><Money v={Number(quote.el) / 1e6} /></span></div>
-                  <div className="row"><span className="k">TVaR95</span><span className="v"><Money v={Number(quote.tvar) / 1e6} /></span></div>
-                  {bt && <div className="row"><span className="k">Starts paying at a gap of</span><span className="v">{fmtBps(bt.attachBps)}</span></div>}
-                  {bt && <div className="row"><span className="k">Weekends it pays</span><span className="v">{bt.paid} of 504</span></div>}
+                  <div className="row"><span className="k" title="Expected loss">Average payout a weekend</span><span className="v"><Money v={Number(quote.el) / 1e6} /></span></div>
+                  <div className="row"><span className="k" title="TVaR95: the mean payout over the worst 25 of 504 weekends">Average in the worst 5% of weekends</span><span className="v"><Money v={Number(quote.tvar) / 1e6} /></span></div>
+                  {bt && <div className="row"><span className="k">Weekends it would have paid on</span><span className="v">{bt.paid} of 504</span></div>}
                 </div>
               </>
             ) : (
@@ -193,7 +193,7 @@ export function Bind() {
 
           {closed && win ? (
             <p className="err" role="status">
-              <b>Closed</b> Binding for this weekend closed at {fmtClock(win.cutoff)} UTC. Cover for
+              <b>Closed</b> Buying cover for this weekend closed at {fmtClock(win.cutoff)} UTC. Cover for
               next week opens Monday 00:00 UTC, in {fmtCountdown((reopensAt ?? win.expiry) - now)}.
             </p>
           ) : (
@@ -207,18 +207,18 @@ export function Bind() {
               <div className="acts">
                 {me.ready && needsApprove && (
                   <button className="btn line" disabled={!me.ready || approveTx.busy} onClick={approve}>
-                    Approve {effective !== undefined ? fmtUsdg(effective) : ''} USDG
+                    Approve {effective !== undefined ? fmtUsdg(effective) : ''} USDG for the price
                   </button>
                 )}
                 <button className="btn" disabled={!me.ready || tx.busy || !!formError || effective === undefined || needsApprove || short_ !== undefined} onClick={bind}>
-                  {short_ !== undefined ? 'Bind layer: not enough capacity' : 'Bind layer'}
+                  {short_ !== undefined ? 'Not enough USDG backing yet' : 'Buy this cover for the coming weekend'}
                 </button>
               </div>
               {!me.ready && <p className="note">{me.reason}</p>}
               {short_ !== undefined ? (
                 <p className="note" role="status">
-                  Binding needs {usd2(parsed.lim!)} USDG of free capacity; the pool has {usd2(short_)} at
-                  block {book.data!.block.toLocaleString('en-US')}. <Link to="/write">Write capacity</Link>.
+                  This cover needs {usd2(parsed.lim!)} USDG of free backing from writers; the pool has {usd2(short_)} at
+                  block {book.data!.block.toLocaleString('en-US')}. <Link to="/write">Back cover with USDG</Link>.
                 </p>
               ) : null}
               <TxNote status={approveTx.status} hash={approveTx.hash} error={approveTx.error} />
@@ -228,19 +228,19 @@ export function Bind() {
           {quote && effective !== undefined && floor !== undefined && !quoting && !quoteError && (
             <p className="src">
               {floorApplies
-                ? `Raised to the ${floorPct}% minimum premium on the limit; the pricer quoted ${fmtUsdg(quote.premium)}. `
-                : `Above the ${usd2(floor)} USDG minimum premium (${floorPct}% of the limit). `}
+                ? `Raised to the minimum price, ${floorPct}% of the cap; the pricer quoted ${fmtUsdg(quote.premium)}. `
+                : `Above the minimum price of ${usd2(floor)} USDG (${floorPct}% of the cap). `}
               Quoted by the Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a> at
               block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">#{quote.block.toLocaleString('en-US')}</a>.
             </p>
           )}
           {win && !closed && (
-            <p className="src">Binding for this weekend closes {fmtClock(win.cutoff)} UTC, in {fmtCountdown(win.cutoff - now)}.</p>
+            <p className="src">Cover for this weekend can be bought until {fmtClock(win.cutoff)} UTC, in {fmtCountdown(win.cutoff - now)}.</p>
           )}
           {book.data && <p className="src"><Stamp block={book.data.block} label="Book read at block" /></p>}
           <p className="note">
-            Tail cover on a weekend gap, not smart-contract cover. The premium never falls below
-            0.5% of the limit.
+            Pays on the Monday price gap only, worked out from the feed; it does not cover hacks or the vault's
+            own trading. The price never falls below 0.5% of the cap.
           </p>
         </aside>
       </div>

@@ -16,7 +16,7 @@ import { useReferenceQuote } from '../hooks/useReferenceQuote';
 import { RECORDED, REFERENCE, TABLES, backtest, fmtDay } from '../lib/gaps';
 
 export function Write() {
-  useEffect(() => { document.title = 'Heracles: write weekend-gap capacity'; }, []);
+  useEffect(() => { document.title = 'Heracles: back the cover, earn the premium'; }, []);
   const conn = useConnection();
   const me = useOnChain();
   const book = useBook(conn.address);
@@ -69,14 +69,14 @@ export function Write() {
   return (
     <>
       <header className="argument row">
-        <h1 className="title">Write capacity</h1>
-        <p className="lede">Earn the premium on every layer bound; pay its loss when a Monday gap reaches it.</p>
+        <h1 className="title">Back the cover, earn the premium</h1>
+        <p className="lede">Deposit USDG into the pool that pays out. Each cover bought pays the pool its price; when a Monday gap reaches a cover's band, the pool pays it.</p>
       </header>
 
       <div className="desk">
         <section className="main-col exhibit" aria-labelledby="path-h">
           <div className="exhibit-head">
-            <h2 id="path-h" className="chart-title">A writer on the reference layer, every SPY weekend since 2016</h2>
+            <h2 id="path-h" className="chart-title">A writer backing the example cover, every SPY weekend since 2016</h2>
           </div>
           <p className="caveat">In-sample backtest, not a forecast. The pricer is fit to these same weekends, so the line ends above zero by construction; read it for the path, for how deep a bad month cuts.</p>
           <WriterPath />
@@ -106,12 +106,12 @@ export function Write() {
           {!me.ready && <p className="note">{me.reason}</p>}
           <div className="acts">
             <button className="btn" disabled={!me.ready || permitTx.busy || !!amountError || !parsed} onClick={deposit}>
-              Deposit
+              Deposit USDG
             </button>
           </div>
           <TxNote status={permitTx.status} hash={permitTx.hash} error={permitTx.error} />
 
-          <h2 className="label sub">Withdraw free capital</h2>
+          <h2 className="label sub">Withdraw free USDG</h2>
           <div className="form">
             <div className="field">
               <label htmlFor="exit">Amount, USDG</label>
@@ -205,7 +205,7 @@ function WriterPath() {
       <p className="gc-read">
         <span>
           Each weekend adds today's premium, <b><Money v={premium} /></b> USDG on a {usd0.format(REFERENCE.limit)} limit
-          (live at block {quote.data ? `#${quote.data.block.toLocaleString('en-US')}` : '313,690,038, recorded in the README'}), and subtracts what the layer paid.
+          (live at block {quote.data ? `#${quote.data.block.toLocaleString('en-US')}` : '313,690,038, recorded in the README'}), and subtracts what the cover paid.
         </span>
       </p>
       <div className="path-plot">
@@ -229,7 +229,7 @@ function WriterPath() {
         </div>
       </div>
       <div className="gc-key">
-        <span><i className="sw layer" /><b>−{usd0.format(REFERENCE.limit - premium)}</b> on each of {worst.map((i) => fmtDay(w[i].friday)).join(' and ')}: the layer paid its full limit</span>
+        <span><i className="sw layer" /><b>−{usd0.format(REFERENCE.limit - premium)}</b> on each of {worst.map((i) => fmtDay(w[i].friday)).join(' and ')}: the cover paid its cap</span>
         <span><i className="sw dd" /><b>−{usd0.format(dd.depth)}</b> deepest drawdown, {fmtDay(w[dd.from].friday)} to {fmtDay(w[dd.to].friday)}</span>
       </div>
       <p className="src">Each of the {w.length} weekends in <span className="file">{spy.file}</span>, oldest first.</p>

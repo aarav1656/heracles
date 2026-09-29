@@ -43,17 +43,17 @@ export function Overview() {
       <div className="desk">
         <div className="main-col">
           <header className="argument">
-            <h1 className="display">Reinsurance for the Monday gap</h1>
+            <h1 className="display">Cover for the weekend gap</h1>
             <p className="lede">
-              When a stock reopens on Monday away from Friday's close, a perp exchange's LP vault
-              takes the loss. The vault keeps the first slice; a Heracles layer pays the next,
-              priced on chain from 504 recorded weekends.
+              If a stock opens Monday far from Friday's close, Heracles pays a perp exchange's LP vault a set
+              amount, worked out from the price feed and the position size the vault declared.
             </p>
+            <Link className="btn only-narrow" to="/bind">Price cover for your vault</Link>
           </header>
 
           <section className="exhibit" aria-labelledby="chart-h">
             <div className="exhibit-head">
-              <h2 id="chart-h" className="chart-title">{ticker}, every weekend since September 2016 <span>and the layer across it</span></h2>
+              <h2 id="chart-h" className="chart-title">{ticker}, every weekend since 2016</h2>
               <div className="markets" role="tablist" aria-label="Market">
                 {TABLES.map((t) => (
                   <button key={t.ticker} role="tab" type="button" aria-selected={t.ticker === ticker} onClick={() => setTicker(t.ticker)}>
@@ -62,43 +62,36 @@ export function Overview() {
                 ))}
               </div>
             </div>
-            <p className="caveat">Friday close to next open, one bar per weekend. Where a bar reaches the band, the reference layer would have paid; the teal part is what it paid.</p>
-            <GapChart key={ticker} table={table} layer={REFERENCE} />
+            <p className="caveat">Each bar is one weekend, from Friday's close to Monday's open. Teal marks the weekends the example cover would have paid on.</p>
+            <GapChart key={ticker} table={table} layer={REFERENCE} simple />
           </section>
         </div>
 
         <aside className="ticket" aria-labelledby="ticket-h">
-          <h2 id="ticket-h" className="label"><i className="sw layer" />Reference layer, {ticker}</h2>
+          <h2 id="ticket-h" className="label"><i className="sw layer" />Example cover, {ticker}</h2>
           {ticker === 'SPY' ? (
             <SpyQuote quote={quote} bt={bt} />
           ) : (
             <>
               <p className="terms">
-                A vault long {usd0.format(REFERENCE.exposure)} USDG of {ticker} keeps the first {usd0.format(REFERENCE.retention)} of
-                a weekend loss; writers cover the next {usd0.format(REFERENCE.limit)}.
+                A vault that is net long {usd0.format(REFERENCE.exposure)} USDG of {ticker}. The live pricer only quotes SPY on this
+                testnet, so there is no price for {ticker} yet.
               </p>
-              <p className="note">
-                Not quotable on this deploy: the Sepolia pricer holds the SPY table only (<span className="file">tableIdAt(1)</span> reverts
-                MissingTable). The same layer run over {table.file} at the neutral 1.0x volatility scale:
-              </p>
-              <div className="rows figs">
-                <div className="row"><span className="k">Expected loss</span><span className="v"><Money v={bt.el} /></span></div>
-                <div className="row"><span className="k">TVaR95</span><span className="v"><Money v={bt.tvar95} /></span></div>
-                <div className="row"><span className="k">Weekends it pays</span><span className="v">{bt.paid} of 504</span></div>
-              </div>
+              <details className="more">
+                <summary>What it would have paid since 2016</summary>
+                <div className="rows figs">
+                  <div className="row"><span className="k">Average payout per weekend</span><span className="v"><Money v={bt.el} /></span></div>
+                  <div className="row"><span className="k">Average of the worst 5% of weekends</span><span className="v"><Money v={bt.tvar95} /></span></div>
+                  <div className="row"><span className="k">Weekends it would have paid on</span><span className="v">{bt.paid} of 504</span></div>
+                </div>
+                <p className="note">Run in this browser over {table.file} at the neutral 1.0x volatility scale (the Sepolia pricer holds the SPY table only; <span className="file">tableIdAt(1)</span> reverts MissingTable).</p>
+              </details>
             </>
           )}
           <div className="acts">
-            <Link className="btn" to="/bind">Price your own layer</Link>
-            <Link className="btn line" to="/write">Write capacity</Link>
+            <Link className="btn" to="/bind">Price cover for your vault</Link>
           </div>
-          {win && (
-            <p className="src">
-              {now < win.cutoff
-                ? <>Binding for this weekend closes {fmtClock(win.cutoff)} UTC, in {fmtCountdown(win.cutoff - now)}.</>
-                : <>Binding for this weekend closed {fmtClock(win.cutoff)} UTC; next week's cover opens Monday 00:00 UTC.</>}
-            </p>
-          )}
+          <p className="note">Have USDG? <Link to="/write">Back this cover and earn its premium</Link>.</p>
         </aside>
       </div>
 
@@ -110,11 +103,13 @@ export function Overview() {
           </section>
 
           <section aria-labelledby="priced-h">
-            <h2 id="priced-h" className="section">How the quote is made</h2>
+            <h2 id="priced-h" className="section">How the price is worked out</h2>
             <p className="prose">
-              The reference layer's premium is one read of the Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>:
-              it runs the layer over the same 504 SPY weekends drawn above, scaled by the live volatility, and returns the
-              premium, the expected loss and the mean of the worst 25 weekends (TVaR95). The call costs <span className="fig">8.01x</span> less
+              The example's price is one read of the Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>:
+              it runs the cover over the same 504 SPY weekends drawn above, scaled by the live volatility, and returns the
+              price, the average payout and the average of the worst 25 weekends. At settlement the payout comes from the
+              same kind of arithmetic: the Monday gap on the feed times the position the vault declared, minus the part the vault
+              keeps (the retention), capped at the limit. The call costs <span className="fig">8.01x</span> less
               L2 execution gas in Stylus than in its Solidity twin, measured at block <a href={explorer.block(313_704_736n)} target="_blank" rel="noreferrer">#313,704,736</a> (<span className="file">docs/pricing.md</span>, "Gas").
             </p>
             {spyFeed && (
@@ -123,6 +118,7 @@ export function Overview() {
                 ({fmtStamp(spyFeed.latest.updatedAt)}). The feed pauses over the weekend; that silence is the gap.
               </p>
             )}
+            <p className="src">The chart: {table.weekends.length} weekends from <span className="file">{table.file}</span> in the repo, from {table.source}, fetched {table.fetchDate}.</p>
           </section>
         </div>
 
@@ -135,14 +131,14 @@ export function Overview() {
           ) : (
             <>
               <div className="rows figs">
-                <div className="row"><span className="k">Layers bound</span><span className="v">{book.layers.length}</span></div>
-                <div className="row"><span className="k">Writer capacity</span><span className="v"><Money v={toUsd(book.capacity.balance)} /> USDG</span></div>
-                <div className="row"><span className="k">Free to bind</span><span className="v"><Money v={toUsd(book.capacity.free)} /> USDG</span></div>
+                <div className="row"><span className="k">Covers bought</span><span className="v">{book.layers.length}</span></div>
+                <div className="row"><span className="k">USDG backing cover</span><span className="v"><Money v={toUsd(book.capacity.balance)} /> USDG</span></div>
+                <div className="row"><span className="k">Free for new cover</span><span className="v"><Money v={toUsd(book.capacity.free)} /> USDG</span></div>
               </div>
               {book.capacity.balance === 0n && book.layers.length === 0 && (
                 <p className="note">
-                  Nothing is bound on this deployment yet and no writer has deposited, so a layer cannot bind until one
-                  does. <Link to="/write">Write the first capacity</Link>.
+                  No cover has been bought on this deployment yet and no writer has deposited USDG, so new cover cannot be
+                  bought until one does. <Link to="/write">Be the first writer</Link>.
                 </p>
               )}
               <p className="src"><Stamp block={q.data!.block} label="Read at block" /></p>
@@ -153,7 +149,7 @@ export function Overview() {
 
       {book && book.layers.length > 0 && (
         <section className="positions" aria-labelledby="layers-h">
-          <h2 id="layers-h" className="section">Layers on the book</h2>
+          <h2 id="layers-h" className="section">Cover on the book</h2>
           <div className="ledger" role="table" aria-label="Layers on the book">
             <div className="ledger-head" role="row">
               <span role="columnheader">Market</span>
@@ -183,36 +179,36 @@ function SpyQuote({ quote, bt }: { quote: QuoteQ; bt: ReturnType<typeof backtest
   return (
     <>
       <p className="terms">
-        A vault long {usd0.format(REFERENCE.exposure)} USDG of SPY keeps the first {usd0.format(REFERENCE.retention)} of a
-        weekend loss; writers cover the next {usd0.format(REFERENCE.limit)}.{' '}
-        {quote.isLoading ? <span className="pending">The pricer is quoting it now.</span> : <>That cover costs <b><Money v={premium} /> USDG</b> for one weekend.</>}
+        A vault that is net long {usd0.format(REFERENCE.exposure)} USDG of SPY pays{' '}
+        {quote.isLoading ? <span className="pending">(the pricer is quoting it now)</span> : <b title={live ? `Live quote from the Stylus pricer at block ${live.block.toLocaleString('en-US')}` : 'Recorded quote, block 313,690,038'}><Money v={premium} /> USDG</b>}{' '}
+        for one weekend of cover.
       </p>
-      <div className="rows figs">
-        <div className="row"><span className="k">Rate on line</span><span className="v">{((premium / REFERENCE.limit) * 100).toFixed(2)}%</span></div>
-        <div className="row"><span className="k">Expected loss</span><span className="v"><Money v={el} /></span></div>
-        <div className="row"><span className="k">Weekends it pays</span><span className="v">{bt.paid} of 504</span></div>
-      </div>
+      <p className="note">
+        If SPY opens Monday more than 1% below Friday's close, Heracles pays the vault a set amount for each further step of the
+        gap, up to a cap. The payout is worked out from the price feed and the declared position, not from the vault's books.
+      </p>
       <details className="more">
-        <summary>Tail and source</summary>
+        <summary>What it would have paid since 2016</summary>
         <div className="rows figs">
-          <div className="row"><span className="k">TVaR95, worst 25 weekends</span><span className="v"><Money v={tvar} /></span></div>
-          <div className="row"><span className="k">Full limit paid</span><span className="v">{bt.exhausted} of 504</span></div>
+          <div className="row"><span className="k">Weekends it would have paid on</span><span className="v">{bt.paid} of 504</span></div>
+          <div className="row"><span className="k">Pays per further 1% of gap</span><span className="v">{usd0.format(REFERENCE.exposure / 100)}</span></div>
+          <div className="row"><span className="k">Most it pays (the limit)</span><span className="v">{usd0.format(REFERENCE.limit)}</span></div>
+          <div className="row"><span className="k">Average payout per weekend (expected loss)</span><span className="v"><Money v={el} /></span></div>
+          <div className="row"><span className="k">Average of the worst 5% of weekends (TVaR95)</span><span className="v"><Money v={tvar} /></span></div>
+          <div className="row"><span className="k">Price as a share of the 60,000 cap</span><span className="v">{((premium / REFERENCE.limit) * 100).toFixed(2)}%</span></div>
         </div>
         <p className="note">
           {agrees
-            ? `Rerun in this browser over SPY.json, the expected loss matches the pricer's (${usd2.format(bt.el)}).`
+            ? `Rerun in this browser over SPY.json, the expected payout matches the pricer's (${usd2.format(bt.el)}).`
             : `Rerun in this browser at 1.0x volatility gives ${usd2.format(bt.el)}; the difference is the pricer's live volatility scale.`}
+          {live && <> Quoted by the Stylus pricer at block <a href={explorer.block(live.block)} target="_blank" rel="noreferrer">#{live.block.toLocaleString('en-US')}</a>.</>}
         </p>
       </details>
-      {live ? (
-        <p className="src">
-          Quoted by the Stylus pricer at block <a href={explorer.block(live.block)} target="_blank" rel="noreferrer">#{live.block.toLocaleString('en-US')}</a>.
-        </p>
-      ) : !quote.isLoading ? (
+      {!live && !quote.isLoading && (
         <p className="err" role="status">
           <b>Live quote failed</b> {quote.error ? explainError(quote.error).name : 'no client'}; showing the recorded quote at block 313,690,038 (README).
         </p>
-      ) : null}
+      )}
     </>
   );
 }

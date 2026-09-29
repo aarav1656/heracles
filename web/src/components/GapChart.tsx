@@ -10,11 +10,12 @@ const BOTTOM = 30;
 
 /**
  * Every weekend in a market's pricing table as one bar: Friday's close to the next open. With a
- * layer, a teal band marks the slice of loss the layer pays (retention to retention + limit);
+ * layer, a teal band marks the gaps it pays on: the loss worked out from the feed and the declared
+ * exposure, above the retention and up to retention + limit;
  * the part of each weekend's bar inside the band is the payout, filled teal. Drawn in real
  * pixels (the SVG is measured), so labels are true 12px. Pointer or arrow keys walk the weekends.
  */
-export function GapChart({ table, layer, notes = true }: { table: GapTable; layer?: LayerTerms; notes?: boolean }) {
+export function GapChart({ table, layer, notes = true, simple = false }: { table: GapTable; layer?: LayerTerms; notes?: boolean; simple?: boolean }) {
   const ws = table.weekends;
   const ext = useMemo(() => extremes(ws), [ws]);
   const bt = useMemo(() => (layer ? backtest(ws, layer.exposure, layer.retention, layer.limit) : undefined), [ws, layer]);
@@ -77,7 +78,7 @@ export function GapChart({ table, layer, notes = true }: { table: GapTable; laye
   const w = ws[at];
   const pay = bt?.payouts[at];
   const summary = bt
-    ? `${table.ticker}: ${ws.length} weekends from ${fmtDay(ws[0].friday)}. The layer starts paying at a ${fmtBps(bt.attachBps)} gap and pays its full limit at ${fmtBps(bt.exhaustBps)}. It would have paid on ${bt.paid} weekends, the full limit on ${bt.exhausted}.`
+    ? `${table.ticker}: ${ws.length} weekends from ${fmtDay(ws[0].friday)}. The cover starts paying at a ${fmtBps(bt.attachBps)} gap and reaches its cap at ${fmtBps(bt.exhaustBps)}. It would have paid on ${bt.paid} weekends, its cap on ${bt.exhausted}.`
     : `${table.ticker}: ${ws.length} weekend gaps. Worst ${fmtBps(ext.down.gap)} on ${fmtDay(ext.down.friday)}.`;
 
   const bandTop = bt ? Math.min(cy(bt.attachBps), cy(bt.exhaustBps)) : 0;
@@ -87,7 +88,7 @@ export function GapChart({ table, layer, notes = true }: { table: GapTable; laye
   const tr = (p: Record<string, number | string>) => p as CSSProperties;
 
   const worstPay = bt?.payouts[worstIdx] ?? 0;
-  const pinned = !!bt && notes && wide && (bt.payouts[worstIdx] ?? 0) > 0;
+  const pinned = !simple && !!bt && notes && wide && (bt.payouts[worstIdx] ?? 0) > 0;
   const worstLeft = x(worstIdx) > LEFT + pw * 0.62;
   const worstY = cy(worst.gap);
   const worstPast = layer ? Math.max(0, (-layer.exposure * worst.gap) / 10_000 - layer.retention - layer.limit) : 0;
@@ -95,14 +96,14 @@ export function GapChart({ table, layer, notes = true }: { table: GapTable; laye
   return (
     <div className={`gc${entering ? ' enter' : ''}${lossSideDown ? '' : ' up'}`}>
       <p className="gc-read" aria-live="polite">
-        {sel === undefined && pinned ? (
-          <span className="gc-hint">Point at a weekend, or focus the chart and use the arrow keys, to read its gap and what the layer paid.</span>
+        {sel === undefined && (pinned || simple) ? (
+          <span className="gc-hint">Point at a weekend, or focus the chart and use the arrow keys, to read its gap and what the cover would have paid.</span>
         ) : (<>
         <span>{fmtDay(w.friday)} close to {fmtDay(w.monday)} open</span>
         <b className={w.gap < 0 ? 'dn' : undefined}>{fmtBps(w.gap)}</b>
         {bt && pay !== undefined && (
           <span className="gc-pay">
-            {pay > 0 ? <>the layer pays <b>{usd0.format(pay)}</b> USDG{pay >= layer!.limit ? ', its full limit' : ''}</> : 'inside the retention or a gain: the layer pays nothing'}
+            {pay > 0 ? <>the cover pays <b>{usd0.format(pay)}</b> USDG{pay >= layer!.limit ? ', its cap' : ''}</> : 'too small a gap, or the other way: the cover pays nothing'}
           </span>
         )}
         {sel === undefined && <span className="gc-hint">{lossSideDown ? 'the worst down weekend' : 'the worst up weekend'}</span>}
@@ -168,16 +169,18 @@ export function GapChart({ table, layer, notes = true }: { table: GapTable; laye
 
         {bt && notes && wide && (
           <div className="gc-notes" aria-hidden="true" style={{ left: LEFT + pw + 16 }}>
-            {[
-              { b: bt.attachBps, words: `the vault keeps the first ${usd0.format(layer!.retention)}` },
-              { b: bt.exhaustBps, words: 'its limit is used up' },
+            {!simple && [
+              { b: bt.attachBps, words: 'the cover starts paying' },
+              { b: bt.exhaustBps, words: `it pays its cap, ${usd0.format(layer!.limit)}` },
             ].map((n) => (
               <span key={n.words} className={`gc-note${cy(n.b) === bandTop ? ' above' : ''}`} style={{ top: cy(n.b) }}>
                 <b>{fmtBps(n.b)}</b> {n.words}
               </span>
             ))}
-            {bandBot - bandTop >= 40 && (
-              <span className="gc-note layer" style={{ top: (bandTop + bandBot) / 2 }}>the layer pays the next {usd0.format(layer!.limit)}</span>
+            {(simple || bandBot - bandTop >= 40) && (
+              <span className="gc-note layer" style={{ top: (bandTop + bandBot) / 2 }}>
+                {simple ? <>Heracles pays when the Monday gap reaches this band</> : <>the cover pays inside this band</>}
+              </span>
             )}
           </div>
         )}
@@ -187,8 +190,8 @@ export function GapChart({ table, layer, notes = true }: { table: GapTable; laye
             aria-hidden="true"
             style={{ left: x(worstIdx) + (worstLeft ? -10 : 10), top: Math.min(worstY, TOP + ph - 28) }}
           >
-            {fmtDay(worst.friday)}, {fmtBps(worst.gap)}: the layer paid {worstPay >= layer!.limit ? `its full ${usd0.format(layer!.limit)}` : usd0.format(worstPay)}
-            {worstPast > 0 && <><br />the vault paid the first {usd0.format(layer!.retention)} and {usd0.format(worstPast)} past {fmtBps(bt.exhaustBps)}</>}
+            {fmtDay(worst.friday)}, {fmtBps(worst.gap)}: the cover pays {worstPay >= layer!.limit ? `its cap, ${usd0.format(layer!.limit)}` : usd0.format(worstPay)}
+            {worstPast > 0 && <><br />the move past {fmtBps(bt.exhaustBps)} is not covered</>}
           </span>
         )}
       </div>
@@ -196,17 +199,17 @@ export function GapChart({ table, layer, notes = true }: { table: GapTable; laye
       <div className="gc-key">
         {bt ? (
           <>
-            <span><i className="sw layer" />what the layer paid; its full limit on <b>{bt.exhausted}</b> of {ws.length} weekends</span>
-            {!pinned && <span className="gc-hint">Point at a weekend, or focus the chart and use the arrow keys.</span>}
-            {!wide && notes && <span>band: {fmtBps(bt.attachBps)} to {fmtBps(bt.exhaustBps)}, the vault keeps the first {usd0.format(layer!.retention)}, the layer pays the next {usd0.format(layer!.limit)}</span>}
+            <span><i className="sw layer" />{simple ? 'weekends this cover would have paid on' : <>what the cover would have paid; its cap on <b>{bt.exhausted}</b> of {ws.length} weekends</>}</span>
+            {!pinned && !simple && <span className="gc-hint">Point at a weekend, or focus the chart and use the arrow keys.</span>}
+            {!wide && notes && <span>band: Heracles pays when the Monday gap is past {fmtBps(bt.attachBps)}, up to its cap at {fmtBps(bt.exhaustBps)}</span>}
           </>
         ) : (
           <span>Friday close to next open, one bar per weekend</span>
         )}
       </div>
-      <p className="src">
+      {!simple && <p className="src">
         {ws.length} weekends, {fmtDay(ws[0].friday)} to {fmtDay(ws[ws.length - 1].friday)}. Source: <span className="file">{table.file}</span> in the repo, from {table.source}, fetched {fmtDay(table.fetchDate)}.
-      </p>
+      </p>}
     </div>
   );
 }

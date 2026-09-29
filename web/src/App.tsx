@@ -21,8 +21,8 @@ export function App() {
               <NavLink to="/" className="mark" aria-label="Heracles, weekend gaps">Heracles</NavLink>
               <nav aria-label="Sections">
                 <NavLink to="/" end>Weekend gaps</NavLink>
-                <NavLink to="/bind">Price a layer</NavLink>
-                <NavLink to="/write">Write capacity</NavLink>
+                <NavLink to="/bind">Price cover</NavLink>
+                <NavLink to="/write">Earn premium</NavLink>
               </nav>
               <Wallet />
             </div>
@@ -36,7 +36,7 @@ export function App() {
           </main>
           <footer className="wrap">
             <div className="foot">
-            <p>Heracles: excess-of-loss cover for the weekend gap, for the LP vaults of stock perp exchanges. Arbitrum Sepolia, USDG.</p>
+            <p>Heracles: parametric cover for the weekend gap, for the LP vaults of stock perp exchanges. Arbitrum Sepolia, USDG.</p>
             <p>
               Treaty <a href={explorer.address(TREATY_ADDRESS)} target="_blank" rel="noreferrer">{short(TREATY_ADDRESS)}</a>
               {' · '}capacity <a href={explorer.address(CAPACITY_ADDRESS)} target="_blank" rel="noreferrer">{short(CAPACITY_ADDRESS)}</a>
