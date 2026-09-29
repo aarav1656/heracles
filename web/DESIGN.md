@@ -22,20 +22,19 @@ as subtitle, source and note under the plot).
 ## Reader and first screen
 
 The reader is a risk lead at a stock-perp exchange's LP vault, a multisig signer, or a USDG
-writer. In five seconds they must get: *the vault keeps the first slice of a Monday gap
-loss, a Heracles layer pays the next slice, and here is what that layer costs today.*
+writer. In five seconds they must get: *if a stock opens Monday far from Friday's close,
+Heracles pays the vault a set amount worked out from the price feed and the position it
+declared, and here is what that cover costs today.* Heracles is parametric: it never sees
+the vault's books.
 
 The first screen (1440x900) shows, in reading order:
-1. the argument: serif `<h1>` and a two-line lede;
-2. the noun: every SPY weekend since 2016 as one bar, the reference layer drawn across the
-   bars as a teal band, the slice of each weekend's loss the layer pays filled solid teal,
-   with notes pinned in clear space on a paper knockout ("vault keeps the first 20,000",
-   "layer pays the next 60,000", the worst weekend), the way Carta pins labels onto its
-   drawing;
-3. the action: a flat ruled ticket beside the chart stating the reference layer in one
-   sentence with its live Stylus premium inside that sentence, three consequence rows (rate
-   on line, expected loss, weekends it pays), the tail figures behind a disclosure, then
-   "Price your own layer".
+1. the argument: serif `<h1>` "Cover for the weekend gap" and a one-sentence lede;
+2. the noun: every SPY weekend since 2016 as one bar, the example cover drawn across the
+   bars as a teal band, the part of each weekend inside the band filled solid teal, and one
+   note in clear space: "Heracles pays when the Monday gap reaches this band";
+3. the action: a flat ruled ticket beside the chart with one sentence carrying the live
+   Stylus price, a plain line on how the payout is worked out, the history behind a
+   disclosure, then "Price cover for your vault".
 
 It is not the big-metric template: the premium is a figure in a sentence, set at the
 sentence's size, and no stat tiles exist anywhere.
@@ -103,7 +102,7 @@ green and red; the sign is printed and position says the side.
 ## Space, radius, elevation
 
 8px scale: 4, 8, 12, 16, 24, 32, 48, 64, 96. Content max width 1240px, 32px gutters (20px
-under 720px). Grid: main column 1fr, ticket 352px, gap 56px.
+under 720px). Grid: main column 1fr, ticket 320px, gap 48px.
 
 Radius 8px on controls and buttons (Mercury, 28 uses); nothing else is rounded. No panels:
 sections are separated by space and one hairline. The ticket is flat: a 2px ink rule on
@@ -124,7 +123,7 @@ One orchestrated load, "the layer is set" (claimed in the registry):
 3. 460 to 1060ms: the teal band opens downward from the retention line to the exhaust
    line, and each paid slice appears as the band's edge passes its depth, shallowest gap
    first, deepest last.
-4. 1080 to 1300ms: the pinned notes fade in.
+4. 1080 to 1300ms: the band's note (and on `/bind` the edge notes and the worst-weekend pin) fade in.
 5. 280 to 640ms: the ticket fades in with final figures.
 
 After that, state transitions only: changed terms on `/bind` move the band's edges over
