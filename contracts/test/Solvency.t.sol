@@ -79,9 +79,7 @@ contract SolvencyTest is Test, TreatyFixture {
             buyers[l] = address(uint160(uint256(keccak256(abi.encode("buyer", seed, l)))));
             usdg.mint(buyers[l], 1_000_000e6);
             vm.prank(buyers[l]);
-            usdg.approve(address(firstLoss), type(uint256).max);
-            vm.prank(buyers[l]);
-            usdg.approve(address(senior), type(uint256).max);
+            usdg.approve(address(treaty), type(uint256).max);
             int256[] memory exposure = new int256[](N_MARKETS);
             for (uint256 m; m < N_MARKETS; m++) {
                 int256 mag = int256(bound(uint256(keccak256(abi.encode(seed, l, m, "exp"))), 0, 500_000e6));

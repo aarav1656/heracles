@@ -92,6 +92,7 @@ contract CapacityC1Test is Test, TreatyFixture {
         vm.startPrank(attacker);
         usdg.approve(address(firstLoss), type(uint256).max);
         usdg.approve(address(senior), type(uint256).max);
+        usdg.approve(address(treaty), type(uint256).max);
         uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, free); // payout always 0, premium = floor
         uint256 shares;
         // checked against the first-loss vault; the senior vault gets the same guard in
@@ -119,6 +120,7 @@ contract CapacityC1Test is Test, TreatyFixture {
         vm.startPrank(attacker);
         usdg.approve(address(firstLoss), type(uint256).max);
         usdg.approve(address(senior), type(uint256).max);
+        usdg.approve(address(treaty), type(uint256).max);
         treaty.bind(0, _one(1e6), 1_000_000e6, 100_000e6); // half the pool locked, cannot pay
         vm.stopPrank();
         // checked against the first-loss vault; the senior vault gets the same guard in

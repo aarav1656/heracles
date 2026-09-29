@@ -98,9 +98,7 @@ contract CapacityReReviewTest is Test, TreatyFixture {
     function test_H1_rollingDustBindFreezesWritersIndefinitely() public {
         usdg.mint(griefer, 1_000);
         vm.prank(griefer);
-        usdg.approve(address(firstLoss), type(uint256).max);
-        vm.prank(griefer);
-        usdg.approve(address(senior), type(uint256).max);
+        usdg.approve(address(treaty), type(uint256).max);
 
         uint256 exits;
         uint256 prevId = type(uint256).max;
@@ -111,10 +109,14 @@ contract CapacityReReviewTest is Test, TreatyFixture {
             vm.warp(MON0 + w * 7 days + 5 minutes);
             uint256 g = gasleft();
             vm.prank(griefer);
-            uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, 200);
+            // limit=200 (the original dust size, floored to a 1-base-unit premium) now reverts
+            // with BadParams: the junior sub-quote's own capital charge floors to 0 well before
+            // the whole layer's H2 floor does, and the tranche split requires both slices'
+            // premium nonzero. 5_000 is the smallest limit clearing the junior slice's own floor.
+            uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, 5_000);
             bindGas = g - gasleft();
             (,,,,,,,,, uint256 premium,) = layerBasics(treaty, id);
-            assertEq(premium, 1, "min nonzero premium is 1 base unit");
+            assertEq(premium, 25, "min nonzero premium clearing both tranches' floors is 25 base units");
 
             if (prevId != type(uint256).max) {
                 // prevId's expiry, DST-aware, not a hardcoded "13:30 UTC" (see setUp).
@@ -145,7 +147,7 @@ contract CapacityReReviewTest is Test, TreatyFixture {
         console2.log("griefer USDG base units spent over 8 weeks", grieferStart - usdg.balanceOf(griefer));
         console2.log("gas per griefing bind (Solidity Pricer)", bindGas);
         console2.log("writer exits achieved", exits);
-        assertGt(exits, 0, "H1: writer never able to exit across 8 weeks of 1-base-unit binds");
+        assertGt(exits, 0, "H1: writer never able to exit across 8 weeks of dust-sized griefing binds");
     }
 
     /// Same freeze from honest usage (closed): a buyer rolling weekly cover binds next weekend's
@@ -156,9 +158,7 @@ contract CapacityReReviewTest is Test, TreatyFixture {
         address buyer = makeAddr("buyer");
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);
-        usdg.approve(address(firstLoss), type(uint256).max);
-        vm.prank(buyer);
-        usdg.approve(address(senior), type(uint256).max);
+        usdg.approve(address(treaty), type(uint256).max);
         vm.prank(buyer);
         uint256 a = treaty.bind(0, _one(-500_000e6), 20_000e6, 10_000e6);
         // Round 1 (set in setUp, w=0) is the pre-close predecessor; round 2 is the actual

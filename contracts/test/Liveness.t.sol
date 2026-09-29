@@ -46,9 +46,7 @@ contract LivenessTest is Test, TreatyFixture {
         vm.stopPrank();
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);
-        usdg.approve(address(firstLoss), type(uint256).max);
-        vm.prank(buyer);
-        usdg.approve(address(senior), type(uint256).max);
+        usdg.approve(address(t), type(uint256).max);
     }
 
     function _bind(Treaty t, uint256 n) internal returns (uint256 id) {

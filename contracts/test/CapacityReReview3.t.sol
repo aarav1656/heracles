@@ -59,6 +59,7 @@ contract ReReview3Findings is Test, TreatyFixture {
         vm.startPrank(a);
         usdg.approve(address(firstLoss), type(uint256).max);
         usdg.approve(address(senior), type(uint256).max);
+        usdg.approve(address(treaty), type(uint256).max);
         vm.stopPrank();
     }
 
@@ -87,9 +88,12 @@ contract ReReview3Findings is Test, TreatyFixture {
         uint256 lastRoundAt = MON0 + CUT - 30 minutes; // Friday 19:00 UTC, week 0
         feed.set(1, 100e8, lastRoundAt);
 
+        // limit=200 (the original dust size) now reverts with BadParams under the tranche split:
+        // the junior sub-quote's own capital charge floors to 0 well before the whole layer's H2
+        // floor does. 5_000 is the smallest limit clearing the junior slice's own floor.
         vm.warp(MON0 + 1 hours + 1);
         vm.prank(griefer);
-        uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, 200); // feed still fresh: first bind succeeds
+        uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, 5_000); // feed still fresh: first bind succeeds
         (,,,,, Treaty.State st,,,,,) = layerBasics(treaty, id);
         assertEq(uint8(st), uint8(Treaty.State.Bound), "sanity: bind succeeds while the feed is fresh");
 
@@ -99,7 +103,7 @@ contract ReReview3Findings is Test, TreatyFixture {
         vm.warp(MON0 + 7 days + 1 hours + 1);
         vm.prank(griefer);
         vm.expectRevert(Treaty.BadRound.selector);
-        treaty.bind(0, _one(1e6), 1_000_000e6, 200);
+        treaty.bind(0, _one(1e6), 1_000_000e6, 5_000);
     }
 
     /// LOW F2. `_settle` does `exposure[i] * gapBps` in checked int256. The Pricer only ever

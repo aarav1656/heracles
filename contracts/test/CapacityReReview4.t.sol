@@ -49,6 +49,8 @@ contract ReReview4 is Test, TreatyFixture {
         usdg.approve(address(firstLoss), type(uint256).max);
         vm.prank(a);
         usdg.approve(address(senior), type(uint256).max);
+        vm.prank(a);
+        usdg.approve(address(treaty), type(uint256).max);
     }
 
     function _one(int256 e) internal pure returns (int256[] memory x) {
@@ -171,9 +173,7 @@ contract ReReview4 is Test, TreatyFixture {
         vm.prank(writer);
         usdg.approve(address(cSenior), type(uint256).max);
         vm.prank(buyer);
-        usdg.approve(address(c), type(uint256).max);
-        vm.prank(buyer);
-        usdg.approve(address(cSenior), type(uint256).max);
+        usdg.approve(address(t), type(uint256).max);
         vm.prank(writer);
         c.deposit(1_000_000e6, writer);
         vm.prank(writer);
