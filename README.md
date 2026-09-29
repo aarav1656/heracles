@@ -137,11 +137,8 @@ For a long 2,000,000 USDG SPY position with a 20,000 USDG retention and a 60,000
 limit (the same parameters as the live quote above), the headline layer pays out on 36 of
 the 504 ten-year historical Friday-to-Monday weekends in the SPY table (7.1% of
 weekends), and its risk-neutral-plus-load premium is 2.79% of the limit per weekend
-bound, matching the live on-chain quote (1,676.722158 USDG) to the last cent. This is not
-a small number restated as a rounding error: a vault buying this cover every week for a
-year pays roughly 145% of the limit in premium (52 x 2.79%) against a 7.1% chance of
-collecting per week, which only makes sense priced against the tail it is not willing to
-carry itself, not as a routine weekly expense.
+bound, matching the live on-chain quote (1,676.722158 USDG) to the last cent. Against the
+2,000,000 USDG position it covers, that is 8.38 bps of notional for one weekend.
 
 **Who is already eating this gap today, unhedged:**
 
@@ -150,8 +147,7 @@ carry itself, not as a routine weekly expense.
   while loans keep running, so the tokens trade all weekend on a frozen price and USDC
   lenders eat the Monday gap.**
   (@MoneyNomads1, 2026-09-28, https://x.com/MoneyNomads1/status/2104630009302290492) This
-  is a major lending protocol now structurally exposed to exactly the gap this treaty
-  prices, with a real cap already hit, not a hypothetical.
+  is a major lending protocol structurally exposed to the same gap this treaty prices.
 - **"Billion-dollar-plus days in Stock Token volume, 72% of it on weekends."** (Johann
   Kerbrat, SVP & GM Crypto and International, Robinhood, 2026-09-26,
   https://x.com/JohannKerbrat/status/2103874953053622694) The weekend is not the tail case
