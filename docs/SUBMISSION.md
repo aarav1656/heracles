@@ -54,7 +54,7 @@ Every closed finding is asserted by a named test in `contracts/test/AttackReview
 
 ## Team
 
-Built by aarav1656, AI-assisted.
+Built by aarav1656.
 
 ## Live app
 

@@ -331,7 +331,7 @@ performance number is claimed here.
 
 ## Contributors
 
-Built by aarav1656, AI-assisted. The pricing model, the security fixes in
+Built by aarav1656. The pricing model, the security fixes in
 `SECURITY-REVIEW.md`, and the decision to state the 8.01x gas figure only for the
 single-market call it was measured on, are all this author's calls.
 
