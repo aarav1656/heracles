@@ -179,3 +179,31 @@ line), `Money` (figure with small decimals), `Stamp` (block link).
 | Weekends paid / full limit | `data/gap-tables/SPY.json` (copy of `evidence/gap-tables`, source api.nasdaq.com, fetched 2026-09-28), `Pricer.priceCore` payout rule at 1.0x (`lib/gaps-core.ts`) |
 | Stylus gas, 8.01x less L2 execution gas than the Solidity twin | `docs/pricing.md` "Gas", block 313,704,736 |
 | SPY/USD price, book, capacity, allowance | `useBook` pinned read, block printed |
+
+## Simplicity and plain words (user rules, 2026-09-29)
+
+First screen of `/`: one sentence (the lede), one visual (the SPY chart with one note,
+"Heracles pays when the Monday gap reaches this band"), one primary action ("Price cover
+for your vault"). Three figures: 2,000,000, 1,676.72, 1%. The tail figures, the payout
+schedule and the block live behind "What it would have paid since 2016" and in the small
+source line. Terms are glossed where they appear: "Vault keeps first" (retention),
+"Heracles pays up to" (limit, the cap), "Average payout a weekend" (expected loss),
+"Average in the worst 5% of weekends" (TVaR95). Nav: Weekend gaps, Price cover, Earn
+premium. Heracles is parametric, so every payout line says it is worked out from the price
+feed and the declared position, never "pays the vault's loss".
+
+## Gate record
+
+- Critic, round 2 (final): "VERDICT: PASS. All eight fixes are in the new screenshots. The
+  new first-screen rule holds on `/`, and I found no line that says Heracles pays the
+  vault's actual losses." Full record: `design-research/VERDICT.md`.
+- Cold reader, shown only the two first-screen screenshots: "It lets a perp exchange's
+  liquidity vault get paid out when a stock's price gaps over the weekend, based on a price
+  feed and the vault's declared position, and lets others earn premium by backing that
+  cover." Who: "People running or backing a perp-exchange LP vault holding stock exposure
+  ... plus USDG holders willing to underwrite that risk for yield." First click: "Price
+  cover for your vault". PASS, not stronger than the contract.
+- `npm run build` passes; `npm test` 3 pass (flipping the loss sign in `gaps-core.ts` turns
+  2 red); `uicraft gate --cwd src` 0 high findings (4 high on a slop fixture); no
+  horizontal scroll at 320, 390, 1440, 1920 on any route; zero app console errors on every
+  route at 1440 and 390 (the one exception per page is a wallet extension's `evmAsk.js`).

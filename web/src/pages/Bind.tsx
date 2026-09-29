@@ -6,7 +6,7 @@ import { explorer } from '../chain';
 import { useBook, quoteLive } from '../hooks/useBook';
 import { useNow } from '../hooks/useNow';
 import { useTx } from '../hooks/useTx';
-import { useOnChain } from '../components/Wallet';
+import { Wallet, useOnChain } from '../components/Wallet';
 import { Stamp } from '../components/Stamp';
 import { Money } from '../components/Money';
 import { TxNote } from '../components/TxNote';
@@ -168,7 +168,7 @@ export function Bind() {
                 <input id="lim" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} />
               </div>
             </div>
-            <p className="hint">Retention and limit, in USDG, on the loss worked out from the feed: Monday gap times declared position.</p>
+            <p className="hint">Both in USDG, on the loss worked out from the feed: the Monday gap times the declared position.</p>
             {formError && <p className="err" role="alert"><b>Check</b> {formError}</p>}
           </div>
 
@@ -198,6 +198,7 @@ export function Bind() {
             </p>
           ) : (
             <div className="bindbox">
+              {!me.address && <Wallet />}
               {me.ready && effective !== undefined && effective > 0n && (
                 <div className="rows figs">
                   <div className="row"><span className="k">Premium due</span><span className="v">{fmtUsdg(effective)} USDG</span></div>

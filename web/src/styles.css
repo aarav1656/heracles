@@ -160,6 +160,7 @@ b { font-weight: 600; }
 .gc-read > b { font-family: var(--serif); font-weight: 500; font-size: 15px; color: var(--ink); }
 .gc-read b { font-weight: 600; }
 .gc-hint { color: var(--ink-3); }
+.gc-read > .gc-hint:only-child { color: var(--ink-3); font-size: 13px; }
 .gc-plot { position: relative; margin-top: 10px; cursor: crosshair; touch-action: pan-y; overflow: hidden; }
 .gc-plot:focus-visible { outline-offset: 6px; }
 .gc-plot svg { position: absolute; inset: 0; display: block; overflow: visible; }
@@ -208,6 +209,7 @@ b { font-weight: 600; }
 .quote { min-height: 60px; }
 .quote > * + * { margin-top: 14px; }
 .bindbox > * + * { margin-top: 14px; }
+.bindbox > .wallet-menu, .bindbox > .wallet-menu > .btn { width: 100%; }
 
 /* Rows: the one list component (ticket figures, cover week, book, pool). */
 .rows { display: grid; }
@@ -263,7 +265,7 @@ b { font-weight: 600; }
 .path-field rect.dd { fill: rgba(28, 26, 22, 0.06); }
 .path-field polyline { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
 .hit-dot { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; background: var(--layer); box-shadow: 0 0 0 2px var(--paper); }
-.path-end { position: absolute; right: 0; transform: translateY(-150%); font-family: var(--serif); font-size: 15px; }
+.path-end { position: absolute; right: 0; transform: translateY(160%); font-family: var(--serif); font-size: 15px; }
 .path-years { grid-column: 2; position: relative; height: 24px; }
 .path-years span { position: absolute; top: 6px; font-size: 12px; color: var(--ink-3); }
 
@@ -357,6 +359,7 @@ a, .btn, .key, .markets button, .top nav a, .field input { transition: color 120
   .desk { display: flex; flex-direction: column; gap: 40px; }
   .desk > .main-col { display: contents; }
   .desk > .main-col > .exhibit { margin-top: 0; }
+  .desk > .main-col.exhibit { display: block; }
   .ticket { max-width: 560px; order: 1; width: 100%; }
   .desk > .main-col > section:not(.exhibit) { order: 2; }
   .main-col > section + section { margin-top: 0; }

@@ -158,7 +158,11 @@ export function GapChart({ table, layer, notes = true, simple = false }: { table
               {ws.map((wk, i) => {
                 if (!(bt.payouts[i] > 0)) return null;
                 const a = cy(bt.attachBps);
-                const b = cy(Math.abs(wk.gap) < Math.abs(bt.exhaustBps) ? wk.gap : bt.exhaustBps);
+                const capped = bt.payouts[i] >= layer!.limit;
+                const edge = cy(bt.exhaustBps);
+                const raw = cy(Math.abs(wk.gap) < Math.abs(bt.exhaustBps) ? wk.gap : bt.exhaustBps);
+                // A weekend that paid just under the cap keeps a visible gap from the band's edge.
+                const b = !capped && Math.abs(raw - edge) < 2 ? edge + (raw > edge ? 2 : -2) : raw;
                 const depth = (Math.abs(b - a) / Math.max(1, bandBot - bandTop));
                 return <rect key={wk.friday} className="gc-slice" style={{ animationDelay: `${460 + depth * 600}ms` }} x={x(i) - sliceW / 2} width={sliceW} y={Math.min(a, b)} height={Math.max(1.5, Math.abs(b - a))} />;
               })}

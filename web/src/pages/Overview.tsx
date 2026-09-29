@@ -91,6 +91,10 @@ export function Overview() {
           <div className="acts">
             <Link className="btn" to="/bind">Price cover for your vault</Link>
           </div>
+          <p className="note">No wallet needed to see a price; connect one to buy.</p>
+          {ticker === 'SPY' && quote.data && (
+            <p className="src">Live quote from the Stylus pricer at block <a href={explorer.block(quote.data.block)} target="_blank" rel="noreferrer">#{quote.data.block.toLocaleString('en-US')}</a>.</p>
+          )}
           <p className="note">Have USDG? <Link to="/write">Back this cover and earn its premium</Link>.</p>
         </aside>
       </div>

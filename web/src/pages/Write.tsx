@@ -89,7 +89,7 @@ export function Write() {
               <label htmlFor="dep">Amount, USDG</label>
               <input id="dep" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
               <span className={`hint${amountError ? ' bad' : ''}`}>
-                {amountError ?? (cap ? `Your balance is ${fmtUsdg(cap.myUsdg)} USDG.` : 'Your USDG balance reads with the book.')}
+                {amountError ?? (cap ? `Your balance is ${fmtUsdg(cap.myUsdg)} USDG.` : 'Reading your USDG balance from the chain.')}
               </span>
               {cap && cap.myUsdg > 0n && (
                 <div className="fills">
@@ -117,7 +117,7 @@ export function Write() {
               <label htmlFor="exit">Amount, USDG</label>
               <input id="exit" inputMode="decimal" value={exitAmount} onChange={(e) => setExitAmount(e.target.value)} placeholder="0.00" />
               <span className={`hint${exitError ? ' bad' : ''}`}>
-                {exitError ?? (cap ? `At most ${fmtUsdg(cap.free)} USDG is free. Your redeemable max is ${fmtUsdg(cap.maxRedeem)} USDG.` : 'The free balance reads with the book.')}
+                {exitError ?? (cap ? `At most ${fmtUsdg(cap.free)} USDG is free. Your redeemable max is ${fmtUsdg(cap.maxRedeem)} USDG.` : 'Reading the free balance from the chain.')}
               </span>
               {cap && cap.free > 0n && (
                 <div className="fills">
@@ -204,7 +204,7 @@ function WriterPath() {
     <div className="path">
       <p className="gc-read">
         <span>
-          Each weekend adds today's premium, <b><Money v={premium} /></b> USDG on a {usd0.format(REFERENCE.limit)} limit
+          Each weekend adds today's premium, <b><Money v={premium} /></b> USDG on a {usd0.format(REFERENCE.limit)} cap
           (live at block {quote.data ? `#${quote.data.block.toLocaleString('en-US')}` : '313,690,038, recorded in the README'}), and subtracts what the cover paid.
         </span>
       </p>
