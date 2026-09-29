@@ -79,7 +79,7 @@ export function Bind() {
             <small>
               {parsed.error ? parsed.error
                 : live.error ? <>Quote failed: {live.error}</>
-                : quote ? <>{stale ? 'Re-quoting' : price?.floored ? 'Minimum price' : 'Live quote'}, block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">{quote.block.toLocaleString('en-US')}</a></>
+                : quote ? <>{stale ? 'Stylus pricer, re-quoting' : price?.floored ? 'Stylus pricer minimum' : 'Stylus pricer, live'} at block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">{quote.block.toLocaleString('en-US')}</a></>
                 : 'Quoting from the Stylus pricer'}
             </small>
           </div>

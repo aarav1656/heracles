@@ -73,8 +73,8 @@ export function BuyCover({ terms, quote, book, win, now }: {
       )}
       {short && book && terms && (
         <p className="wn" role="status">
-          Writers have {usd0.format(Number(free!) / 1e6)} USDG free at block {book.block.toLocaleString('en-US')}; this cover
-          needs {usd0.format(Number(terms.lim) / 1e6)}. <Link to="/write">Write cover</Link> to back it.
+          Buying opens once writers back it: {usd0.format(Number(free!) / 1e6)} USDG free at
+          block {book.block.toLocaleString('en-US')}, and this cover needs {usd0.format(Number(terms.lim) / 1e6)}. <Link to="/write">Write cover</Link>
         </p>
       )}
       {me.address && !me.ready && <p className="wn">{me.reason}</p>}

@@ -11,6 +11,8 @@
   --ink-3: #6F6A5F;
   --mute: #8C8679;
   --bar: #B4AEA1;
+  --bar-2: #8F897D;
+  --track: #D9D3C6;
   --teal: #0B6B6B;
   --teal-2: #095858;
   --wash: rgba(11, 107, 107, 0.1);
@@ -31,7 +33,15 @@ a:hover { text-decoration-color: var(--ink); }
 b { font-weight: 500; }
 button { font-family: inherit; }
 
-/* Nav: Morpho's top bar. Logo, route pills, one teal CTA. */
+/* Nav: Morpho's top bar. Logo, route pills, one teal CTA. Under 640px the pills fold into the logo's menu. */
+.routes { display: none; position: relative; }
+.routes summary { list-style: none; cursor: pointer; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 6px; color: var(--ink-2); }
+.routes summary::-webkit-details-marker { display: none; }
+.routes summary svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.routes[open] summary { background: rgba(28, 26, 22, 0.07); }
+.routes nav { position: absolute; left: -110px; top: calc(100% + 8px); z-index: 6; display: grid; min-width: 180px; padding: 6px; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; }
+.routes nav a { font-size: 14px; padding: 10px 12px; border-radius: 8px; text-decoration: none; }
+.routes nav a.active { background: rgba(28, 26, 22, 0.07); }
 .nav { height: 70px; display: flex; align-items: center; gap: 40px; padding: 0 26px; }
 .logo { display: flex; align-items: center; gap: 10px; font-size: 21px; letter-spacing: -0.02em; text-decoration: none; }
 .logo svg { width: 24px; height: 24px; fill: var(--ink); }
@@ -125,7 +135,7 @@ button { font-family: inherit; }
 .gc-zero { stroke: var(--bar); stroke-width: 1; }
 .gc-wash { fill: var(--wash); transition: y 240ms var(--ease), height 240ms var(--ease); }
 .gc-edge { stroke: var(--teal); stroke-width: 1.2; transition: transform 240ms var(--ease); }
-.gc-k { fill: #8F897D; }
+.gc-k { fill: var(--bar-2); }
 .gc-g { fill: var(--bar); }
 .gc-slice { fill: var(--teal); }
 .gc-cursor { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 2 3; }
@@ -141,6 +151,12 @@ button { font-family: inherit; }
 .gc-key { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 8px; font-size: 12px; line-height: 18px; color: var(--ink-2); }
 .gc-key b { font-weight: 500; color: var(--ink); }
 .gc .src { margin-top: 4px; }
+/* In a chart card the bars come first; the weekend readout sits under them. */
+.cc .gc { display: flex; flex-direction: column; }
+.cc .gc-plot { order: 0; margin-top: 4px; }
+.cc .gc-read { order: 1; margin-top: 6px; }
+.cc .gc-key { order: 2; }
+.cc .gc .src { order: 3; }
 
 /* Buy panel: Morpho's ticket. Two cards, one full-width CTA, notes under it. */
 .box { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
@@ -162,7 +178,7 @@ button { font-family: inherit; }
 
 .band-slider { --a: 0; --b: 1; position: relative; height: 26px; margin: 14px 0 22px; }
 .band-slider::before, .band-slider::after { content: ''; position: absolute; top: 12px; height: 2px; border-radius: 1px; pointer-events: none; }
-.band-slider::before { left: 9px; right: 9px; background: #D9D3C6; }
+.band-slider::before { left: 9px; right: 9px; background: var(--track); }
 .band-slider::after { left: calc(9px + (100% - 18px) * var(--a)); right: calc(9px + (100% - 18px) * (1 - var(--b))); background: var(--teal); }
 .band-slider input { position: absolute; inset: 0; width: 100%; height: 26px; margin: 0; -webkit-appearance: none; appearance: none; background: none; pointer-events: none; z-index: 1; }
 .band-slider input::-webkit-slider-runnable-track { background: none; height: 26px; }
@@ -180,9 +196,9 @@ button { font-family: inherit; }
 .buybox .wallet-menu { width: 100%; }
 .wn { font-size: 12px; line-height: 18px; color: var(--ink-2); margin: 12px 4px 0; }
 .buybox .prose { font-size: 12px; line-height: 18px; margin: 10px 4px 0; }
-.claim { display: flex; gap: 12px; margin-top: 12px; padding: 14px 16px; border-radius: 12px; background: var(--wash); font-size: 12px; line-height: 18px; color: var(--ink-2); }
-.claim svg { flex: none; width: 18px; height: 18px; margin-top: 1px; fill: none; stroke: var(--teal); stroke-width: 1.5; stroke-linecap: round; }
-.claim b { display: block; font-size: 14px; line-height: 20px; color: var(--ink); margin-bottom: 2px; }
+.claim { display: flex; gap: 10px; margin: 14px 4px 0; font-size: 12px; line-height: 18px; color: var(--ink-2); }
+.claim svg { flex: none; width: 16px; height: 16px; margin-top: 1px; fill: none; stroke: var(--teal); stroke-width: 1.5; stroke-linecap: round; }
+.claim b { color: var(--ink); }
 .box.form { display: grid; gap: 14px; }
 .box.sub { margin-top: 28px; }
 .box.sub .btn { width: 100%; }
@@ -363,23 +379,22 @@ a, .btn, .buy, .key, .tabs button, .sg button, .seg button, .pills a, .field inp
 }
 @media (max-width: 640px) {
   body:has(.page.cover) { padding-bottom: 80px; }
-  .nav { height: 56px; padding: 0 14px; gap: 12px; }
-  .pills { order: 3; }
-  .nav { flex-wrap: wrap; height: auto; padding-top: 8px; padding-bottom: 6px; row-gap: 4px; }
-  .pills { width: 100%; }
-  .pills a { padding: 9px 10px; }
+  .nav { height: 56px; padding: 0 14px; gap: 8px; }
+  .pills { display: none; }
+  .routes { display: block; }
   .logo { font-size: 18px; }
   .nav .btn { min-height: 34px; padding: 9px 12px; }
   .shell { margin: 0 6px; padding: 24px 16px 28px; border-radius: 14px; }
   .hero { font-size: 34px; line-height: 1.05; gap: 4px 10px; }
-  .badge { font-size: 12px; padding: 6px 8px; }
+  .badge { display: none; }
   .meta { gap: 6px 16px; margin: 14px 0 0 2px; font-size: 12px; }
   .meta > :nth-child(n + 3) { display: none; }
   .desc { margin-top: 14px; }
   .kpi { column-gap: 10px; margin-top: 20px; }
   .kpi p { font-size: 11.5px; line-height: 15px; min-height: 30px; }
   .kpi strong { font-size: 21px; margin: 8px 0 6px; }
-  .kpi strong span { display: block; font-size: 12px; letter-spacing: 0; margin-top: 4px; }
+  .kpi strong span { display: block; font-size: 12px; letter-spacing: 0; margin-top: 4px; color: var(--ink-3); }
+  .kpi > div + div small { display: none; }
   .kpi small { font-size: 11px; line-height: 15px; }
   .tabs { gap: 18px; margin-top: 20px; }
   .tabs button { font-size: 14px; padding-bottom: 10px; }
@@ -399,6 +414,5 @@ a, .btn, .buy, .key, .tabs button, .sg button, .seg button, .pills a, .field inp
   .path-plot { grid-template-rows: 220px auto; grid-template-columns: 44px minmax(0, 1fr); }
   .path-years span:nth-child(even) { display: none; }
   .path-years span:last-child { transform: translateX(-100%); }
-  .gc-read:has(> .gc-hint:only-child) { display: none; }
   .foot { padding: 16px 18px 28px; }
 }

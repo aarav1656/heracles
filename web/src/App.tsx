@@ -21,6 +21,14 @@ export function App() {
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="5" height="18" rx="1" /><rect x="16" y="3" width="5" height="18" rx="1" /><rect className="t" x="8" y="10" width="8" height="4" /></svg>
               Heracles
             </NavLink>
+            <details className="routes" onClick={(e) => { if ((e.target as HTMLElement).closest('a')) e.currentTarget.open = false; }}>
+              <summary aria-label="Sections"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4.5 6 8.5l4-4" /></svg></summary>
+              <nav aria-label="Sections">
+                <NavLink to="/" end>Cover</NavLink>
+                <NavLink to="/bind">Exact terms</NavLink>
+                <NavLink to="/write">Write cover</NavLink>
+              </nav>
+            </details>
             <nav className="pills" aria-label="Sections">
               <NavLink to="/" end>Cover</NavLink>
               <NavLink to="/bind">Exact terms</NavLink>

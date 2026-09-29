@@ -95,6 +95,7 @@ export function Overview() {
   const stale = live.quoting || (quote !== undefined && termsKey(quote.terms) !== termsKey(terms));
   const dir = side === 'long' ? 'down' : 'up';
   const band = `${pct(attach)} to ${pct(exhaust)} ${dir}`;
+  const unbacked = terms !== undefined && book !== undefined && terms.lim > book.capacity.free;
 
   return (
     <div className="page cover">
@@ -107,7 +108,7 @@ export function Overview() {
           <span><i />USDG</span>
         </div>
         <p className="desc">
-          For stock perp exchanges' LP vaults that hold SPY over the weekend. If SPY opens Monday more than{' '}
+          For the LP vaults of stock perp exchanges. If SPY opens Monday more than{' '}
           {pct(attach)} {side === 'long' ? 'below' : 'above'} Friday's close, Heracles pays the vault an amount set by the price feed and
           the position it declared, never by its books.
         </p>
@@ -119,19 +120,19 @@ export function Overview() {
             <small>
               {parsed.error ? parsed.error
                 : live.error ? <>Quote failed: {live.error}</>
-                : quote ? <>{stale ? 'Re-quoting' : price?.floored ? 'Minimum price' : 'Live quote'}, block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">{quote.block.toLocaleString('en-US')}</a></>
+                : quote ? <>{stale ? 'Stylus pricer, re-quoting' : price?.floored ? 'Stylus pricer minimum' : 'Stylus pricer, live'} at block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">{quote.block.toLocaleString('en-US')}</a></>
                 : 'Quoting from the Stylus pricer'}
             </small>
           </div>
           <div>
             <p>Cover pays up to</p>
             <strong>{terms ? usd0.format(toUsd(terms.lim)) : '…'}<span> USDG</span></strong>
-            <small>SPY {band}</small>
+            <small>Band you set: SPY {band}</small>
           </div>
           <div>
             <p>Weekends it would have paid</p>
             <strong>{spyBt ? spyBt.paid : '…'}<span> of {TABLES[0].weekends.length}</span></strong>
-            <small>{spyBt ? `${spyBt.exhausted} at the full limit` : ' '}</small>
+            <small>{spyBt ? `SPY weekends since 2016, ${spyBt.exhausted} at the cap` : ' '}</small>
           </div>
         </div>
 
@@ -144,7 +145,7 @@ export function Overview() {
 
       <aside className="panel" id="buy" aria-label="Buy cover">
         <div className="box">
-          <label className="bh" htmlFor="position">Declared position (USDG)<i aria-hidden="true" /></label>
+          <label className="bh" htmlFor="position">Vault's declared position (USDG)<i aria-hidden="true" /></label>
           <input
             id="position"
             className="amt"
@@ -168,7 +169,6 @@ export function Overview() {
           <div className="bh"><span>Cover band</span><b>{band}</b></div>
           <BandSlider attach={attach} exhaust={exhaust} setAttach={setAttach} setExhaust={setExhaust} dir={dir} />
           <div className="rw">Vault keeps the first<b>{terms ? usd0.format(toUsd(terms.ret)) : '…'} USDG</b></div>
-          <div className="rw">Cover pays the next<b>{terms ? usd0.format(toUsd(terms.lim)) : '…'} USDG</b></div>
           <div className="rw">Cover period<b>{win ? <>{day(win.ref)} close → {day(win.expiry)} open</> : '…'}</b></div>
           <div className="rw">Payout set by<b>Price feed × declared size</b></div>
           <div className={`rw pr${stale ? ' stale' : ''}`}>Premium<b>{price ? `${usd2.format(toUsd(price.premium))} USDG` : '…'}</b></div>
@@ -178,15 +178,12 @@ export function Overview() {
 
         <div className="claim">
           <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" /><path d="M10 9v5M10 6.2v.1" /></svg>
-          <div>
-            <b>No loss to prove</b>
-            <p>
-              On Monday the feed's open and the size your vault declared set the payout. Nobody reads your books,
-              and there is no claim to argue: once the week settles, the vault collects it in one transaction.
-            </p>
-          </div>
+          <p>
+            <b>No loss to prove.</b> Monday's feed and the position the vault declared fix the payout; nobody
+            reads its books. Once the week settles, the vault collects in one transaction.
+          </p>
         </div>
-        <p className="wn">Writers back this cover with USDG and earn its premium. <Link to="/write">Write cover</Link></p>
+        {!unbacked && <p className="wn">Writers back this cover with USDG and earn its premium. <Link to="/write">Write cover</Link></p>}
       </aside>
 
       <div className="body" id="tabpanel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
@@ -198,7 +195,7 @@ export function Overview() {
                 <h2 id="chart-h">{ticker}<span>, every weekend</span></h2>
               </div>
               <div className="ctl">
-                <p id="cmp-h">Weekends this cover would have paid, of 504</p>
+                <p id="cmp-h">Weekends it would have paid, of 504</p>
                 <div className="sg" role="tablist" aria-labelledby="cmp-h">
                   {order.map((c) => (
                     <button key={c.ticker} type="button" role="tab" aria-selected={c.ticker === ticker} onClick={() => setTicker(c.ticker)}>
@@ -218,8 +215,8 @@ export function Overview() {
       </div>
 
       <div className="bar">
-        <div>Premium<b>{price ? `${usd2.format(toUsd(price.premium))} USDG` : '…'}</b></div>
-        <a className="buy" href="#buy">Buy cover</a>
+        <div>{unbacked ? 'No writer backing yet' : <>Premium<b>{price ? `${usd2.format(toUsd(price.premium))} USDG` : '…'}</b></>}</div>
+        {unbacked ? <Link className="buy" to="/write">Write cover</Link> : <a className="buy" href="#buy">Buy cover</a>}
       </div>
     </div>
   );

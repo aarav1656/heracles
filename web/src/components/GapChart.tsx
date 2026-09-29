@@ -57,7 +57,7 @@ export function GapChart({ table, layer, notes = true, simple = false, compact =
   const slot = pw / ws.length;
   const x = (i: number) => LEFT + (i + 0.5) * slot;
 
-  const step = Math.abs(hi - lo) > 1600 ? 500 : Math.abs(hi - lo) > 800 ? 250 : 100;
+  const step = compact ? (Math.abs(hi - lo) > 2000 ? 500 : 400) : Math.abs(hi - lo) > 1600 ? 500 : Math.abs(hi - lo) > 800 ? 250 : 100;
   const ticks: number[] = [];
   for (let t = Math.ceil(lo / step) * step; t <= hi; t += step) ticks.push(t);
   const years = useMemo(() => ws.flatMap((w, i) => (i > 0 && w.friday.slice(0, 4) !== ws[i - 1].friday.slice(0, 4) ? [{ year: w.friday.slice(0, 4), i }] : [])), [ws]);
@@ -206,7 +206,7 @@ export function GapChart({ table, layer, notes = true, simple = false, compact =
         )}
       </div>
 
-      <div className="gc-key">
+      {!compact && <div className="gc-key">
         {bt ? (
           <>
             <span><i className="sw layer" />{simple ? 'weekends this cover would have paid on' : <>what the cover would have paid; its cap on <b>{bt.exhausted}</b> of {ws.length} weekends</>}</span>
@@ -216,8 +216,8 @@ export function GapChart({ table, layer, notes = true, simple = false, compact =
         ) : (
           <span>Friday close to next open, one bar per weekend</span>
         )}
-      </div>
-      {!simple && <p className="src">
+      </div>}
+      {!simple && !compact && <p className="src">
         {ws.length} weekends, {fmtDay(ws[0].friday)} to {fmtDay(ws[ws.length - 1].friday)}. Source: <span className="file">{table.file}</span> in the repo, from {table.source}, fetched {fmtDay(table.fetchDate)}.
       </p>}
     </div>
