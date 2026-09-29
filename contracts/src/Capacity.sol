@@ -86,7 +86,7 @@ contract Capacity is ERC4626 {
     event LayerSettled(uint256 unused, uint256 payout, uint40 indexed cutoff);
     event PremiumReceived(address indexed from, uint256 amount);
     event PremiumReleased(uint256 amount);
-    event PremiumRefunded(address indexed to, uint256 amount);
+    event PremiumCancelled(uint256 amount);
     event PaidOut(address indexed to, uint256 amount);
 
     error NotTreaty();
@@ -272,14 +272,18 @@ contract Capacity is ERC4626 {
         emit PremiumReleased(amount);
     }
 
-    /// Returns a cancelled layer's premium to the buyer; it leaves the pool, so writers never see
-    /// it (M3: cancel refunds the buyer, it does not pay writers for a layer that never settled).
-    function refundPremium(address to, uint256 amount) external onlyTreaty {
-        if (amount == 0) return;
+    /// Moves a cancelled layer's premium out of `pendingPremium` and into `owed`, pull-claimable
+    /// by the buyer through `Treaty.claimTo` the same way a settled payout is (L6-1: `cancel`
+    /// used to push this premium straight to the buyer inside the same call that unlocked the
+    /// vault, so an issuer freeze of the buyer, a blacklist or an asset-protection hold, made the
+    /// transfer revert forever and left the layer `Bound` with the gate shut for every writer,
+    /// including capital that was never locked. Writers never see this amount either way: it
+    /// leaves `pendingPremium` for a layer that never settled, same as the old refund).
+    function cancelPremium(uint256 amount) external onlyTreaty {
         if (amount > pendingPremium) revert InsufficientPremium();
         pendingPremium -= amount;
-        IERC20(asset()).safeTransfer(to, amount);
-        emit PremiumRefunded(to, amount);
+        owed += amount;
+        emit PremiumCancelled(amount);
     }
 
     /// Pays a layer's realized loss out of pooled assets, pull-based from `Treaty.claimTo`.

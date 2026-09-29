@@ -248,6 +248,9 @@ contract TreatyTest is Test, TreatyFixture {
         treaty.voidReference(id, 0, 1);
         treaty.cancel(id);
         assertEq(firstLoss.locked() + senior.locked(), 0);
+        assertEq(usdg.balanceOf(buyer), buyerBefore, "cancel no longer pushes the refund");
+        vm.prank(buyer);
+        treaty.claim(id);
         assertEq(usdg.balanceOf(buyer), buyerBefore + premium);
     }
 

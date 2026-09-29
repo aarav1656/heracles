@@ -281,6 +281,10 @@ contract BooksTest is Test, TreatyFixture {
         treaty.voidReference(id, 0, 1);
         treaty.cancel(id);
         assertEq(usdg.balanceOf(address(treaty)), 0, "T5: Treaty's USDG balance must be zero after cancel");
+
+        vm.prank(buyer);
+        treaty.claim(id);
+        assertEq(usdg.balanceOf(address(treaty)), 0, "T5: Treaty's USDG balance must be zero after claim");
     }
 
     /// Decision 1: every book asset must read the same 6 decimals every stored amount assumes.

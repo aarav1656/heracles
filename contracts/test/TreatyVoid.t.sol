@@ -115,7 +115,10 @@ contract TreatyVoidTest is Test, TreatyFixture {
         vm.warp(EXPIRY + 3 days);
         t.cancel(id);
         (,,,,,,,, uint256 limit, uint256 premium,) = layerBasics(t, id);
-        assertEq(usdg.balanceOf(buyer), buyerAfterBind + premium, "premium refunded");
+        assertEq(usdg.balanceOf(buyer), buyerAfterBind, "cancel no longer pushes the refund");
+        vm.prank(buyer);
+        t.claim(id);
+        assertEq(usdg.balanceOf(buyer), buyerAfterBind + premium, "premium claimed after cancel");
         assertEq(firstLoss.locked() + senior.locked(), 0);
         // checked against the first-loss vault; the senior vault gets the same guard in
         // Tranche.t.sol/Books.t.sol.

@@ -208,10 +208,10 @@ contract GuardMutationTest is Test, TreatyFixture {
         firstLoss.releasePremium(1);
     }
 
-    function test_capacity_refundPremium_onlyTreaty_guard() public {
+    function test_capacity_cancelPremium_onlyTreaty_guard() public {
         vm.prank(attacker);
         vm.expectRevert(Capacity.NotTreaty.selector);
-        firstLoss.refundPremium(buyer, 1);
+        firstLoss.cancelPremium(1);
     }
 
     // --- WrongState (zero test references) -----------------------------------

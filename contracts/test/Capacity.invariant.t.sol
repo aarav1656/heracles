@@ -213,11 +213,12 @@ contract Handler is Test {
         uint256 n = treaty.layerCount();
         if (n == 0) return;
         uint256 id = idx % n;
-        (uint256 book,,,,, uint256 premium,) = _layer(id);
+        (uint256 book,,,,,,) = _layer(id);
         uint256 taBefore = _bookTotalAssets(book);
         try treaty.cancel(id) {
             nCancel++;
-            gRefunded[book] += premium;
+            // cancel no longer moves any token balance itself; the premium sits in `owed` until
+            // the buyer claims it, credited in the `claim` handler below like any other pull.
             if (_bookTotalAssets(book) != taBefore) vCancelDelta++;
         } catch {}
     }
@@ -227,12 +228,12 @@ contract Handler is Test {
         if (n == 0) return;
         uint256 id = idx % n;
         (address buyer,,,,,,,,,,,,,,,,) = treaty.layers(id);
-        (uint256 book,,,,,, uint256 payout) = _layer(id);
+        (uint256 book,,, Treaty.State st,, uint256 premium, uint256 payout) = _layer(id);
         uint256 taBefore = _bookTotalAssets(book);
         vm.prank(buyer);
         try treaty.claim(id) {
             nClaim++;
-            gPaid[book] += payout;
+            gPaid[book] += st == Treaty.State.Cancelled ? premium : payout;
             if (_bookTotalAssets(book) != taBefore) vClaimDelta++;
         } catch {}
     }
@@ -338,6 +339,9 @@ contract CapacityInvariantTest is Test, TreatyFixture {
             } else if (st == Treaty.State.Settled && !claimed) {
                 sumOwedFL[book] += payoutJunior;
                 sumOwedSR[book] += payoutSenior;
+            } else if (st == Treaty.State.Cancelled && !claimed) {
+                sumOwedFL[book] += premiumJunior;
+                sumOwedSR[book] += premiumSenior;
             }
         }
         assertEq(firstLoss0.locked(), sumLockedFL[0], "book 0 first-loss locked == sum(juniorLimit of Bound)");

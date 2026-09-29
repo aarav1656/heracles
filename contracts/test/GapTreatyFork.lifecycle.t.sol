@@ -142,8 +142,9 @@ contract GapTreatyForkLifecycleTest is Test, TreatyFixture {
     }
 
     /// A layer whose market never produces a fresh Monday round within GRACE (SECURITY-REVIEW.md
-    /// M3) must cancel and refund the buyer's premium, releasing the writer's locked capacity
-    /// without paying it, on the same forked real Sepolia state. The Friday reference is set for
+    /// M3) must cancel, releasing the writer's locked capacity without paying it, and leave the
+    /// buyer's premium claimable, on the same forked real Sepolia state. The Friday reference is
+    /// set for
     /// real first (a live, referenced market is not itself a reason `_anyMarketFixable` blocks
     /// `cancel`): it is the total absence of any Monday round by `expiry + GRACE` that makes the
     /// market dead and lets `cancel` through.
@@ -171,6 +172,10 @@ contract GapTreatyForkLifecycleTest is Test, TreatyFixture {
 
         assertEq(uint8(_layerState(id)), uint8(Treaty.State.Cancelled));
         assertEq(firstLoss.locked() + senior.locked(), 0);
+        assertEq(USDG.balanceOf(buyer), buyerBefore, "cancel no longer pushes the refund");
+
+        vm.prank(buyer);
+        treaty.claim(id);
         assertEq(USDG.balanceOf(buyer), buyerBefore + premium);
     }
 }

@@ -132,11 +132,24 @@ contract Treaty is ReentrancyGuard {
     // 66h + GRACE must be < 168h, i.e. GRACE < 102h. At 7 days (168h) a stuck layer outlived the
     // next cutoff and froze writers indefinitely with one dust bind per week. 3 days (72h) is
     // comfortably under the 102h bound and leaves a 168h - 66h - 72h = 30h open window every week
-    // even with a permanently dead feed; a cancel still refunds the buyer's premium in full
-    // (`cancel` below calls `refundPremium` on both vaults), so this only shortens the backstop, it
-    // does not change who pays for an unfixable layer.
+    // even with a permanently dead feed; a cancel still moves the buyer's premium out of
+    // `pendingPremium` in full (`cancel` below calls `cancelPremium` on both vaults, pull-claimable
+    // through `claimTo`), so this only shortens the backstop, it does not change who pays for an
+    // unfixable layer.
     uint256 internal constant GRACE = 3 days;
     uint256 internal constant SEQUENCER_GRACE = 1 hours;
+    // L6-2: `cancel`'s livenessFeed check and its `_anyMarketFixable` StillFixable check both
+    // depend on a signal that can stop forever, an immutable liveness feed or a market feed whose
+    // reads start reverting, so without a time-bounded override an unfixable layer whose signal
+    // died could stay `Bound` forever with both vaults' gates shut and no admin path out. Once
+    // `block.timestamp >= expiry + CANCEL_BACKSTOP`, both checks are skipped and cancel proceeds
+    // regardless of what either signal reports. The trade-off is explicit: a live 24h-heartbeat
+    // feed prints dozens of post-expiry rounds in 30 days, so a buyer whose layer actually did pay
+    // out has that long to call `fix` before anyone can cancel out from under them; a buyer who
+    // lets a fixable layer sit unfixed for 30 days loses it to cancel instead of collecting the
+    // payout. The sequencer-down check and the `GRACE` wait before `expiry` still apply
+    // unconditionally: this backstop only lifts the two checks that can otherwise never resolve.
+    uint256 internal constant CANCEL_BACKSTOP = 30 days;
     uint256 internal constant BPS = 1e4;
     // F2 (re-review of 96309c8): `_settle` multiplies `exposure[i] * gapBps` in checked int256.
     // The Pricer's own scenario table never produces |gapBps| above ~1474, so any exposure this
@@ -646,40 +659,52 @@ contract Treaty is ReentrancyGuard {
 
     /// If a market's feed never produces a fresh round within `GRACE` of expiry (including the
     /// M3 case: a Chainlink phase change makes every settling round unfixable), anyone can cancel
-    /// the layer, freeing the writer capital both its slices locked. The buyer's premium is
-    /// refunded from both vaults here rather than kept by writers for a layer that never resolved
-    /// (SECURITY-REVIEW.md M3): writers only earn the premium for a layer that actually settles.
+    /// the layer, freeing the writer capital both its slices locked. The buyer's premium moves
+    /// from `pendingPremium` into `owed` in both vaults here rather than staying earned by writers
+    /// for a layer that never resolved (SECURITY-REVIEW.md M3): writers only earn the premium for
+    /// a layer that actually settles. L6-1: this used to push the refund straight to the buyer
+    /// inside this same call; an issuer freeze of the buyer (a blacklist, an asset-protection
+    /// hold) made that transfer revert forever and left the layer `Bound`, both vaults' gates shut
+    /// for every writer. `cancelPremium` only moves the accounting; the buyer pulls it out
+    /// afterwards through `claimTo`, the same pull `claim`/`claimTo` already use for a settled
+    /// payout, so a frozen buyer can redirect the pull to another address instead of bricking the
+    /// book.
     ///
     /// Cancel is a backstop for a genuinely dead layer, not a shortcut around a layer that
     /// could still be fixed. `_anyMarketFixable` below reverts `StillFixable` if any unfixed
     /// market already has a Monday round sitting there waiting to be consumed by `fix`, at that
-    /// point the correct call is `fix`, not `cancel`.
+    /// point the correct call is `fix`, not `cancel`. L6-2: both the liveness check and
+    /// `_anyMarketFixable` depend on a signal (an immutable feed, a market feed's own reads) that
+    /// can stop responding forever; `CANCEL_BACKSTOP` (its own comment above) lifts both once 30
+    /// days have passed since expiry, so a dead signal cannot brick the book indefinitely either.
     function cancel(uint256 id) external nonReentrant {
         Layer storage L = layers[id];
         if (L.state != State.Bound) revert WrongState();
         if (block.timestamp < uint256(L.expiry) + GRACE) revert BadTiming();
         // Same sequencer gate as fix: cancel must not land in a window where fix is blocked.
         _requireSequencerUp();
-        // Liveness guard rule 3: proves the chain itself kept receiving Chainlink writes long
-        // enough after expiry that a live 24h-heartbeat equity feed must have printed its own
-        // post-expiry round, so "no fresh equity round" really means a dead market, not a halted
-        // chain silently starving every feed at once, the same race the Arbitrum sequencer-uptime
-        // check above guards on Arbitrum, but Robinhood Chain has no sequencer-uptime feed at all,
-        // so this is its only protection. Reverts the same `StillFixable` as the check below: both
-        // mean "cannot yet prove this layer is really dead". `livenessFeed == address(0)` disables
-        // the check (unit tests only).
-        if (livenessFeed != address(0)) {
-            (,,, uint256 liveUpdatedAt,) = AggregatorV3Interface(livenessFeed).latestRoundData();
-            if (liveUpdatedAt < uint256(L.expiry) + MAX_ROUND_AGE) revert StillFixable();
+        if (block.timestamp < uint256(L.expiry) + CANCEL_BACKSTOP) {
+            // Liveness guard rule 3: proves the chain itself kept receiving Chainlink writes long
+            // enough after expiry that a live 24h-heartbeat equity feed must have printed its own
+            // post-expiry round, so "no fresh equity round" really means a dead market, not a
+            // halted chain silently starving every feed at once, the same race the Arbitrum
+            // sequencer-uptime check above guards on Arbitrum, but Robinhood Chain has no
+            // sequencer-uptime feed at all, so this is its only protection. Reverts the same
+            // `StillFixable` as the check below: both mean "cannot yet prove this layer is really
+            // dead". `livenessFeed == address(0)` disables the check (unit tests only).
+            if (livenessFeed != address(0)) {
+                (,,, uint256 liveUpdatedAt,) = AggregatorV3Interface(livenessFeed).latestRoundData();
+                if (liveUpdatedAt < uint256(L.expiry) + MAX_ROUND_AGE) revert StillFixable();
+            }
+            if (_anyMarketFixable(id)) revert StillFixable();
         }
-        if (_anyMarketFixable(id)) revert StillFixable();
         L.state = State.Cancelled;
         emit Cancelled(id, L.premium);
         Book storage b = books[L.book];
         b.firstLoss.unlock(L.juniorLimit, L.fridayCutoff);
         b.senior.unlock(L.limit - L.juniorLimit, L.fridayCutoff);
-        b.firstLoss.refundPremium(L.buyer, L.premiumJunior);
-        b.senior.refundPremium(L.buyer, L.premiumSenior);
+        b.firstLoss.cancelPremium(L.premiumJunior);
+        b.senior.cancelPremium(L.premiumSenior);
     }
 
     /// True if some not-yet-fixed market on this layer is still fixable: either its Monday round
@@ -741,24 +766,28 @@ contract Treaty is ReentrancyGuard {
     /// Pull claim for the buyer's realized payout, paid to the caller. `claimTo` lets the buyer
     /// redirect to another address (L4: a blocklisted buyer is not stuck forever); only the
     /// buyer who owns the claim can call either. Pays from both of the layer's book vaults, each
-    /// its own slice, in the book's asset.
+    /// its own slice, in the book's asset. L6-1: a `Cancelled` layer is claimable the same way,
+    /// paying out the premium `cancel` moved into `owed` instead of pushing it, so a buyer frozen
+    /// by their own issuer can still redirect the pull to another address instead of leaving the
+    /// book bricked.
     function claim(uint256 id) external {
         claimTo(id, msg.sender);
     }
 
     function claimTo(uint256 id, address to) public nonReentrant {
         Layer storage L = layers[id];
-        if (L.state != State.Settled) revert WrongState();
+        bool settled = L.state == State.Settled;
+        if (!settled && L.state != State.Cancelled) revert WrongState();
         if (L.buyerClaimed) revert NothingToClaim();
         if (msg.sender != L.buyer) revert NothingToClaim();
-        if (L.payout == 0) revert NothingToClaim();
+        if (settled && L.payout == 0) revert NothingToClaim();
         if (to == address(0)) revert BadParams();
 
         L.buyerClaimed = true;
-        emit Claimed(id, L.buyer, to, L.payout);
+        emit Claimed(id, L.buyer, to, settled ? L.payout : L.premium);
         Book storage b = books[L.book];
-        b.firstLoss.payOut(to, L.payoutJunior);
-        b.senior.payOut(to, L.payoutSenior);
+        b.firstLoss.payOut(to, settled ? L.payoutJunior : L.premiumJunior);
+        b.senior.payOut(to, settled ? L.payoutSenior : L.premiumSenior);
     }
 
     function _settle(uint256 id) internal {

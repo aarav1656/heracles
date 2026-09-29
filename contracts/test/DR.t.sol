@@ -136,11 +136,13 @@ contract DRTest is Test, TreatyFixture {
         vm.expectRevert(Treaty.ReferenceNotSet.selector);
         t.fix(id, 0, P1 | 2);
 
-        vm.warp(EXPIRY + 365 days);
-        assertEq(c.maxRedeem(writer), 0, "writer frozen a year later");
+        vm.warp(EXPIRY + 29 days);
+        assertEq(c.maxRedeem(writer), 0, "writer frozen weeks later");
         // Fixed behaviour: layer can never settle (B's reference can never be set), so it must be
         // cancellable once B's void proof is recorded. Unpatched `_anyMarketFixable` reverts this
-        // with `StillFixable` forever because it never looks at B's void status.
+        // with `StillFixable` forever because it never looks at B's void status. Still inside
+        // CANCEL_BACKSTOP (30 days past expiry) here, so this exercises the void-aware fix itself,
+        // not the backstop.
         vm.expectRevert(Treaty.StillFixable.selector);
         t.cancel(id);
         t.voidReference(id, 1, P1 | 1);

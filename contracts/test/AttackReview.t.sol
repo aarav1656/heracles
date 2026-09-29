@@ -282,10 +282,14 @@ contract AttackReviewTest is Test, TreatyFixture {
         vm.warp(uint256(MONDAY) + 8 days);
         uint256 buyerBefore = usdg.balanceOf(buyer);
         treaty.cancel(id);
-        assertEq(usdg.balanceOf(buyer) - buyerBefore, premium, "M3: cancel must refund the buyer's premium");
+        assertEq(usdg.balanceOf(buyer), buyerBefore, "cancel no longer pushes the refund");
 
         vm.prank(buyer);
-        vm.expectRevert(); // no payout was ever settled: nothing to claim
+        treaty.claim(id);
+        assertEq(usdg.balanceOf(buyer) - buyerBefore, premium, "M3: claim after cancel pays the buyer's premium");
+
+        vm.prank(buyer);
+        vm.expectRevert(Treaty.NothingToClaim.selector);
         treaty.claim(id);
     }
 

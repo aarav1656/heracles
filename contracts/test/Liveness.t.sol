@@ -192,7 +192,10 @@ contract LivenessTest is Test, TreatyFixture {
         vm.warp(uint256(EXPIRY) + 3 days + 2);
         t.cancel(id); // now resolvable, unlike G3's Arbitrum case
         assertEq(uint8(_layerState(t, id)), uint8(Treaty.State.Cancelled));
-        assertEq(usdg.balanceOf(buyer), buyerBefore + premium, "premium refunded once the chain is proven live");
+        assertEq(usdg.balanceOf(buyer), buyerBefore, "cancel no longer pushes the refund");
+        vm.prank(buyer);
+        t.claim(id);
+        assertEq(usdg.balanceOf(buyer), buyerBefore + premium, "premium claimed once the chain is proven live");
         assertEq(firstLoss.locked() + senior.locked(), 0);
     }
 }
