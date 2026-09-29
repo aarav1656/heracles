@@ -7,6 +7,7 @@ import { useTx } from '../hooks/useTx';
 import { useDepositWithPermit } from '../hooks/useDepositWithPermit';
 import { useOnChain } from '../components/Wallet';
 import { Stamp } from '../components/Stamp';
+import { Money } from '../components/Money';
 import { TxNote } from '../components/TxNote';
 import { fmtUsdg, parseUsdg } from '../lib/format';
 import { explainError } from '../lib/revert';
@@ -203,7 +204,7 @@ function WriterPath() {
     <div className="path">
       <p className="gc-read">
         <span>
-          Each weekend adds today's premium, <b>{usd0.format(premium)}</b> USDG on a {usd0.format(REFERENCE.limit)} limit
+          Each weekend adds today's premium, <b><Money v={premium} /></b> USDG on a {usd0.format(REFERENCE.limit)} limit
           (live at block {quote.data ? `#${quote.data.block.toLocaleString('en-US')}` : '313,690,038, recorded in the README'}), and subtracts what the layer paid.
         </span>
       </p>

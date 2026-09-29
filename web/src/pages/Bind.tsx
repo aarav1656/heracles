@@ -11,7 +11,6 @@ import { Stamp } from '../components/Stamp';
 import { Money } from '../components/Money';
 import { TxNote } from '../components/TxNote';
 import { GapChart } from '../components/GapChart';
-import { WeekStrip } from '../components/WeekStrip';
 import { useWeekWindow, reopensAt as reopenOf } from '../hooks/useWeekWindow';
 import { Link } from 'react-router-dom';
 import { TABLES, backtest, fmtBps } from '../lib/gaps';
@@ -142,22 +141,6 @@ export function Bind() {
             )}
           </section>
 
-          <section aria-labelledby="bweek-h">
-            <h2 id="bweek-h" className="section">This cover week</h2>
-            {!win ? (
-              <p className="note">Reading the week window from the treaty.</p>
-            ) : (
-              <>
-                <WeekStrip win={win} now={now} />
-                {closed && (
-                  <p className="err" role="status">
-                    <b>Closed</b> Binding for this weekend closed at {fmtClock(win.cutoff)} UTC. Cover for
-                    next week opens Monday 00:00 UTC, in {fmtCountdown((reopensAt ?? win.expiry) - now)}.
-                  </p>
-                )}
-              </>
-            )}
-          </section>
         </div>
 
         <aside className="ticket" aria-labelledby="terms-h">
@@ -202,34 +185,25 @@ export function Bind() {
                   {bt && <div className="row"><span className="k">Starts paying at a gap of</span><span className="v">{fmtBps(bt.attachBps)}</span></div>}
                   {bt && <div className="row"><span className="k">Weekends it pays</span><span className="v">{bt.paid} of 504</span></div>}
                 </div>
-                <p className="src">
-                  {floorApplies
-                    ? `Raised to the ${floorPct}% minimum premium on the limit; the pricer quoted ${fmtUsdg(quote.premium)}. `
-                    : `Above the ${usd2(floor)} USDG minimum premium (${floorPct}% of the limit). `}
-                  Quoted by the Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a> at
-                  block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">#{quote.block.toLocaleString('en-US')}</a>.
-                </p>
               </>
             ) : (
               <p className="note">Fill in exposure, retention and limit to quote.</p>
             )}
           </div>
 
-          {closed ? null : (
+          {closed && win ? (
+            <p className="err" role="status">
+              <b>Closed</b> Binding for this weekend closed at {fmtClock(win.cutoff)} UTC. Cover for
+              next week opens Monday 00:00 UTC, in {fmtCountdown((reopensAt ?? win.expiry) - now)}.
+            </p>
+          ) : (
             <div className="bindbox">
-              {!me.ready && <p className="note">{me.reason}</p>}
               {me.ready && effective !== undefined && effective > 0n && (
                 <div className="rows figs">
                   <div className="row"><span className="k">Premium due</span><span className="v">{fmtUsdg(effective)} USDG</span></div>
                   <div className="row"><span className="k">Your allowance</span><span className="v">{fmtUsdg(allowance)} USDG</span></div>
                 </div>
               )}
-              {short_ !== undefined ? (
-                <p className="note" role="status">
-                  Binding needs {usd2(parsed.lim!)} USDG of free capacity; the pool has {usd2(short_)} at
-                  block {book.data!.block.toLocaleString('en-US')}. <Link to="/write">Write capacity</Link>.
-                </p>
-              ) : null}
               <div className="acts">
                 {me.ready && needsApprove && (
                   <button className="btn line" disabled={!me.ready || approveTx.busy} onClick={approve}>
@@ -240,9 +214,28 @@ export function Bind() {
                   {short_ !== undefined ? 'Bind layer: not enough capacity' : 'Bind layer'}
                 </button>
               </div>
+              {!me.ready && <p className="note">{me.reason}</p>}
+              {short_ !== undefined ? (
+                <p className="note" role="status">
+                  Binding needs {usd2(parsed.lim!)} USDG of free capacity; the pool has {usd2(short_)} at
+                  block {book.data!.block.toLocaleString('en-US')}. <Link to="/write">Write capacity</Link>.
+                </p>
+              ) : null}
               <TxNote status={approveTx.status} hash={approveTx.hash} error={approveTx.error} />
               <TxNote status={tx.status} hash={tx.hash} error={tx.error} />
             </div>
+          )}
+          {quote && effective !== undefined && floor !== undefined && !quoting && !quoteError && (
+            <p className="src">
+              {floorApplies
+                ? `Raised to the ${floorPct}% minimum premium on the limit; the pricer quoted ${fmtUsdg(quote.premium)}. `
+                : `Above the ${usd2(floor)} USDG minimum premium (${floorPct}% of the limit). `}
+              Quoted by the Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a> at
+              block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">#{quote.block.toLocaleString('en-US')}</a>.
+            </p>
+          )}
+          {win && !closed && (
+            <p className="src">Binding for this weekend closes {fmtClock(win.cutoff)} UTC, in {fmtCountdown(win.cutoff - now)}.</p>
           )}
           {book.data && <p className="src"><Stamp block={book.data.block} label="Book read at block" /></p>}
           <p className="note">

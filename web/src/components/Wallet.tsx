@@ -39,7 +39,7 @@ export function Wallet() {
                 disabled={isPending}
                 onClick={() => { connect({ connector: c }); setOpen(false); }}
               >
-                {c.name}
+                {c.name === 'Injected' ? 'Browser wallet' : c.name}
               </button>
             ))}
           </div>

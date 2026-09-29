@@ -86,12 +86,17 @@ export function GapChart({ table, layer, notes = true }: { table: GapTable; laye
   const tr = (p: Record<string, number | string>) => p as CSSProperties;
 
   const worstPay = bt?.payouts[worstIdx] ?? 0;
+  const pinned = !!bt && notes && wide && (bt.payouts[worstIdx] ?? 0) > 0;
   const worstLeft = x(worstIdx) > LEFT + pw * 0.62;
   const worstY = cy(worst.gap);
+  const worstPast = layer ? Math.max(0, (-layer.exposure * worst.gap) / 10_000 - layer.retention - layer.limit) : 0;
 
   return (
     <div className={`gc${entering ? ' enter' : ''}${lossSideDown ? '' : ' up'}`}>
       <p className="gc-read" aria-live="polite">
+        {sel === undefined && pinned ? (
+          <span className="gc-hint">Point at a weekend, or focus the chart and use the arrow keys, to read its gap and what the layer paid.</span>
+        ) : (<>
         <span>{fmtDay(w.friday)} close to {fmtDay(w.monday)} open</span>
         <b className={w.gap < 0 ? 'dn' : undefined}>{fmtBps(w.gap)}</b>
         {bt && pay !== undefined && (
@@ -100,6 +105,7 @@ export function GapChart({ table, layer, notes = true }: { table: GapTable; laye
           </span>
         )}
         {sel === undefined && <span className="gc-hint">{lossSideDown ? 'the worst down weekend' : 'the worst up weekend'}</span>}
+        </>)}
       </p>
 
       <div
@@ -174,13 +180,14 @@ export function GapChart({ table, layer, notes = true }: { table: GapTable; laye
             )}
           </div>
         )}
-        {bt && notes && wide && worstPay > 0 && (
+        {pinned && (
           <span
             className={`gc-pin${worstLeft ? ' left' : ''}`}
             aria-hidden="true"
             style={{ left: x(worstIdx) + (worstLeft ? -10 : 10), top: Math.min(worstY, TOP + ph - 28) }}
           >
             {fmtDay(worst.friday)}, {fmtBps(worst.gap)}: the layer paid {worstPay >= layer!.limit ? `its full ${usd0.format(layer!.limit)}` : usd0.format(worstPay)}
+            {worstPast > 0 && <><br />the vault paid the first {usd0.format(layer!.retention)} and {usd0.format(worstPast)} past {fmtBps(bt.exhaustBps)}</>}
           </span>
         )}
       </div>
@@ -188,8 +195,8 @@ export function GapChart({ table, layer, notes = true }: { table: GapTable; laye
       <div className="gc-key">
         {bt ? (
           <>
-            <span><i className="sw layer" />paid on <b>{bt.paid}</b> of {ws.length} weekends, the full limit on <b>{bt.exhausted}</b></span>
-            <span className="gc-hint">Point at a weekend, or focus the chart and use the arrow keys.</span>
+            <span><i className="sw layer" />what the layer paid; its full limit on <b>{bt.exhausted}</b> of {ws.length} weekends</span>
+            {!pinned && <span className="gc-hint">Point at a weekend, or focus the chart and use the arrow keys.</span>}
             {!wide && notes && <span>band: {fmtBps(bt.attachBps)} to {fmtBps(bt.exhaustBps)}, the vault keeps the first {usd0.format(layer!.retention)}, the layer pays the next {usd0.format(layer!.limit)}</span>}
           </>
         ) : (
