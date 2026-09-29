@@ -8,6 +8,7 @@ import { useNow } from '../hooks/useNow';
 import { useTx } from '../hooks/useTx';
 import { useOnChain } from '../components/Wallet';
 import { Stamp } from '../components/Stamp';
+import { Money } from '../components/Money';
 import { TxNote } from '../components/TxNote';
 import { GapChart } from '../components/GapChart';
 import { WeekStrip } from '../components/WeekStrip';
@@ -122,36 +123,36 @@ export function Bind() {
 
   return (
     <>
-      <header className="lead row">
-        <h1>Price a layer</h1>
-        <p>The band is what you buy. Change the terms and it moves across 504 weekends.</p>
+      <header className="argument row">
+        <h1 className="title">Price a layer</h1>
+        <p className="lede">The band is what you buy. Change the terms and it moves across 504 SPY weekends.</p>
       </header>
 
       <div className="desk">
-        <div className="stack">
-          <section className="panel" aria-labelledby="bchart-h">
-            <div className="panel-head">
-              <h2 id="bchart-h">Your layer across 504 SPY weekends</h2>
-              {book.data && <span className="right"><Stamp block={book.data.block} label="book at" /></span>}
+        <div className="main-col">
+          <section className="exhibit" aria-labelledby="bchart-h">
+            <div className="exhibit-head">
+              <h2 id="bchart-h" className="chart-title">Your layer across 504 SPY weekends</h2>
             </div>
+            <p className="caveat">Retention sets where the band starts; retention plus limit sets where it ends. A negative exposure (short) moves it to the up-gap side.</p>
             {terms ? (
               <GapChart table={spy} layer={terms} />
             ) : (
-              <p className="prose">Fill in exposure, retention and limit to draw the layer.</p>
+              <p className="note">Fill in exposure, retention and limit to draw the layer.</p>
             )}
           </section>
 
-          <section className="panel" aria-labelledby="bweek-h">
-            <div className="panel-head"><h2 id="bweek-h">This cover week</h2></div>
+          <section aria-labelledby="bweek-h">
+            <h2 id="bweek-h" className="section">This cover week</h2>
             {!win ? (
-              <p className="prose">Reading the week window from the treaty.</p>
+              <p className="note">Reading the week window from the treaty.</p>
             ) : (
               <>
                 <WeekStrip win={win} now={now} />
                 {closed && (
-                  <p className="prose" role="status">
-                    Binding for this weekend closed at <span className="num">{fmtClock(win.cutoff)} UTC</span>. Cover for
-                    next week opens Monday 00:00 UTC, in <span className="num">{fmtCountdown((reopensAt ?? win.expiry) - now)}</span>.
+                  <p className="err" role="status">
+                    <b>Closed</b> Binding for this weekend closed at {fmtClock(win.cutoff)} UTC. Cover for
+                    next week opens Monday 00:00 UTC, in {fmtCountdown((reopensAt ?? win.expiry) - now)}.
                   </p>
                 )}
               </>
@@ -159,8 +160,8 @@ export function Bind() {
           </section>
         </div>
 
-        <aside className="panel ticket" aria-labelledby="terms-h">
-          <h2 id="terms-h" className="ticket-h">Terms</h2>
+        <aside className="ticket" aria-labelledby="terms-h">
+          <h2 id="terms-h" className="label"><i className="sw layer" />Terms</h2>
           <div className="form">
             {FEED_ADDRESSES.map((f, i) => (
               <div className="field" key={f}>
@@ -171,10 +172,10 @@ export function Bind() {
                   value={exposures[i] ?? ''}
                   onChange={(e) => setExposures((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))}
                 />
-                <span className="hint">Positive is long and loses on a down gap; negative is short. Feed <a className="tx" href={explorer.address(f)} target="_blank" rel="noreferrer">{short(f)}</a>.</span>
+                <span className="hint">Positive is long and loses on a down gap; negative is short. Feed <a href={explorer.address(f)} target="_blank" rel="noreferrer">{short(f)}</a>.</span>
               </div>
             ))}
-            <div className="field two">
+            <div className="two">
               <div className="field">
                 <label htmlFor="ret">Retention, vault keeps</label>
                 <input id="ret" inputMode="decimal" value={retention} onChange={(e) => setRetention(e.target.value)} />
@@ -184,59 +185,58 @@ export function Bind() {
                 <input id="lim" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} />
               </div>
             </div>
-            {formError && <p className="prose err" role="alert"><b>Check</b> {formError}</p>}
+            {formError && <p className="err" role="alert"><b>Check</b> {formError}</p>}
           </div>
 
           <div className="quote" aria-live="polite">
             {quoting ? (
-              <span className="prose tight">Quoting the Stylus pricer.</span>
+              <p className="terms pending">The Stylus pricer is quoting these terms.</p>
             ) : quoteError ? (
-              <span className="prose err" role="alert"><b>Quote</b> {quoteError}</span>
+              <p className="err" role="alert"><b>Quote</b> {quoteError}</p>
             ) : quote && effective !== undefined && floor !== undefined ? (
               <>
-                <span className="fig hero" title={`${fmtUsdg(effective)} USDG`}>{usd2(effective)}<small>USDG premium</small></span>
-                <dl className="tk">
-                  <dt>Expected loss</dt><dd className="num">{usd2(quote.el)}</dd>
-                  <dt>TVaR95</dt><dd className="num">{usd2(quote.tvar)}</dd>
-                  {bt && <><dt>Starts paying at</dt><dd className="num">{fmtBps(bt.attachBps)}</dd></>}
-                  {bt && <><dt>Weekends it pays</dt><dd><span className="num">{bt.paid}</span> of 504</dd></>}
-                </dl>
+                <p className="terms">This layer costs <b><Money v={Number(effective) / 1e6} /> USDG</b> for one weekend.</p>
+                <div className="rows figs">
+                  <div className="row"><span className="k">Expected loss</span><span className="v"><Money v={Number(quote.el) / 1e6} /></span></div>
+                  <div className="row"><span className="k">TVaR95</span><span className="v"><Money v={Number(quote.tvar) / 1e6} /></span></div>
+                  {bt && <div className="row"><span className="k">Starts paying at a gap of</span><span className="v">{fmtBps(bt.attachBps)}</span></div>}
+                  {bt && <div className="row"><span className="k">Weekends it pays</span><span className="v">{bt.paid} of 504</span></div>}
+                </div>
                 <p className="src">
                   {floorApplies
                     ? `Raised to the ${floorPct}% minimum premium on the limit; the pricer quoted ${fmtUsdg(quote.premium)}. `
                     : `Above the ${usd2(floor)} USDG minimum premium (${floorPct}% of the limit). `}
-                  Quoted by the Stylus pricer <a className="tx" href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a> at
-                  block <a className="num" href={explorer.block(quote.block)} target="_blank" rel="noreferrer">#{quote.block.toLocaleString('en-US')}</a>.
+                  Quoted by the Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a> at
+                  block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">#{quote.block.toLocaleString('en-US')}</a>.
                 </p>
               </>
             ) : (
-              <span className="prose tight">Fill in exposure, retention and limit to quote.</span>
+              <p className="note">Fill in exposure, retention and limit to quote.</p>
             )}
           </div>
 
-
           {closed ? null : (
             <div className="bindbox">
-              {!me.ready && <p className="prose tight">{me.reason}</p>}
+              {!me.ready && <p className="note">{me.reason}</p>}
               {me.ready && effective !== undefined && effective > 0n && (
-                <dl className="tk">
-                  <dt>Premium due</dt><dd><span className="num">{fmtUsdg(effective)}</span> USDG</dd>
-                  <dt>Your allowance</dt><dd><span className="num">{fmtUsdg(allowance)}</span> USDG</dd>
-                </dl>
+                <div className="rows figs">
+                  <div className="row"><span className="k">Premium due</span><span className="v">{fmtUsdg(effective)} USDG</span></div>
+                  <div className="row"><span className="k">Your allowance</span><span className="v">{fmtUsdg(allowance)} USDG</span></div>
+                </div>
               )}
-              <div className="actions">
-                {short_ !== undefined ? (
-                  <p className="shortfall" role="status">
-                    Needs <b className="num">{usd2(parsed.lim!)}</b> USDG of free capacity; the pool has <b className="num">{usd2(short_)}</b> at
-                    block #{book.data!.block.toLocaleString('en-US')}. <Link to="/write">Write capacity</Link>
-                  </p>
-                ) : null}
+              {short_ !== undefined ? (
+                <p className="note" role="status">
+                  Binding needs {usd2(parsed.lim!)} USDG of free capacity; the pool has {usd2(short_)} at
+                  block {book.data!.block.toLocaleString('en-US')}. <Link to="/write">Write capacity</Link>.
+                </p>
+              ) : null}
+              <div className="acts">
                 {me.ready && needsApprove && (
-                  <button className="btn ghost" disabled={!me.ready || approveTx.busy} onClick={approve}>
+                  <button className="btn line" disabled={!me.ready || approveTx.busy} onClick={approve}>
                     Approve {effective !== undefined ? fmtUsdg(effective) : ''} USDG
                   </button>
                 )}
-                <button className="btn wide" disabled={!me.ready || tx.busy || !!formError || effective === undefined || needsApprove || short_ !== undefined} onClick={bind}>
+                <button className="btn" disabled={!me.ready || tx.busy || !!formError || effective === undefined || needsApprove || short_ !== undefined} onClick={bind}>
                   {short_ !== undefined ? 'Bind layer: not enough capacity' : 'Bind layer'}
                 </button>
               </div>
@@ -244,7 +244,8 @@ export function Bind() {
               <TxNote status={tx.status} hash={tx.hash} error={tx.error} />
             </div>
           )}
-          <p className="fine">
+          {book.data && <p className="src"><Stamp block={book.data.block} label="Book read at block" /></p>}
+          <p className="note">
             Tail cover on a weekend gap, not smart-contract cover. The premium never falls below
             0.5% of the limit.
           </p>

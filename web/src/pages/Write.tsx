@@ -67,66 +67,67 @@ export function Write() {
 
   return (
     <>
-      <header className="lead row">
-        <h1>Write capacity</h1>
-        <p>Earn the premium on every layer bound; pay its loss when a Monday gap reaches it.</p>
+      <header className="argument row">
+        <h1 className="title">Write capacity</h1>
+        <p className="lede">Earn the premium on every layer bound; pay its loss when a Monday gap reaches it.</p>
       </header>
 
       <div className="desk">
-        <section className="panel" aria-labelledby="path-h">
-          <div className="panel-head">
-            <h2 id="path-h">In-sample backtest, not a forecast: the reference layer written every SPY weekend since 2016</h2>
+        <section className="main-col exhibit" aria-labelledby="path-h">
+          <div className="exhibit-head">
+            <h2 id="path-h" className="chart-title">A writer on the reference layer, every SPY weekend since 2016</h2>
           </div>
+          <p className="caveat">In-sample backtest, not a forecast. The pricer is fit to these same weekends, so the line ends above zero by construction; read it for the path, for how deep a bad month cuts.</p>
           <WriterPath />
         </section>
 
-        <aside className="panel ticket" aria-label="Deposit and withdraw">
-          <h2 className="ticket-h">Deposit USDG</h2>
+        <aside className="ticket" aria-label="Deposit and withdraw">
+          <h2 className="label">Deposit USDG</h2>
           <div className="form">
             <div className="field">
               <label htmlFor="dep">Amount, USDG</label>
               <input id="dep" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
-              <span className={`hint${amountError ? ' err' : ''}`}>
+              <span className={`hint${amountError ? ' bad' : ''}`}>
                 {amountError ?? (cap ? `Your balance is ${fmtUsdg(cap.myUsdg)} USDG.` : 'Your USDG balance reads with the book.')}
               </span>
               {cap && cap.myUsdg > 0n && (
-                <div className="chips">
+                <div className="fills">
                   {[25, 50, 75].map((pct) => (
-                    <button key={pct} type="button" className="chip" onClick={() => setAmount(formatUnits((cap.myUsdg * BigInt(pct)) / 100n, 6))}>
+                    <button key={pct} type="button" onClick={() => setAmount(formatUnits((cap.myUsdg * BigInt(pct)) / 100n, 6))}>
                       {pct}%
                     </button>
                   ))}
-                  <button type="button" className="chip" onClick={() => setAmount(formatUnits(cap.myUsdg, 6))}>Max</button>
+                  <button type="button" onClick={() => setAmount(formatUnits(cap.myUsdg, 6))}>Max</button>
                 </div>
               )}
             </div>
           </div>
-          {!me.ready && <p className="prose tight">{me.reason}</p>}
-          <div className="actions">
-            <button className="btn wide" disabled={!me.ready || permitTx.busy || !!amountError || !parsed} onClick={deposit}>
+          {!me.ready && <p className="note">{me.reason}</p>}
+          <div className="acts">
+            <button className="btn" disabled={!me.ready || permitTx.busy || !!amountError || !parsed} onClick={deposit}>
               Deposit
             </button>
           </div>
           <TxNote status={permitTx.status} hash={permitTx.hash} error={permitTx.error} />
 
-          <h2 className="ticket-h sub">Withdraw free capital</h2>
+          <h2 className="label sub">Withdraw free capital</h2>
           <div className="form">
             <div className="field">
               <label htmlFor="exit">Amount, USDG</label>
               <input id="exit" inputMode="decimal" value={exitAmount} onChange={(e) => setExitAmount(e.target.value)} placeholder="0.00" />
-              <span className={`hint${exitError ? ' err' : ''}`}>
+              <span className={`hint${exitError ? ' bad' : ''}`}>
                 {exitError ?? (cap ? `At most ${fmtUsdg(cap.free)} USDG is free. Your redeemable max is ${fmtUsdg(cap.maxRedeem)} USDG.` : 'The free balance reads with the book.')}
               </span>
               {cap && cap.free > 0n && (
-                <div className="chips">
-                  <button type="button" className="chip" onClick={() => setExitAmount(formatUnits(cap.free, 6))}>Free</button>
-                  <button type="button" className="chip" onClick={() => setExitAmount(formatUnits(cap.maxRedeem, 6))}>Max</button>
+                <div className="fills">
+                  <button type="button" onClick={() => setExitAmount(formatUnits(cap.free, 6))}>Free</button>
+                  <button type="button" onClick={() => setExitAmount(formatUnits(cap.maxRedeem, 6))}>Max</button>
                 </div>
               )}
             </div>
           </div>
-          <div className="actions">
-            <button className="btn ghost wide" disabled={!me.ready || exitTx.busy} onClick={withdraw}>
+          <div className="acts">
+            <button className="btn line" disabled={!me.ready || exitTx.busy} onClick={withdraw}>
               Withdraw
             </button>
           </div>
@@ -134,29 +135,27 @@ export function Write() {
         </aside>
       </div>
 
-      <section className="panel" aria-labelledby="pool-h" style={{ marginTop: 16 }}>
-        <div className="panel-head">
-          <h2 id="pool-h">The pool</h2>
-          {book.data && <span className="right"><Stamp block={book.data.block} label="read at" /></span>}
-        </div>
+      <section className="doc pool" aria-labelledby="pool-h">
+        <h2 id="pool-h" className="section">The pool</h2>
         {book.isLoading ? (
-          <p className="prose">Reading the pool at the latest block.</p>
+          <p className="note">Reading the pool at the latest block.</p>
         ) : book.error ? (
-          <p className="prose err" role="alert"><b>{explainError(book.error).name}</b> {explainError(book.error).words}</p>
+          <p className="err" role="alert"><b>{explainError(book.error).name}</b> {explainError(book.error).words}</p>
         ) : cap && cap.balance === 0n && cap.myShares === 0n ? (
-          <p className="prose tight">
+          <p className="prose">
             Empty: no writer has deposited on this deployment yet, so nothing is locked and no
             premium is pending. The first deposit sets the share price one to one.
           </p>
         ) : cap ? (
           <>
             <CapacityStrip locked={cap.locked} owed={cap.liabilities} free={cap.free} balance={cap.balance} pending={cap.pendingPremium} />
-            <dl className="tk">
-              <dt>Your shares</dt><dd><span className="num">{fmtUsdg(cap.myShares)}</span> gtUSDG</dd>
-              <dt>Your USDG</dt><dd><span className="num">{fmtUsdg(cap.myUsdg)}</span> USDG</dd>
-            </dl>
+            <div className="rows figs">
+              <div className="row"><span className="k">Your shares</span><span className="v">{fmtUsdg(cap.myShares)} gtUSDG</span></div>
+              <div className="row"><span className="k">Your USDG</span><span className="v">{fmtUsdg(cap.myUsdg)} USDG</span></div>
+            </div>
           </>
         ) : null}
+        {book.data && <p className="src"><Stamp block={book.data.block} label="Read at block" /></p>}
       </section>
     </>
   );
@@ -202,14 +201,14 @@ function WriterPath() {
 
   return (
     <div className="path">
-      <p className="gap-read">
+      <p className="gc-read">
         <span>
-          Each weekend adds today's premium, <b className="num">{usd0.format(premium)}</b> USDG on a {usd0.format(REFERENCE.limit)} limit
+          Each weekend adds today's premium, <b>{usd0.format(premium)}</b> USDG on a {usd0.format(REFERENCE.limit)} limit
           (live at block {quote.data ? `#${quote.data.block.toLocaleString('en-US')}` : '313,690,038, recorded in the README'}), and subtracts what the layer paid.
         </span>
       </p>
       <div className="path-plot">
-        <div className="gap-axis" aria-hidden="true">
+        <div className="path-axis" aria-hidden="true">
           {ticks.map((t) => <span key={t} style={{ top: `${y(t)}%` }}>{t === 0 ? '0' : k(t)}</span>)}
         </div>
         <div className="path-field">
@@ -222,21 +221,17 @@ function WriterPath() {
           {worst.map((i) => (
             <i key={i} className="hit-dot" style={{ left: `${x(i)}%`, top: `${y(cum[i] + (REFERENCE.limit - premium))}%` }} />
           ))}
-          <span className="path-end num" style={{ top: `${y(end)}%` }}>{k(end)}</span>
+          <span className="path-end" style={{ top: `${y(end)}%` }}>{k(end)}</span>
         </div>
-        <div className="gap-years" aria-hidden="true">
+        <div className="path-years" aria-hidden="true">
           {years.map((yr) => <span key={yr.year} style={{ left: `${(yr.i / cum.length) * 100}%` }}>{yr.year}</span>)}
         </div>
       </div>
-      <div className="gap-key path-key">
-        <span><i className="sw x" /><b className="num dn">−{usd0.format(REFERENCE.limit - premium)}</b> on each of {worst.map((i) => fmtDay(w[i].friday)).join(' and ')}: the full limit paid</span>
-        <span><i className="sw dd" /><b className="num dn">−{usd0.format(dd.depth)}</b> deepest drawdown, {fmtDay(w[dd.from].friday)} to {fmtDay(w[dd.to].friday)}</span>
+      <div className="gc-key">
+        <span><i className="sw layer" /><b>−{usd0.format(REFERENCE.limit - premium)}</b> on each of {worst.map((i) => fmtDay(w[i].friday)).join(' and ')}: the layer paid its full limit</span>
+        <span><i className="sw dd" /><b>−{usd0.format(dd.depth)}</b> deepest drawdown, {fmtDay(w[dd.from].friday)} to {fmtDay(w[dd.to].friday)}</span>
       </div>
-      <p className="src">
-        Each of the {w.length} weekends in <code>{spy.file}</code>, oldest first. The pricer is fit to
-        these same weekends, so the line ends above zero by construction; read it for the path, how
-        deep a bad month cuts, not for the end figure.
-      </p>
+      <p className="src">Each of the {w.length} weekends in <span className="file">{spy.file}</span>, oldest first.</p>
     </div>
   );
 }
