@@ -24,6 +24,7 @@ export function GapChart({ table, layer, notes = true }: { table: GapTable; laye
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
+    setW(el.clientWidth);
     const ro = new ResizeObserver(([e]) => setW(Math.round(e.contentRect.width)));
     ro.observe(el);
     return () => ro.disconnect();

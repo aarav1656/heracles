@@ -159,7 +159,7 @@ b { font-weight: 600; }
 .gc-read > b { font-family: var(--serif); font-weight: 500; font-size: 15px; color: var(--ink); }
 .gc-read b { font-weight: 600; }
 .gc-hint { color: var(--ink-3); }
-.gc-plot { position: relative; margin-top: 10px; cursor: crosshair; touch-action: pan-y; }
+.gc-plot { position: relative; margin-top: 10px; cursor: crosshair; touch-action: pan-y; overflow: hidden; }
 .gc-plot:focus-visible { outline-offset: 6px; }
 .gc-plot svg { position: absolute; inset: 0; display: block; overflow: visible; }
 .gc-lab { font: 400 12px var(--sans); fill: var(--ink-3); }
