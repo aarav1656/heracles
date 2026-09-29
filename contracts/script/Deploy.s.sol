@@ -40,6 +40,10 @@ contract Deploy is Script {
     address constant SPY_FEED = 0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06;
     uint256 constant MIN_RATE_ON_LINE_BPS = 50;
     address constant SEQUENCER_FEED = address(0); // no Arbitrum Sepolia equivalent exists
+    // Decision 3 (docs/design/v3.md): `cancel`'s liveness guard. Real Arbitrum Sepolia USDC/USD
+    // Chainlink feed, verified live via `cast call description()/decimals()/latestRoundData()`
+    // against sepolia-rollup.arbitrum.io on 2026-09-29 ("USDC / USD", 8dp, fresh round).
+    address constant LIVENESS_FEED = 0x0153002d20B96532C639313c2d54c3dA09109309;
 
     function run() external returns (Treaty treaty) {
         // Mainnet sequencer-feed trap: this script
@@ -70,7 +74,7 @@ contract Deploy is Script {
         require(abi.decode(vm.rpc("eth_call", callParams), (uint8)) == 2, "PRICER not configured for SPY table at index 0");
 
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
-        treaty = new Treaty(USDG, pricer, feeds, MIN_RATE_ON_LINE_BPS, SEQUENCER_FEED);
+        treaty = new Treaty(USDG, pricer, feeds, MIN_RATE_ON_LINE_BPS, SEQUENCER_FEED, LIVENESS_FEED);
         vm.stopBroadcast();
 
         console.log("Treaty", address(treaty));

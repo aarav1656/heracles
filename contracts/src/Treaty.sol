@@ -25,11 +25,11 @@ interface AggregatorV3Interface {
 ///
 /// Fixing rule, allowlist and several checks follow a proven pattern: constructor-fixed feed
 /// allowlist with a `decimals() == 8` check ("writer picks the oracle"), the Chainlink
-/// phase-boundary guard `_latestInPhase`, and matching first-fresh-round rules for both ends of
-/// the weekend: `fix()` takes the first round with `updatedAt >= expiry` (Monday's open, DST-aware,
-/// previous round strictly before `expiry`), and `setReference` takes the first round with
-/// `updatedAt >= fridayCloseOf(fridayCutoff)` (Friday's official close, also DST-aware, previous
-/// round strictly before that close) -- see `_isUsDst`/`fridayCloseOf`.
+/// phase-boundary guard `_latestInPhase`, and matching rules for both ends of the weekend:
+/// `fix()` still takes the first round with `updatedAt >= expiry` (Monday's open, DST-aware,
+/// previous round strictly before `expiry`); `setReference` instead takes the round in effect at
+/// `fridayCloseOf(fridayCutoff)` (Friday's official close, also DST-aware) -- decision 3 of
+/// docs/design/v3.md, see `_isUsDst`/`fridayCloseOf` and `setReference`'s own comment for the rule.
 /// This treaty has no corporate-action multiplier check because it binds raw Chainlink equity
 /// feeds directly, not Robinhood-style Stock Tokens with a `uiMultiplier()`; there is no
 /// multiplier to read.
@@ -103,28 +103,19 @@ contract Treaty is ReentrancyGuard {
     // 1e24 USDG) while leaving `1e30 * 1474` (~1.47e33) nowhere near int256's ~5.79e76 ceiling.
     uint256 internal constant MAX_EXPOSURE = 1e30;
 
-    // P5 (re-review 2026-09-28): `setReference` used to accept the first fresh round at or after
-    // `fridayCloseOf` with no upper bound. A feed that pauses its heartbeat over the weekend (no
-    // round between Friday's close and the next live session) let that next print -- Sunday
-    // evening's overnight open, already carrying any weekend news -- stand in for Friday's close,
-    // silently absorbing the very gap this treaty exists to cover. `REFERENCE_MAX_DELAY` bounds
-    // how late that first fresh round may be. A round later than `close + REFERENCE_MAX_DELAY`
-    // reverts here; the layer is left to `voidReference`/`cancel` once `GRACE` after `expiry`
-    // passes, rather than settle against a price that is no longer Friday's.
-    //
-    // H1 (re-review of 23e632f): the live SPY feed's own heartbeat lands 24h + 3..25s after the
-    // last pre-close update, so a 24h bound made `setReference` revert `BadRound` forever on that
-    // feed's genuine, on-time heartbeat -- with `fix` reverting `ReferenceNotSet` and `cancel`
-    // reverting `StillFixable` (the feed is alive with a crossing round in phase), the layer and
-    // the vault it locks stayed Bound forever with no admin path out. Widened to 36h: the Sunday
-    // 20:00 ET reopen (the earliest a paused feed's next live print can carry weekend news) is
-    // ~52h after Friday's close, so 36h still stops the reference absorbing the gap P5 targets,
-    // while comfortably covering the live feed's ~24h+25s heartbeat with room for a missed
-    // heartbeat or two. `voidReference` below is the terminal backstop for the rest of that gap
-    // (36h..52h and beyond): a permissionless, provable record that the genuine first crossing
-    // round is late, so `_anyMarketFixable` can stop treating the market as fixable and `cancel`
-    // can finally succeed.
-    uint256 internal constant REFERENCE_MAX_DELAY = 36 hours;
+    // Decision 3 (docs/design/v3.md): `setReference` used to accept the first fresh round at or
+    // after `fridayCloseOf`, bounded by a max delay off that boundary. On Robinhood Chain's real
+    // equity feeds that rule never even reaches a round to check: the weekend heartbeat gap is
+    // 52-56h with zero prints in between, so "first round after close" is always the Sunday/Monday
+    // reopen, already carrying the weekend's news, silently absorbing the very gap this treaty
+    // exists to cover (RHC SPY: v3's rule pays 9,470.49 USDG on a real layer, the old rule 6,598.93,
+    // 30% short; v2 as deployed would have voided the market entirely -- docs/design/v3.md "the
+    // finding that shapes decision 3"). v3 instead reads the round already in effect the instant
+    // trading stopped (`setReference` below), which needs no round after close at all, so an
+    // ordinary silent weekend never triggers absorption or void. `MAX_ROUND_AGE` now only bounds
+    // how old *that* round may be (rule 5) and gates `bind`'s own freshness check below; a round
+    // silent for a full weekend before close is still too stale to stand in for it.
+    uint256 internal constant MAX_ROUND_AGE = 26 hours;
 
     // Weekday math constants (SECURITY-REVIEW.md C1+H1). Epoch day 0 (1970-01-01) was a Thursday.
     // ISO weekday (Monday=0..Sunday=6) of epoch day `d` is `(d + 3) % 7` (day 0=Thu -> 3, day
@@ -149,6 +140,15 @@ contract Treaty is ReentrancyGuard {
     Capacity public immutable capacity;
     uint256 public immutable minRateOnLineBps; // H2: premium floor, bps of limit
     address public immutable sequencerUptimeFeed; // M2: address(0) disables the check (testnet)
+    // Decision 3 (docs/design/v3.md), `cancel`'s liveness guard: a feed with a heartbeat that
+    // survives weekends (USDC/USD on both Arbitrum Sepolia and Robinhood Chain), read only there.
+    // Proves the chain itself kept receiving Chainlink writes long enough past a layer's expiry
+    // that a live 24h-heartbeat equity feed must have printed its own post-expiry round, so "no
+    // fresh equity round" really means a dead/paused market, not a halted chain silently starving
+    // every feed at once (RHC has no sequencer-uptime feed at all, so this is its only guard
+    // against that race). `address(0)` disables the check and must only ever be passed by unit
+    // tests; every real deploy passes a real feed.
+    address public immutable livenessFeed;
     AggregatorV3Interface[] public markets;
 
     mapping(uint256 => Layer) public layers;
@@ -158,10 +158,10 @@ contract Treaty is ReentrancyGuard {
     mapping(uint256 => mapping(uint256 => uint64)) public mondayPrice;
     mapping(uint256 => mapping(uint256 => bool)) public referenceSet;
     mapping(uint256 => mapping(uint256 => bool)) public marketFixed;
-    // H1: a market whose genuine first post-close round is proven (with round data) to be later
-    // than `REFERENCE_MAX_DELAY` past close. A void market can never have its reference set (the
-    // proof round is the unique first crossing round; see `voidReference` below) and must not
-    // block `cancel` the way a merely-unreferenced-but-still-fixable market does.
+    // H1, rewritten for decision 3: a market permissionlessly proven, by round data, to have no
+    // reachable round in effect at close (see `voidReference` below for the stale/phase proofs). A
+    // void market can never have its reference set and must not block `cancel` the way a
+    // merely-unreferenced-but-still-fixable market does.
     mapping(uint256 => mapping(uint256 => bool)) public referenceVoid;
 
     event Bound(
@@ -196,13 +196,15 @@ contract Treaty is ReentrancyGuard {
         address pricer_,
         address[] memory feeds,
         uint256 minRateOnLineBps_,
-        address sequencerUptimeFeed_
+        address sequencerUptimeFeed_,
+        address livenessFeed_
     ) {
         if (usdg_ == address(0) || pricer_ == address(0) || feeds.length == 0) revert BadParams();
         usdg = IERC20(usdg_);
         pricer = IPricer(pricer_);
         minRateOnLineBps = minRateOnLineBps_;
         sequencerUptimeFeed = sequencerUptimeFeed_;
+        livenessFeed = livenessFeed_;
         for (uint256 i; i < feeds.length; i++) {
             if (feeds[i] == address(0)) revert BadParams();
             if (AggregatorV3Interface(feeds[i]).decimals() != 8) revert BadParams();
@@ -331,9 +333,17 @@ contract Treaty is ReentrancyGuard {
         (uint256 cutoff, uint256 expiry) = weekWindow(block.timestamp);
         if (block.timestamp >= cutoff) revert BadTiming();
 
+        // Decision 3, liveness guard rule 1 (docs/design/v3.md): every market's feed must have a
+        // round within MAX_ROUND_AGE of now, or a layer could bind against a feed that is already
+        // dead (an F1-style weekly griefing entry point) or price its volatility off a stale round
+        // during a long outage. Written as an addition, `updatedAt + MAX_ROUND_AGE >=
+        // block.timestamp`, not `block.timestamp - updatedAt`, so a fork test that warps
+        // block.timestamp backward relative to the fork's real "latest" round never underflows.
         address[] memory feedAddrs = new address[](n);
         for (uint256 i; i < n; i++) {
             feedAddrs[i] = address(markets[i]);
+            (,,, uint256 updatedAt,) = markets[i].latestRoundData();
+            if (updatedAt + MAX_ROUND_AGE < block.timestamp) revert BadRound();
         }
         (uint256 quoted,,) = pricer.quote(exposure, feedAddrs, retention, limit);
         uint256 floor_ = limit * minRateOnLineBps / BPS;
@@ -361,44 +371,53 @@ contract Treaty is ReentrancyGuard {
         capacity.receivePremium(msg.sender, premium);
     }
 
-    /// Sets one market's Friday reference: the first round with `updatedAt >= fridayCloseOf`
-    /// (Friday's official US market close, 4:00pm ET, DST-aware) and `updatedAt <= fridayCloseOf +
-    /// REFERENCE_MAX_DELAY`, whose predecessor round is strictly before that close
-    /// (`NotFirstRound`) -- the same "first fresh round" shape as `fix`'s Monday rule below, just
-    /// anchored to Friday's close instead of Monday's open. Replaces the
-    /// earlier "last round before Saturday 00:00 UTC" rule, which both used a fixed UTC offset
-    /// (wrong under DST) and picked the wrong instant (the research this repo cites,
-    /// contracts/../evidence/auction-and-pricing.md, is about the *official close*, not an
-    /// arbitrary midnight boundary). P5 (re-review 2026-09-28): the upper bound stops a feed that
-    /// paused its heartbeat over the weekend from having its next live print -- already carrying
-    /// any weekend news -- stand in for Friday's close. Callable only once that Friday's close has
-    /// passed, and permissionless, same as `fix`.
+    /// Sets one market's Friday reference to the round in effect at Friday's official close
+    /// (docs/design/v3.md, decision 3), not the first round after it: the round whose `updatedAt`
+    /// is at or before `closeTs` and that nothing has superseded before `closeTs` either (rule 4
+    /// below), so it is exactly the price the market was quoting the instant the week's trading
+    /// stopped. Callable only after that close has passed, permissionlessly, same as `fix`.
+    ///
+    /// The five rules (design doc numbering):
+    /// 1. `block.timestamp > closeTs`, strict, so no round can still land at `closeTs` in this block.
+    /// 2. `roundId` is in the feed's current phase (`_latestInPhase`) with a positive, in-range
+    ///    answer.
+    /// 3. `updatedAt(roundId) <= closeTs`: the round must already have existed at close.
+    /// 4. `roundId` is the feed's latest round, or the very next round only printed after close:
+    ///    within a phase this picks exactly one round, the one in effect at the close instant.
+    /// 5. `updatedAt(roundId) + MAX_ROUND_AGE >= closeTs`: the in-effect round must itself be
+    ///    recent, or a feed silent for a full weekend before close could let a days-old heartbeat
+    ///    stand in for the close (the same absorption concern the old rule guarded against, from
+    ///    the other side).
+    ///
+    /// This never needs a round *after* close, so a market with no weekend heartbeat (Robinhood
+    /// Chain's real SPY/AAPL feeds, 52-56h silent every weekend) settles normally instead of
+    /// voiding every ordinary weekend (docs/design/v3.md, "the finding that shapes decision 3").
     function setReference(uint256 id, uint256 marketIdx, uint80 roundId) external nonReentrant {
         Layer storage L = layers[id];
         if (L.state != State.Bound) revert WrongState();
         if (marketIdx >= markets.length) revert BadParams();
         if (referenceSet[id][marketIdx]) revert AlreadyFixed();
-        // H1: once `voidReference` has recorded a proof that this market's genuine first
-        // crossing round is late, no later round can ever satisfy the first-round check below
-        // (its predecessor is that same proven-late round, whose `updatedAt` already sits at or
-        // past `refTime`), so this can never actually be reached on-chain; kept as an explicit,
-        // cheap revert rather than relying on that argument holding forever.
+        // H1: once `voidReference` has recorded a proof that this market's round in effect at
+        // close can never be reached, no round can ever satisfy this function again for this
+        // market (see `voidReference`'s own comment); kept as an explicit, cheap revert.
         if (referenceVoid[id][marketIdx]) revert ReferenceIsVoid();
 
-        uint256 refTime = fridayCloseOf(uint256(L.fridayCutoff));
-        if (block.timestamp < refTime) revert BadTiming();
+        uint256 closeTs = fridayCloseOf(uint256(L.fridayCutoff));
+        if (block.timestamp <= closeTs) revert BadTiming(); // rule 1
         _requireSequencerUp();
 
         AggregatorV3Interface feed = markets[marketIdx];
-        _latestInPhase(feed, roundId);
+        uint80 latestId = _latestInPhase(feed, roundId); // rule 2 (phase)
         (, int256 answer,, uint256 updatedAt,) = feed.getRoundData(roundId);
-        if (answer <= 0 || uint256(answer) > type(uint64).max) revert BadRound();
-        if (updatedAt < refTime || updatedAt > block.timestamp) revert BadRound();
-        // P5: the reference round must not be later than one heartbeat past close, or it can
-        // absorb the weekend gap instead of measuring Friday's own close.
-        if (updatedAt > refTime + REFERENCE_MAX_DELAY) revert BadRound();
-        (,,, uint256 prevUpdatedAt,) = feed.getRoundData(roundId - 1);
-        if (prevUpdatedAt == 0 || prevUpdatedAt >= refTime) revert NotFirstRound();
+        if (answer <= 0 || uint256(answer) > type(uint64).max) revert BadRound(); // rule 2 (answer)
+        if (updatedAt > closeTs) revert BadRound(); // rule 3
+        if (roundId != latestId) {
+            // rule 4: the next round must not have existed yet at close either, or `roundId` was
+            // already stale before the week even finished trading.
+            (,,, uint256 nextUpdatedAt,) = feed.getRoundData(roundId + 1);
+            if (nextUpdatedAt != 0 && nextUpdatedAt <= closeTs) revert BadRound();
+        }
+        if (updatedAt + MAX_ROUND_AGE < closeTs) revert BadRound(); // rule 5
 
         uint64 price = uint64(uint256(answer));
         fridayPrice[id][marketIdx] = price;
@@ -407,21 +426,26 @@ contract Treaty is ReentrancyGuard {
         emit ReferenceSet(id, marketIdx, roundId, price);
     }
 
-    /// H1 (re-review of 23e632f): permissionless proof that a market's Friday reference can never
-    /// be set. `roundId` must be the same "genuine first round after close" `setReference` itself
-    /// requires -- its predecessor strictly before `refTime`, itself at or after `refTime` -- but
-    /// with `updatedAt` later than `refTime + REFERENCE_MAX_DELAY` (the exact opposite of
-    /// `setReference`'s own late check). Chainlink round ids and `updatedAt` are both strictly
-    /// increasing within a phase, so that predecessor/successor pair is the unique first crossing
-    /// of `refTime`; once it is proven late here, no other round can ever satisfy
-    /// `setReference`'s first-round check for this market again (an earlier round still has
-    /// `updatedAt < refTime`; any later round's predecessor is this same proven-late round, so
-    /// `NotFirstRound` reverts). Marking the market void here is therefore permanent and correct,
-    /// not a guess about a round that has not printed yet.
+    /// Permissionless proof that a market's Friday reference can never be set (docs/design/v3.md,
+    /// decision 3), either proof callable only after `closeTs`:
     ///
+    /// - **stale**: `roundId` is the genuine round in effect at close (rules 2-4 above, minus the
+    ///   answer-value half of rule 2, see below) but fails rule 5, silent for more than
+    ///   `MAX_ROUND_AGE` before close. The answer's *value* is deliberately not checked here
+    ///   (unlike `setReference`): a stale round with a bad answer must still be voidable on timing
+    ///   alone, or a feed that went both silent and briefly corrupt could leave the layer with
+    ///   neither a reference nor an escape (the same reasoning the pre-v3 void carried; see
+    ///   `test_V4` in TreatyVoid.t.sol).
+    /// - **phase**: `roundId` is the feed's current phase's own first round (`phaseId << 64 | 1`)
+    ///   and its `updatedAt` is already after close, so the round that was actually in effect at
+    ///   close sits in an older, now-unreachable phase (`_latestInPhase` only accepts the current
+    ///   one). A round matching the phase pattern whose own `updatedAt` is at or before close is
+    ///   not stranded at all and falls through to the stale check instead.
+    ///
+    /// Both proofs and `setReference` exclude each other (`AlreadyFixed`/`ReferenceIsVoid`).
     /// `_anyMarketFixable` below treats a void market the same as a dead one: it stops blocking
-    /// `cancel`, so a layer stuck on a late-but-alive reference round reaches `Cancelled` instead
-    /// of staying `Bound` forever with the vault's gate shut and no admin path out.
+    /// `cancel`, so a layer stuck on an unreachable reference reaches `Cancelled` instead of
+    /// staying `Bound` forever with the vault's gate shut and no admin path out.
     function voidReference(uint256 id, uint256 marketIdx, uint80 roundId) external nonReentrant {
         Layer storage L = layers[id];
         if (L.state != State.Bound) revert WrongState();
@@ -429,18 +453,33 @@ contract Treaty is ReentrancyGuard {
         if (referenceSet[id][marketIdx]) revert AlreadyFixed();
         if (referenceVoid[id][marketIdx]) revert ReferenceIsVoid();
 
-        uint256 refTime = fridayCloseOf(uint256(L.fridayCutoff));
+        uint256 closeTs = fridayCloseOf(uint256(L.fridayCutoff));
+        if (block.timestamp <= closeTs) revert BadTiming();
+
         AggregatorV3Interface feed = markets[marketIdx];
-        _latestInPhase(feed, roundId);
-        // Void proves timing only, so the answer is deliberately not checked: a late round with a
-        // bad answer must still be voidable, or setReference and cancel would both stay blocked.
+        (uint80 latestId,,,,) = feed.latestRoundData();
+        if (uint64(latestId) == 0) revert BadRound();
+
+        // Phase proof.
+        if (roundId == ((latestId >> 64) << 64 | 1)) {
+            (,,, uint256 phaseFirstUpdatedAt,) = feed.getRoundData(roundId);
+            if (phaseFirstUpdatedAt > closeTs) {
+                referenceVoid[id][marketIdx] = true;
+                emit ReferenceVoided(id, marketIdx, roundId, phaseFirstUpdatedAt);
+                return;
+            }
+        }
+
+        // Stale proof: same rules 2 (phase only, no answer-value check), 3 and 4 as setReference,
+        // then the opposite of rule 5.
+        uint80 checkedLatest = _latestInPhase(feed, roundId);
         (,,, uint256 updatedAt,) = feed.getRoundData(roundId);
-        if (updatedAt < refTime || updatedAt > block.timestamp) revert BadRound();
-        // The whole point of voiding: this round must actually be late. A round inside the
-        // allowed delay belongs in `setReference`, not here.
-        if (updatedAt <= refTime + REFERENCE_MAX_DELAY) revert BadTiming();
-        (,,, uint256 prevUpdatedAt,) = feed.getRoundData(roundId - 1);
-        if (prevUpdatedAt == 0 || prevUpdatedAt >= refTime) revert NotFirstRound();
+        if (updatedAt > closeTs) revert BadRound();
+        if (roundId != checkedLatest) {
+            (,,, uint256 nextUpdatedAt,) = feed.getRoundData(roundId + 1);
+            if (nextUpdatedAt != 0 && nextUpdatedAt <= closeTs) revert BadRound();
+        }
+        if (updatedAt + MAX_ROUND_AGE >= closeTs) revert BadTiming(); // must actually be stale
 
         referenceVoid[id][marketIdx] = true;
         emit ReferenceVoided(id, marketIdx, roundId, updatedAt);
@@ -493,6 +532,18 @@ contract Treaty is ReentrancyGuard {
         if (block.timestamp < uint256(L.expiry) + GRACE) revert BadTiming();
         // Same sequencer gate as fix: cancel must not land in a window where fix is blocked.
         _requireSequencerUp();
+        // Decision 3, liveness guard rule 3 (docs/design/v3.md): proves the chain itself kept
+        // receiving Chainlink writes long enough after expiry that a live 24h-heartbeat equity
+        // feed must have printed its own post-expiry round, so "no fresh equity round" really
+        // means a dead market, not a halted chain silently starving every feed at once -- the same
+        // race the Arbitrum sequencer-uptime check above guards on Arbitrum, but RHC has no
+        // sequencer-uptime feed at all, so this is its only protection. Reverts the same
+        // `StillFixable` as the check below: both mean "cannot yet prove this layer is really
+        // dead". `livenessFeed == address(0)` disables the check (unit tests only).
+        if (livenessFeed != address(0)) {
+            (,,, uint256 liveUpdatedAt,) = AggregatorV3Interface(livenessFeed).latestRoundData();
+            if (liveUpdatedAt < uint256(L.expiry) + MAX_ROUND_AGE) revert StillFixable();
+        }
         if (_anyMarketFixable(id)) revert StillFixable();
         L.state = State.Cancelled;
         emit Cancelled(id, L.premium);
@@ -501,44 +552,33 @@ contract Treaty is ReentrancyGuard {
     }
 
     /// True if some not-yet-fixed market on this layer is still fixable: either its Monday round
-    /// (against `L.expiry`) or, if the reference was never set, its Friday round (against
-    /// `fridayCloseOf`) could still be produced. `setReference` is permissionless, so a market
-    /// with no reference is not automatically dead -- only checked against the same rule, at the
-    /// earlier boundary.
+    /// (against `L.expiry`) could still be produced, or, if the reference was never set, it has
+    /// not been proven void.
     ///
-    /// P3 (re-review 2026-09-28): the old check only looked at the feed's current latest round and
-    /// its immediate predecessor, matching "a round with `updatedAt >= boundary` exists" only when
-    /// that latest round happens to still be the genuine first one after the boundary. On a live
-    /// 24h-heartbeat feed, by `expiry + GRACE` (72h) the feed has printed about three rounds past
-    /// expiry, so the latest round's predecessor is *also* past the boundary and the old check
-    /// never finds the real first round -- a perfectly fixable layer read as dead, letting either
-    /// side cancel it (a free premium refund for a buyer whose layer finished out of the money, or
-    /// an escape from a payout for a writer). `_isMarketDead` below is the corrected, O(1) rule:
-    /// dead only if nothing has printed past the boundary yet, or the current Chainlink phase's own
-    /// first round is already past it (the crossing round lives in an unreachable older phase --
-    /// the M3 scenario, where `fix`/`setReference` would revert `NotFirstRound`/`BadRound` on every
-    /// round in the new phase forever, so the layer really is stuck and must be cancellable).
-    /// Otherwise a genuine first-round-after-boundary must exist somewhere in the current phase,
-    /// reachable by `fix`/`setReference` even though it is no longer the latest round, so the
-    /// market counts as fixable and `cancel` must wait.
+    /// Decision 3 (docs/design/v3.md): `setReference` now reads the round already in effect the
+    /// instant Friday's close happened, which always exists once close has passed (barring a feed
+    /// with no history at all) -- it never waits for a round *after* the boundary the way `fix`'s
+    /// Monday-open rule still does. An unreferenced market is therefore always resolvable unless
+    /// `voidReference` has proven it stranded (the stale/phase proofs there); the old
+    /// `_isMarketDead(markets[i], refBoundary)` check on the Friday side no longer applies to this
+    /// branch (that function's question, "has a round printed past this boundary yet", is not the
+    /// one v3's reference rule asks).
     ///
     /// H1/H2 (re-review of 23e632f): `fix` requires every market's reference to be set
     /// (`ReferenceNotSet`) before any one of them can settle. So the instant one market can never
-    /// get a reference -- proven void (H1: the genuine crossing round was late), or dead against
-    /// the Friday boundary with no reference set yet (H2: the feed never printed a round past
-    /// close at all) -- `fix` can never succeed for this layer again, no matter what any other
-    /// market looks like. Returning `false` immediately in that case (rather than only `continue`,
-    /// the old per-market-only view) is what lets `cancel` actually terminate a layer stuck behind
-    /// one unreferenceable market instead of deadlocking on another market's own "still fixable".
+    /// get a reference -- proven void -- `fix` can never succeed for this layer again, no matter
+    /// what any other market looks like. Returning `false` immediately in that case (rather than
+    /// only `continue`, the old per-market-only view) is what lets `cancel` actually terminate a
+    /// layer stuck behind one unreferenceable market instead of deadlocking on another market's
+    /// own "still fixable".
     function _anyMarketFixable(uint256 id) internal view returns (bool) {
         Layer storage L = layers[id];
         uint256 n = markets.length;
-        uint256 refBoundary = fridayCloseOf(uint256(L.fridayCutoff));
         bool anyFixable;
         for (uint256 i; i < n; i++) {
             if (marketFixed[id][i]) continue;
             if (!referenceSet[id][i]) {
-                if (referenceVoid[id][i] || _isMarketDead(markets[i], refBoundary)) return false;
+                if (referenceVoid[id][i]) return false;
                 anyFixable = true;
                 continue;
             }

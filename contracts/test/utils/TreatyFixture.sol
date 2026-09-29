@@ -9,6 +9,9 @@ import {Treaty} from "../../src/Treaty.sol";
 /// argument list exactly; plain contract deployment needs no `vm` cheatcode, so this has no
 /// dependency on `forge-std/Test.sol` and test contracts inherit it alongside `Test`.
 abstract contract TreatyFixture {
+    /// L1 (docs/design/v3.md, decision 3): the constructor's new `livenessFeed` immutable
+    /// defaults to `address(0)` here (disabled), which is only ever correct for a unit test;
+    /// callers that need `cancel`'s liveness guard exercised for real use the 6-arg overload below.
     function deployTreaty(
         address usdg,
         address pricer,
@@ -16,6 +19,17 @@ abstract contract TreatyFixture {
         uint256 minRateOnLineBps,
         address sequencerUptimeFeed
     ) internal returns (Treaty) {
-        return new Treaty(usdg, pricer, feeds, minRateOnLineBps, sequencerUptimeFeed);
+        return deployTreaty(usdg, pricer, feeds, minRateOnLineBps, sequencerUptimeFeed, address(0));
+    }
+
+    function deployTreaty(
+        address usdg,
+        address pricer,
+        address[] memory feeds,
+        uint256 minRateOnLineBps,
+        address sequencerUptimeFeed,
+        address livenessFeed
+    ) internal returns (Treaty) {
+        return new Treaty(usdg, pricer, feeds, minRateOnLineBps, sequencerUptimeFeed, livenessFeed);
     }
 }
