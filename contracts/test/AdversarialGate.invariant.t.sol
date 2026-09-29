@@ -13,32 +13,36 @@ import {TreatyFixture} from "./utils/TreatyFixture.sol";
 uint256 constant AMON0 = 1_789_948_800; // Monday 00:00 UTC (week 0)
 uint256 constant AWEEKS = 20;
 
-/// Adversarial handler. Differs from test/Capacity.invariant.t.sol in three ways that matter:
-/// (1) the gate oracle is independent of Capacity: "closed" iff some Bound layer has
-///     fridayCutoff <= now, read from Treaty's layer table, never from maxDeposit/maxRedeem;
+/// Adversarial handler, extended for two books and each book's first-loss/senior tranche split.
+/// Differs from test/Capacity.invariant.t.sol in three ways that matter:
+/// (1) the gate oracle is independent of Capacity: a book's tranche is "closed" iff some Bound
+///     layer in that book has fridayCutoff <= now, read from Treaty's layer table, never from
+///     maxDeposit/maxRedeem (both tranches of a book share the same gate, since both lock
+///     against the same layer's cutoff);
 /// (2) time jumps land exactly on cutoff-1/cutoff/cutoff+1, expiry +-1, expiry+GRACE +-1 and
 ///     Monday 00:00, and binds fire at those instants (dust limits included);
 /// (3) a random quarter of weeks are "dead" (fix never succeeds), so only cancel resolves them,
 ///     and settles/cancels hit layers in random order, so buckets drain out of order.
 contract AdvHandler is Test {
     Treaty public treaty;
-    Capacity public cap;
-    MockUSDG public usdg;
+    Capacity[2] public firstLoss;
+    Capacity[2] public senior;
+    MockUSDG[2] public usdg;
     MockFeed public feed;
     address[3] public writers;
     address[3] public buyers;
 
-    uint256 public gDeposited;
-    uint256 public gWithdrawn;
-    uint256 public gPremIn;
-    uint256 public gRefunded;
-    uint256 public gPaid;
+    uint256[2] public gDeposited;
+    uint256[2] public gWithdrawn;
+    uint256[2] public gPremIn;
+    uint256[2] public gRefunded;
+    uint256[2] public gPaid;
 
     uint256 public vGateDeposit; // deposit succeeded while oracle says closed
     uint256 public vGateRedeem; // redeem succeeded while oracle says closed
     uint256 public vOpenDepositReverted; // oracle open, deposit reverted
     uint256 public vOpenRedeemReverted; // oracle open, redeem <= maxRedeem reverted
-    uint256 public vRedeemOverFree; // a redeem paid out more than totalAssets - locked
+    uint256 public vRedeemOverFree; // a redeem paid out more than that vault's totalAssets - locked
     uint256 public vBindAfterCutoff;
     uint256 public vSettleDelta;
 
@@ -52,32 +56,46 @@ contract AdvHandler is Test {
     uint256 public nDepositClosed;
     uint256 public nDepositOpen;
     uint256 public nRedeemOpen;
-    uint256 public nStacked; // observed >=2 nonzero buckets at once
+    uint256 public nStacked; // observed >=2 nonzero buckets at once, in either book
 
     mapping(uint256 => bool) public weekPriced;
     mapping(uint256 => bool) public weekDead;
 
-    constructor(Treaty t, MockUSDG u, MockFeed f) {
+    constructor(Treaty t, MockUSDG u0, MockUSDG u1, MockFeed f) {
         treaty = t;
-        cap = t.capacity();
-        usdg = u;
+        firstLoss[0] = Capacity(t.firstLossVault(0));
+        senior[0] = Capacity(t.seniorVault(0));
+        firstLoss[1] = Capacity(t.firstLossVault(1));
+        senior[1] = Capacity(t.seniorVault(1));
+        usdg[0] = u0;
+        usdg[1] = u1;
         feed = f;
         for (uint256 i; i < 3; i++) {
             writers[i] = address(uint160(0xA000 + i));
             buyers[i] = address(uint160(0xB000 + i));
-            usdg.mint(buyers[i], 1e15);
-            vm.prank(buyers[i]);
-            usdg.approve(address(cap), type(uint256).max);
-            vm.prank(writers[i]);
-            usdg.approve(address(cap), type(uint256).max);
+            for (uint256 b; b < 2; b++) {
+                usdg[b].mint(buyers[i], 1e15);
+                vm.prank(buyers[i]);
+                usdg[b].approve(address(treaty), type(uint256).max);
+                vm.prank(writers[i]);
+                usdg[b].approve(address(firstLoss[b]), type(uint256).max);
+                vm.prank(writers[i]);
+                usdg[b].approve(address(senior[b]), type(uint256).max);
+            }
         }
     }
 
-    function oracleClosed() public view returns (bool) {
+    function _vault(uint256 book, uint256 tranche) internal view returns (Capacity) {
+        return tranche % 2 == 0 ? firstLoss[book] : senior[book];
+    }
+
+    /// A book's gate is closed iff some Bound layer in that book has fridayCutoff <= now; both of
+    /// that book's tranches lock and unlock together, since both back the same layers.
+    function oracleClosed(uint256 book) public view returns (bool) {
         uint256 n = treaty.layerCount();
         for (uint256 id; id < n; id++) {
-            (, uint40 c,,,, Treaty.State st,,,,,) = treaty.layers(id);
-            if (st == Treaty.State.Bound && block.timestamp >= c) return true;
+            (, uint40 c,, uint16 bk,,, Treaty.State st,,,,,,,,,,) = treaty.layers(id);
+            if (bk == book && st == Treaty.State.Bound && block.timestamp >= c) return true;
         }
         return false;
     }
@@ -106,15 +124,17 @@ contract AdvHandler is Test {
         nEdgeWarp++;
     }
 
-    function deposit(uint256 wi, uint256 amt) external {
+    function deposit(uint256 bookSel, uint256 trancheSel, uint256 wi, uint256 amt) external {
+        uint256 book = bookSel % 2;
+        Capacity cap = _vault(book, trancheSel);
         address w = writers[wi % 3];
         amt = bound(amt, 1, 5_000_000e6);
-        usdg.mint(w, amt);
-        bool closed = oracleClosed();
+        usdg[book].mint(w, amt);
+        bool closed = oracleClosed(book);
         vm.prank(w);
         try cap.deposit(amt, w) {
             if (closed) vGateDeposit++;
-            gDeposited += amt;
+            gDeposited[book] += amt;
             nDepositOpen++;
         } catch {
             if (!closed) vOpenDepositReverted++;
@@ -122,56 +142,67 @@ contract AdvHandler is Test {
         }
     }
 
-    function redeem(uint256 wi, uint256 pct) external {
+    function redeem(uint256 bookSel, uint256 trancheSel, uint256 wi, uint256 pct) external {
+        uint256 book = bookSel % 2;
+        Capacity cap = _vault(book, trancheSel);
         address w = writers[wi % 3];
         uint256 sh = cap.balanceOf(w) * bound(pct, 1, 100) / 100;
         if (sh == 0) return;
-        bool closed = oracleClosed();
+        bool closed = oracleClosed(book);
         uint256 mr = closed ? 0 : cap.maxRedeem(w);
         uint256 free = cap.totalAssets() - cap.locked();
         vm.prank(w);
         try cap.redeem(sh, w, w) returns (uint256 out) {
             if (closed) vGateRedeem++;
             if (out > free) vRedeemOverFree++;
-            gWithdrawn += out;
+            gWithdrawn[book] += out;
             nRedeemOpen++;
         } catch {
             if (!closed && sh <= mr) vOpenRedeemReverted++;
         }
     }
 
-    function bind(uint256 bi, int256 exposure, uint256 retention, uint256 limit, bool atEdge) external {
+    function bind(uint256 bookSel, uint256 bi, int256 exposure, uint256 retention, uint256 limit, bool atEdge)
+        external
+    {
+        uint256 book = bookSel % 2;
+        Capacity fl = firstLoss[book];
+        Capacity sr = senior[book];
         exposure = int256(bound(uint256(exposure < 0 ? -exposure : exposure), 1, 2_000_000e6));
         if (bi % 2 == 0) exposure = -exposure;
         retention = bound(retention, 0, 300_000e6);
-        uint256 free = cap.totalAssets() - cap.locked();
+        uint256 free = (fl.totalAssets() + sr.totalAssets()) - (fl.locked() + sr.locked());
         if (bi % 3 == 0) limit = bound(limit, 200, 1_000); // dust griefer
         else limit = bound(limit, 1, free + free / 10 + 1);
         (uint256 c,) = treaty.weekWindow(block.timestamp);
         if (atEdge && block.timestamp < c - 1) vm.warp(c - 1);
         int256[] memory e = new int256[](1);
         e[0] = exposure;
-        uint256 balBefore = usdg.balanceOf(address(cap));
-        if (cap.locked() != 0) {
-            // count stacked buckets
+        uint256 balBefore = usdg[book].balanceOf(address(fl)) + usdg[book].balanceOf(address(sr));
+        if (fl.locked() != 0 || sr.locked() != 0) {
+            // count stacked buckets across both of this book's vaults
             uint256 nz;
-            uint256 len = cap.cutoffCursor();
-            for (uint256 i = len; i < _cutoffsLen(); i++) {
-                if (cap.lockedByCutoff(cap.cutoffs(i)) != 0) nz++;
+            uint256 flLen = fl.cutoffCursor();
+            for (uint256 i = flLen; i < _cutoffsLen(fl); i++) {
+                if (fl.lockedByCutoff(fl.cutoffs(i)) != 0) nz++;
+            }
+            uint256 srLen = sr.cutoffCursor();
+            for (uint256 i = srLen; i < _cutoffsLen(sr); i++) {
+                if (sr.lockedByCutoff(sr.cutoffs(i)) != 0) nz++;
             }
             if (nz >= 2) nStacked++;
         }
         vm.prank(buyers[bi % 3]);
-        try treaty.bind(e, retention, limit) {
+        try treaty.bind(book, e, retention, limit) {
             nBind++;
             if (block.timestamp == c - 1) nBindAtCutoffMinus1++;
             if (block.timestamp >= c) vBindAfterCutoff++;
-            gPremIn += usdg.balanceOf(address(cap)) - balBefore;
+            gPremIn[book] += (usdg[book].balanceOf(address(fl)) + usdg[book].balanceOf(address(sr))) - balBefore;
         } catch {}
         if (atEdge && block.timestamp == c - 1) {
             vm.warp(c);
             vm.prank(buyers[bi % 3]);
-            try treaty.bind(e, retention, limit) {
+            try treaty.bind(book, e, retention, limit) {
                 vBindAfterCutoff++;
             } catch {
                 nBindAtCutoffRejected++;
@@ -179,7 +210,7 @@ contract AdvHandler is Test {
         }
     }
 
-    function _cutoffsLen() internal view returns (uint256 n) {
+    function _cutoffsLen(Capacity cap) internal view returns (uint256 n) {
         // cutoffs has no length getter; probe
         while (true) {
             try cap.cutoffs(n) returns (uint40) {
@@ -190,23 +221,34 @@ contract AdvHandler is Test {
         }
     }
 
-    function cutoffsLen() external view returns (uint256) {
-        return _cutoffsLen();
+    function cutoffsLen(uint256 book, uint256 tranche) external view returns (uint256) {
+        return _cutoffsLen(_vault(book % 2, tranche));
     }
 
     function _layer(uint256 id)
         internal
         view
-        returns (uint40 cutoff, uint40 expiry, Treaty.State st, uint256 limit, uint256 premium, uint256 payout)
+        returns (
+            uint256 book,
+            uint40 cutoff,
+            uint40 expiry,
+            Treaty.State st,
+            uint256 limit,
+            uint256 juniorLimit,
+            uint256 premium,
+            uint256 payout
+        )
     {
-        (, cutoff, expiry,,, st,,, limit, premium, payout) = treaty.layers(id);
+        uint16 bk;
+        (,cutoff, expiry, bk,,, st,,, limit, juniorLimit, premium,,, payout,,) = treaty.layers(id);
+        book = bk;
     }
 
     function settle(uint256 idx, uint256 moveBps) external {
         uint256 n = treaty.layerCount();
         if (n == 0) return;
         uint256 id = idx % n;
-        (uint40 cutoff, uint40 expiry, Treaty.State st, uint256 limit, uint256 premium,) = _layer(id);
+        (uint256 book, uint40 cutoff, uint40 expiry, Treaty.State st,,, uint256 premium,) = _layer(id);
         if (st != Treaty.State.Bound) return;
         uint256 w = (uint256(cutoff) - AMON0) / 7 days;
         // Sat 00:00 UTC is always after Friday's close (20:00 UTC EDT or 21:00 UTC EST either
@@ -226,22 +268,23 @@ contract AdvHandler is Test {
             }
         }
         if (weekDead[w]) return;
-        uint256 taBefore = cap.totalAssets();
+        uint256 taBefore = firstLoss[book].totalAssets() + senior[book].totalAssets();
         treaty.fix(id, 0, uint80(3 * w + 3));
-        (,,,,, uint256 payout) = _layer(id);
+        (,,,,,,, uint256 payout) = _layer(id);
         nSettle++;
-        if (cap.totalAssets() + payout != taBefore + premium) vSettleDelta++;
-        limit;
+        if (firstLoss[book].totalAssets() + senior[book].totalAssets() + payout != taBefore + premium) {
+            vSettleDelta++;
+        }
     }
 
     function cancel(uint256 idx) external {
         uint256 n = treaty.layerCount();
         if (n == 0) return;
         uint256 id = idx % n;
-        (,,,, uint256 premium,) = _layer(id);
+        (uint256 book,,,,,, uint256 premium,) = _layer(id);
         try treaty.cancel(id) {
             nCancel++;
-            gRefunded += premium;
+            gRefunded[book] += premium;
         } catch {}
     }
 
@@ -249,11 +292,11 @@ contract AdvHandler is Test {
         uint256 n = treaty.layerCount();
         if (n == 0) return;
         uint256 id = idx % n;
-        (address buyer,,,,,,,,,,) = treaty.layers(id);
-        (,,,,, uint256 payout) = _layer(id);
+        (address buyer,,,,,,,,,,,,,,,,) = treaty.layers(id);
+        (uint256 book,,,,,,, uint256 payout) = _layer(id);
         vm.prank(buyer);
         try treaty.claim(id) {
-            gPaid += payout;
+            gPaid[book] += payout;
         } catch {}
     }
 }
@@ -261,17 +304,28 @@ contract AdvHandler is Test {
 contract AdversarialGateInvariant is Test, TreatyFixture {
     AdvHandler h;
     Treaty treaty;
-    Capacity cap;
-    MockUSDG usdg;
+    Capacity firstLoss0;
+    Capacity senior0;
+    Capacity firstLoss1;
+    Capacity senior1;
+    MockUSDG usdg0;
+    MockUSDG usdg1;
     MockFeed feed;
 
     function setUp() public {
-        usdg = new MockUSDG();
+        usdg0 = new MockUSDG();
+        usdg1 = new MockUSDG();
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = deployTreaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
-        cap = treaty.capacity();
+        address[] memory assets = new address[](2);
+        assets[0] = address(usdg0);
+        assets[1] = address(usdg1);
+        treaty = deployTreaty(assets, address(new Pricer(oneTableId())), feeds, 50, address(0), address(0));
+        firstLoss0 = Capacity(treaty.firstLossVault(0));
+        senior0 = Capacity(treaty.seniorVault(0));
+        firstLoss1 = Capacity(treaty.firstLossVault(1));
+        senior1 = Capacity(treaty.seniorVault(1));
 
         // setReference now needs its own first-round-after-Friday's-close pair, on top
         // of the pre-existing Monday fix round, so each week gets three round ids instead of
@@ -279,7 +333,7 @@ contract AdversarialGateInvariant is Test, TreatyFixture {
         // `fridayCloseOf`, DST-aware and queried live since this 20-week run spans the Nov 2026
         // switch), 3w+3 (Monday fix round, written lazily by the handler, or never for dead
         // weeks, seeded far in the future and overwritten on first settle, unchanged from
-        // before).
+        // before). Shared by both books: one market feed prices both books' layers.
         for (uint256 w; w < AWEEKS; w++) {
             uint256 monday = AMON0 + w * 7 days;
             (uint256 cutoff,) = treaty.weekWindow(monday);
@@ -289,8 +343,11 @@ contract AdversarialGateInvariant is Test, TreatyFixture {
             feed.set(uint80(3 * w + 3), 100e8, AMON0 + 1000 weeks);
         }
         vm.warp(AMON0 + 1 hours);
-        h = new AdvHandler(treaty, usdg, feed);
-        h.deposit(0, 1_000_000e6);
+        h = new AdvHandler(treaty, usdg0, usdg1, feed);
+        h.deposit(0, 0, 0, 1_000_000e6);
+        h.deposit(0, 1, 0, 1_000_000e6);
+        h.deposit(1, 0, 0, 1_000_000e6);
+        h.deposit(1, 1, 0, 1_000_000e6);
         targetContract(address(h));
     }
 
@@ -302,38 +359,82 @@ contract AdversarialGateInvariant is Test, TreatyFixture {
     /// original), and `invariant_ledgersMatchLayers` below, which cross-checks
     /// `locked`/`owed`/`pendingPremium` against `Treaty.layers` directly (this file's handler
     /// drives `settle`/`cancel`/`claim` with adversarial timing, so this is the invariant suite
-    /// that actually exercises the cross-check under gate-edge conditions).
+    /// that actually exercises the cross-check under gate-edge conditions). Checked per book,
+    /// since each book's asset is a fully separate token.
     function invariant_conservation() public view {
-        uint256 bal = usdg.balanceOf(address(cap));
-        assertEq(bal + h.gWithdrawn() + h.gRefunded() + h.gPaid(), h.gDeposited() + h.gPremIn(), "USDG in == out + held");
-        assertGe(cap.totalAssets(), cap.locked(), "every live layer fully backed");
+        assertEq(
+            usdg0.balanceOf(address(firstLoss0)) + usdg0.balanceOf(address(senior0))
+                + h.gWithdrawn(0) + h.gRefunded(0) + h.gPaid(0),
+            h.gDeposited(0) + h.gPremIn(0),
+            "book 0: USDG in == out + held"
+        );
+        assertEq(
+            usdg1.balanceOf(address(firstLoss1)) + usdg1.balanceOf(address(senior1))
+                + h.gWithdrawn(1) + h.gRefunded(1) + h.gPaid(1),
+            h.gDeposited(1) + h.gPremIn(1),
+            "book 1: USDG in == out + held"
+        );
+        assertGe(firstLoss0.totalAssets(), firstLoss0.locked(), "book 0 first-loss fully backed");
+        assertGe(senior0.totalAssets(), senior0.locked(), "book 0 senior fully backed");
+        assertGe(firstLoss1.totalAssets(), firstLoss1.locked(), "book 1 first-loss fully backed");
+        assertGe(senior1.totalAssets(), senior1.locked(), "book 1 senior fully backed");
     }
 
     function invariant_ledgersMatchLayers() public view {
-        uint256 sumLocked;
-        uint256 sumOwed;
-        uint256 sumPending;
+        uint256[2] memory sumLockedFL;
+        uint256[2] memory sumLockedSR;
+        uint256[2] memory sumOwedFL;
+        uint256[2] memory sumOwedSR;
+        uint256[2] memory sumPendingFL;
+        uint256[2] memory sumPendingSR;
         uint256 n = treaty.layerCount();
         for (uint256 id; id < n; id++) {
-            (,,,,, Treaty.State st, bool claimed,, uint256 limit, uint256 premium, uint256 payout) = treaty.layers(id);
+            (
+                ,,, uint16 book,,, Treaty.State st, bool claimed,,
+                uint256 limit, uint256 juniorLimit,, uint256 premiumJunior, uint256 premiumSenior,,
+                uint256 payoutJunior, uint256 payoutSenior
+            ) = treaty.layers(id);
             if (st == Treaty.State.Bound) {
-                sumLocked += limit;
-                sumPending += premium;
+                sumLockedFL[book] += juniorLimit;
+                sumLockedSR[book] += limit - juniorLimit;
+                sumPendingFL[book] += premiumJunior;
+                sumPendingSR[book] += premiumSenior;
             } else if (st == Treaty.State.Settled && !claimed) {
-                sumOwed += payout;
+                sumOwedFL[book] += payoutJunior;
+                sumOwedSR[book] += payoutSenior;
             }
         }
-        assertEq(cap.locked(), sumLocked, "locked == sum(limit of Bound)");
-        assertEq(cap.owed(), sumOwed, "owed == sum(unclaimed payout of Settled)");
-        assertEq(cap.pendingPremium(), sumPending, "pendingPremium == sum(premium of Bound)");
+        assertEq(firstLoss0.locked(), sumLockedFL[0], "book 0 first-loss locked == sum(juniorLimit of Bound)");
+        assertEq(senior0.locked(), sumLockedSR[0], "book 0 senior locked == sum(limit-juniorLimit of Bound)");
+        assertEq(firstLoss0.owed(), sumOwedFL[0], "book 0 first-loss owed == sum(unclaimed payoutJunior)");
+        assertEq(senior0.owed(), sumOwedSR[0], "book 0 senior owed == sum(unclaimed payoutSenior)");
+        assertEq(firstLoss0.pendingPremium(), sumPendingFL[0], "book 0 first-loss pendingPremium == sum(premiumJunior of Bound)");
+        assertEq(senior0.pendingPremium(), sumPendingSR[0], "book 0 senior pendingPremium == sum(premiumSenior of Bound)");
+
+        assertEq(firstLoss1.locked(), sumLockedFL[1], "book 1 first-loss locked == sum(juniorLimit of Bound)");
+        assertEq(senior1.locked(), sumLockedSR[1], "book 1 senior locked == sum(limit-juniorLimit of Bound)");
+        assertEq(firstLoss1.owed(), sumOwedFL[1], "book 1 first-loss owed == sum(unclaimed payoutJunior)");
+        assertEq(senior1.owed(), sumOwedSR[1], "book 1 senior owed == sum(unclaimed payoutSenior)");
+        assertEq(firstLoss1.pendingPremium(), sumPendingFL[1], "book 1 first-loss pendingPremium == sum(premiumJunior of Bound)");
+        assertEq(senior1.pendingPremium(), sumPendingSR[1], "book 1 senior pendingPremium == sum(premiumSenior of Bound)");
     }
 
     function invariant_gateMatchesOracle() public view {
-        assertEq(cap.gateActive(), h.oracleClosed(), "gateActive != (exists Bound layer with cutoff <= now)");
+        assertEq(firstLoss0.gateActive(), h.oracleClosed(0), "book 0 first-loss gateActive != oracle");
+        assertEq(senior0.gateActive(), h.oracleClosed(0), "book 0 senior gateActive != oracle");
+        assertEq(firstLoss1.gateActive(), h.oracleClosed(1), "book 1 first-loss gateActive != oracle");
+        assertEq(senior1.gateActive(), h.oracleClosed(1), "book 1 senior gateActive != oracle");
     }
 
     function invariant_bucketsAndCursor() public view {
-        uint256 len = h.cutoffsLen();
+        _checkBuckets(firstLoss0, 0, true);
+        _checkBuckets(senior0, 0, false);
+        _checkBuckets(firstLoss1, 1, true);
+        _checkBuckets(senior1, 1, false);
+    }
+
+    function _checkBuckets(Capacity cap, uint256 book, bool isFirstLoss) internal view {
+        uint256 len = h.cutoffsLen(book, isFirstLoss ? 0 : 1);
         uint256 cur = cap.cutoffCursor();
         assertLe(cur, len, "cursor <= len");
         uint256 sumBuckets;
@@ -343,11 +444,14 @@ contract AdversarialGateInvariant is Test, TreatyFixture {
             if (i > 0) assertGt(c, cap.cutoffs(i - 1), "cutoffs strictly increasing");
             uint256 expect;
             for (uint256 id; id < n; id++) {
-                (, uint40 lc,,,, Treaty.State st,,, uint256 limit,,) = treaty.layers(id);
-                if (st == Treaty.State.Bound && lc == c) expect += limit;
+                (, uint40 lc,, uint16 bk,,, Treaty.State st,,, uint256 limit, uint256 juniorLimit,,,,,,) =
+                    treaty.layers(id);
+                if (st == Treaty.State.Bound && lc == c && bk == book) {
+                    expect += isFirstLoss ? juniorLimit : (limit - juniorLimit);
+                }
             }
             uint256 b = cap.lockedByCutoff(c);
-            assertEq(b, expect, "bucket == sum(limit of Bound layers with that cutoff)");
+            assertEq(b, expect, "bucket == sum(this tranche's share of limit of Bound layers with that cutoff)");
             if (i < cur) assertEq(b, 0, "bucket behind cursor is drained");
             if (i == cur) assertGt(b, 0, "bucket at cursor is live (no stall)");
             sumBuckets += b;
