@@ -61,49 +61,39 @@ contract ReReview3Findings is Test, TreatyFixture {
         x[0] = e;
     }
 
-    /// MEDIUM F1. Feed stops producing Monday rounds (deprecation, phase change, outage). `bind`
-    /// never looks at the feed, so one dust bind per week keeps a past-cutoff bucket nonzero at
-    /// every instant: layer k is cancellable at C_k + 66h + 7d = C_k + 234h, which is exactly
-    /// expiry of layer k+1, whose cutoff C_k + 168h has already closed the gate. Writers cancel at
-    /// the first legal second and still never see the gate open. Premium is refunded on cancel,
-    /// so the griefer's net USDG cost is 0; only bind gas.
-    function test_F1_deadFeedPlusWeeklyDustBindFreezesForever() public {
-        // Only week 0 has a Friday round; no Monday round ever arrives.
-        feed.set(1, 100e8, MON0 + 4 days + 19 hours);
-        uint256 start = usdg.balanceOf(griefer);
-        uint256[] memory ids = new uint256[](12);
-        uint256 nIds;
-        uint256 openHours;
-        uint256 sampled;
-        for (uint256 t = MON0 + 1 hours + 1; t < MON0 + 10 weeks; t += 1 hours) {
-            vm.warp(t);
-            uint256 inWeek = (t - MON0) % 7 days;
-            // griefer: one 200-unit layer each Monday 00:00-01:00 (weeks 0..9)
-            if (inWeek < 1 hours || (t - MON0) < 2 hours) {
-                (uint256 c,) = treaty.weekWindow(t);
-                if (nIds == 0 || _cutoff(ids[nIds - 1]) != c) {
-                    vm.prank(griefer);
-                    ids[nIds++] = treaty.bind(_one(1e6), 1_000_000e6, 200);
-                }
-            }
-            // writers: cancel every layer at the first legal moment
-            for (uint256 i; i < nIds; i++) {
-                try treaty.cancel(ids[i]) {} catch {}
-            }
-            if (t >= MON0 + CUT && t < MON0 + 9 weeks) {
-                sampled++;
-                if (capacity.maxRedeem(writer) > 0) openHours++;
-            }
-        }
-        console2.log("hours sampled after first cutoff", sampled);
-        console2.log("hours with gate open", openHours);
-        console2.log("griefer net USDG spend (base units)", start - usdg.balanceOf(griefer));
-        assertGt(openHours, 0, "F1: dead feed + weekly dust bind freezes writers for 9 weeks straight");
-    }
+    /// MEDIUM F1, v2 as deployed at 96309c8: `bind` never looked at the feed, so one dust bind
+    /// per week kept a past-cutoff bucket nonzero at every instant: layer k is cancellable at
+    /// C_k + 66h + 7d = C_k + 234h, which is exactly expiry of layer k+1, whose cutoff
+    /// C_k + 168h has already closed the gate. Writers cancel at the first legal second and
+    /// still never see the gate open. Premium is refunded on cancel, so the griefer's net USDG
+    /// cost was 0, only bind gas.
+    ///
+    /// v3 (docs/design/v3.md, decision 3, liveness guard rule 1; "How the reviewed invariants
+    /// carry over", row F1) closes this at the entry point instead of at the cancel side: `bind`
+    /// now requires every market feed to have a round within `MAX_ROUND_AGE` (26h) of
+    /// `block.timestamp`, so a feed that has actually gone dead cannot be bound against at all.
+    /// The griefer cannot even open the second dust layer once the feed is more than 26h stale,
+    /// so the weekly-repeat loop above has no entry point past the first window. Red on
+    /// pre-freshness-check Treaty (the old `bind` would succeed here every time); green now.
+    function test_F1_deadFeedCannotEvenOpenTheGriefingBind() public {
+        // One Friday round in week 0, then the feed goes silent forever (deprecation, phase
+        // change, outage) -- the same "dead feed" premise as the original finding.
+        uint256 lastRoundAt = MON0 + CUT - 30 minutes; // Friday 19:00 UTC, week 0
+        feed.set(1, 100e8, lastRoundAt);
 
-    function _cutoff(uint256 id) internal view returns (uint256 c) {
-        (, uint40 cc,,,,,,,,,) = treaty.layers(id);
-        c = cc;
+        vm.warp(MON0 + 1 hours + 1);
+        vm.prank(griefer);
+        uint256 id = treaty.bind(_one(1e6), 1_000_000e6, 200); // feed still fresh: first bind succeeds
+        (,,,,, Treaty.State st,,,,,) = treaty.layers(id);
+        assertEq(uint8(st), uint8(Treaty.State.Bound), "sanity: bind succeeds while the feed is fresh");
+
+        // Week 1, comfortably before that week's own Friday cutoff, but the feed has now been
+        // silent for well over MAX_ROUND_AGE: the repeat dust bind the old grief depended on must
+        // revert, not silently succeed and refill a past-cutoff bucket.
+        vm.warp(MON0 + 7 days + 1 hours + 1);
+        vm.prank(griefer);
+        vm.expectRevert(Treaty.BadRound.selector);
+        treaty.bind(_one(1e6), 1_000_000e6, 200);
     }
 
     /// LOW F2. `_settle` does `exposure[i] * gapBps` in checked int256. The Pricer only ever
@@ -134,6 +124,10 @@ contract ReReview3Findings is Test, TreatyFixture {
     function test_F3_jitDepositAfterBindDilutesPremium() public {
         address buyer = makeAddr("buyer");
         _fund(buyer, 10_000_000e6);
+        // v3 bind() requires every market's feed to carry a round within MAX_ROUND_AGE (26h) of
+        // now (decision 3, liveness guard rule 1); setUp() warps to MON0 + 1h but never seeds the
+        // feed, so bind() would revert BadRound without this fresh round 0.
+        feed.set(0, 100e8, MON0 + 1 hours - 1);
         vm.prank(buyer);
         uint256 id = treaty.bind(_one(-2_000_000e6), 0, 100_000e6); // fully uses writer's capacity
         (,,,,,,,,, uint256 premium,) = treaty.layers(id);

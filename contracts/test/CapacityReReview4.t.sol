@@ -159,6 +159,9 @@ contract ReReview4 is Test, TreatyFixture {
         usdg.approve(address(c), type(uint256).max);
         vm.prank(writer);
         c.deposit(1_000_000e6, writer);
+        // v3 bind() requires every market's feed to carry a round within MAX_ROUND_AGE (26h) of
+        // now (decision 3, liveness guard rule 1); `feed` has no round yet at this point.
+        feed.set(0, 100e8, block.timestamp - 1);
         vm.prank(buyer);
         uint256 id = t.bind(_one(-2_000_000e6), 0, 1_000_000e6);
         (uint256 cutoff,) = t.weekWindow(MON0);

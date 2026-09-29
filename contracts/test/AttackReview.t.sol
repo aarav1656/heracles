@@ -205,7 +205,10 @@ contract AttackReviewTest is Test, TreatyFixture {
     function test_M2_staleReferenceRoundReverts() public {
         vm.prank(buyer);
         uint256 id = treaty.bind(_one(1_000_000e6), 20_000e6, 60_000e6);
-        feed.set(2, 100e8, SAT_MIDNIGHT - 25 hours);
+        // v3 rule 5: the round in effect at close must itself be within MAX_ROUND_AGE (26h) of
+        // FRI_CLOSE. 27h before close is unambiguously stale under the new rule (the old 25h
+        // offset was calibrated against the pre-v3 boundary and now falls inside the 26h window).
+        feed.set(2, 100e8, FRI_CLOSE - 27 hours);
         vm.warp(SAT_MIDNIGHT + 1);
         vm.expectRevert(Treaty.BadRound.selector);
         treaty.setReference(id, 0, 2);
