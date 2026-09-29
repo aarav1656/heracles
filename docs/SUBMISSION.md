@@ -64,11 +64,11 @@ https://heracles-virid-seven.vercel.app
 
 | Contract | Address |
 |---|---|
-| Treaty | [0x222AFa24403d8118a66C5b2F0f26Aa0ea91Dd794](https://sepolia.arbiscan.io/address/0x222AFa24403d8118a66C5b2F0f26Aa0ea91Dd794) (Sourcify exact match) |
-| Capacity | [0x29750a2018934f1Ca52d1F6940d89AAE8E34bd3D](https://sepolia.arbiscan.io/address/0x29750a2018934f1Ca52d1F6940d89AAE8E34bd3D) (Sourcify exact match) |
+| Treaty | [0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27](https://sepolia.arbiscan.io/address/0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27) (Sourcify exact match) |
+| Capacity | [0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159](https://sepolia.arbiscan.io/address/0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159) (Sourcify exact match) |
 | Pricer (Rust/Stylus) | [0xbe99217180a5fcb83372375b0928c971dfa71f88](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) |
 | USDG (Paxos testnet) | [0xFFC95faa3d63Cde504a05B567C600B78C0b41892](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) |
 
-Deploy transactions: Treaty and Capacity [0xa3583c8b...dba3eb423](https://sepolia.arbiscan.io/tx/0xa3583c8b74f8fd3b0a5d51491893e14a2e3b888e5b4491eb115c4e2dba3eb423), Pricer [0x01a37192...b4ee945e7d](https://sepolia.arbiscan.io/tx/0x01a37192c882dc7f856baf81bbee70679267b983723ca20e7b9460b4ee945e7d).
+Deploy transactions: Treaty and Capacity [0x7eb7e54a...9369d46d61](https://sepolia.arbiscan.io/tx/0x7eb7e54ab75b662a0025074f637dad40125960a1bca4abf0bcc0259369d46d61), Pricer [0x01a37192...b4ee945e7d](https://sepolia.arbiscan.io/tx/0x01a37192c882dc7f856baf81bbee70679267b983723ca20e7b9460b4ee945e7d).
 
 A live quote from the deployed Stylus pricer at block 313,690,038, long 2,000,000 USDG of SPY with a 20,000 USDG retention and a 60,000 USDG limit: premium 1,676.722158 USDG. The same call on the Solidity twin at block 313,704,736 returned identical numbers and used 8.01x more L2 execution gas.

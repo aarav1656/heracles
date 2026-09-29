@@ -4,8 +4,8 @@ import type { Address } from 'viem';
 
 export const CHAIN_ID = 421614 as const;
 export const RPC_URL = "https://sepolia-rollup.arbitrum.io/rpc" as const;
-export const TREATY_ADDRESS = "0x222AFa24403d8118a66C5b2F0f26Aa0ea91Dd794" as Address;
-export const CAPACITY_ADDRESS = "0x29750a2018934f1Ca52d1F6940d89AAE8E34bd3D" as Address;
+export const TREATY_ADDRESS = "0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27" as Address;
+export const CAPACITY_ADDRESS = "0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159" as Address;
 export const PRICER_ADDRESS = "0xbe99217180a5fcb83372375b0928c971dfa71f88" as Address;
 export const USDG_ADDRESS = "0xFFC95faa3d63Cde504a05B567C600B78C0b41892" as Address;
 export const FEED_ADDRESSES = ["0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06"] as Address[];

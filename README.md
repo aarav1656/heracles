@@ -17,19 +17,19 @@ Live app: https://heracles-virid-seven.vercel.app (reads the book below from the
 
 | Contract | Address | Role |
 |---|---|---|
-| Treaty | [`0x222AFa24403d8118a66C5b2F0f26Aa0ea91Dd794`](https://sepolia.arbiscan.io/address/0x222AFa24403d8118a66C5b2F0f26Aa0ea91Dd794) | bind, fix, settle, claim |
-| Capacity | [`0x29750a2018934f1Ca52d1F6940d89AAE8E34bd3D`](https://sepolia.arbiscan.io/address/0x29750a2018934f1Ca52d1F6940d89AAE8E34bd3D) | ERC-4626 USDG writer vault, depositWithPermit, created by the Treaty constructor |
+| Treaty | [`0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27`](https://sepolia.arbiscan.io/address/0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27) | bind, fix, settle, claim |
+| Capacity | [`0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159`](https://sepolia.arbiscan.io/address/0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159) | ERC-4626 USDG writer vault, depositWithPermit, created by the Treaty constructor |
 | Pricer (Rust/Stylus) | [`0xbe99217180a5fcb83372375b0928c971dfa71f88`](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) | on-chain premium, measured 8.01x less L2 execution gas than the Solidity twin |
 | USDG (Paxos testnet) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) | settlement asset |
 
 Redeployed 2026-09-28: Treaty and Capacity share one deploy tx
-([`0xa3583c8b...dba3eb423`](https://sepolia.arbiscan.io/tx/0xa3583c8b74f8fd3b0a5d51491893e14a2e3b888e5b4491eb115c4e2dba3eb423),
-block 313,708,353, status success), and the Stylus Pricer above is a fresh deploy too, tx
+([`0x7eb7e54a...9369d46d61`](https://sepolia.arbiscan.io/tx/0x7eb7e54ab75b662a0025074f637dad40125960a1bca4abf0bcc0259369d46d61),
+block 313,869,456, status success), and the Stylus Pricer above is a fresh deploy too, tx
 [`0x01a37192...b4ee945e7d`](https://sepolia.arbiscan.io/tx/0x01a37192c882dc7f856baf81bbee70679267b983723ca20e7b9460b4ee945e7d),
 block 313,689,917: 25,765 bytes compressed, deployed as two fragments behind a 48-byte
 root contract, constructed with table id `[2]` (SPY). Treaty and Capacity are
-Sourcify-verified (`exact_match`, both creation and runtime, matchId 53784936 and
-53784937, checked live via `sourcify.dev/server/v2/contract/421614/<address>`); the
+Sourcify-verified (`exact_match`, both creation and runtime, matchId 53809711 and
+53809724, checked live via `sourcify.dev/server/v2/contract/421614/<address>`); the
 Pricer is not, since Sourcify's Solidity route doesn't take Stylus/WASM bytecode and
 `cargo stylus verify`'s own reproducible-build route needs a Docker daemon that was
 unavailable in this deploy run.

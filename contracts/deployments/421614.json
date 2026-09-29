@@ -1,20 +1,20 @@
 {
   "chainId": 421614,
   "chainName": "Arbitrum Sepolia",
-  "deployedAt": "2026-09-28",
+  "deployedAt": "2026-09-29",
   "deployer": "0x39ef83fbB0BA61A5b4169fF5ce21Fd89e25aab37",
-  "note": "Full redeploy after the 2026-09-28 security and economics re-review (P1 to P5, H1/H2, repricing). All three contracts are new.",
+  "note": "Treaty and Capacity redeployed 2026-09-29 from source whose comments were rewritten to describe each fix directly (no code change); the Stylus Pricer is the 2026-09-28 deploy, reused unchanged.",
   "contracts": {
     "Treaty": {
-      "address": "0x222AFa24403d8118a66C5b2F0f26Aa0ea91Dd794",
+      "address": "0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27",
       "role": "bind, setReference, voidReference, fix, cancel, claim",
-      "deployTx": "0xa3583c8b74f8fd3b0a5d51491893e14a2e3b888e5b4491eb115c4e2dba3eb423",
-      "block": 313708353,
+      "deployTx": "0x7eb7e54ab75b662a0025074f637dad40125960a1bca4abf0bcc0259369d46d61",
+      "block": 313869456,
       "verification": {
         "method": "sourcify",
-        "matchId": "53784936",
+        "matchId": "53809711",
         "matchType": "exact_match (creation and runtime)",
-        "verifiedAt": "2026-09-28T19:39:52Z"
+        "verifiedAt": "2026-09-29T06:55:58Z"
       },
       "constructorArgs": {
         "feeds": [
@@ -25,15 +25,15 @@
       }
     },
     "Capacity": {
-      "address": "0x29750a2018934f1Ca52d1F6940d89AAE8E34bd3D",
+      "address": "0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159",
       "role": "ERC-4626 USDG writer vault, depositWithPermit (deployed by the Treaty constructor)",
-      "deployTx": "0xa3583c8b74f8fd3b0a5d51491893e14a2e3b888e5b4491eb115c4e2dba3eb423",
-      "block": 313708353,
+      "deployTx": "0x7eb7e54ab75b662a0025074f637dad40125960a1bca4abf0bcc0259369d46d61",
+      "block": 313869456,
       "verification": {
         "method": "sourcify",
-        "matchId": "53784937",
+        "matchId": "53809724",
         "matchType": "exact_match (creation and runtime)",
-        "verifiedAt": "2026-09-28T19:39:53Z"
+        "verifiedAt": "2026-09-29T06:56:12Z"
       }
     },
     "Pricer": {
@@ -66,7 +66,7 @@
     ],
     "feedsNote": "SPY/USD, the one live equity feed Arbitrum Sepolia carries."
   },
-  "sourceOfTruth": "Read live on 2026-09-28 against https://sepolia-rollup.arbitrum.io/rpc: Treaty.pricer() = Pricer, Treaty.capacity() = Capacity, Treaty.usdg() = USDG, Treaty.minRateOnLineBps() = 50; Pricer.tableIdAt(0) = 2, tableIdAt(1) reverts MissingTable; Sourcify v2 API for the two verifications.",
+  "sourceOfTruth": "Read live on 2026-09-29 against https://sepolia-rollup.arbitrum.io/rpc: Treaty.pricer() = Pricer, Treaty.capacity() = Capacity, Treaty.usdg() = USDG, Treaty.minRateOnLineBps() = 50; Pricer.tableIdAt(0) = 2, tableIdAt(1) reverts MissingTable; Sourcify v2 API for the two verifications.",
   "rpc": "https://sepolia-rollup.arbitrum.io/rpc",
   "usdg": {
     "address": "0xFFC95faa3d63Cde504a05B567C600B78C0b41892",
