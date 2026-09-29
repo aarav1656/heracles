@@ -16,7 +16,7 @@ contract AttackTest is Test {
     uint256 constant T0 = 1_790_000_000; // a Monday
     uint256 constant CUTOFF = 1_790_364_600; // that week's Fri 19:30 UTC
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
-    // Item 6: setReference now waits for `fridayCloseOf(fridayCutoff)` (Friday's official US
+    // setReference now waits for `fridayCloseOf(fridayCutoff)` (Friday's official US
     // market close), not "Saturday 00:00 UTC". T0's week is DST (EDT), so close = CUTOFF + 30
     // minutes.
     uint256 constant REF_TIME = CUTOFF + 30 minutes;

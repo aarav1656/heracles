@@ -101,7 +101,7 @@ contract GapTreatyForkLifecycleTest is Test {
         assertEq(capacity.locked(), LIMIT);
         console.log("fork lifecycle: Solidity-twin premium (USDG, 6dp)", premium);
 
-        // Item 6: setReference now waits for Friday's official close (`fridayCloseOf`), not
+        // setReference now waits for Friday's official close (`fridayCloseOf`), not
         // "Saturday 00:00 UTC"; round 2 is the first fresh round at/after that close, round 1
         // (set above, an hour before the bind cutoff) is its required strictly-earlier
         // predecessor.

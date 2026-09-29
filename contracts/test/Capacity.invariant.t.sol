@@ -208,7 +208,7 @@ contract CapacityInvariantTest is Test {
         treaty = new Treaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
         cap = treaty.capacity();
 
-        // Item 6: setReference now needs its own first-round-after-Friday's-close pair, so each
+        // setReference now needs its own first-round-after-Friday's-close pair, so each
         // week gets three round ids: 2w+1 -> 3w+1 (pre-close predecessor, unchanged Fri 19:00
         // seed), a new 3w+2 (the actual Friday reference round, at `fridayCloseOf`, queried live
         // since this WEEKS=16 run spans the Nov 2026 DST switch), 3w+3 (Monday fix round,

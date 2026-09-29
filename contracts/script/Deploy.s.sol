@@ -42,7 +42,7 @@ contract Deploy is Script {
     address constant SEQUENCER_FEED = address(0); // no Arbitrum Sepolia equivalent exists
 
     function run() external returns (Treaty treaty) {
-        // Mainnet sequencer-feed trap (loss-audit item 7, docs/loss/A-heracles.md): this script
+        // Mainnet sequencer-feed trap: this script
         // hardcodes `SEQUENCER_FEED = address(0)` and `SPY_FEED`'s Sepolia address above. Nothing
         // previously stopped it from being run against a different `--rpc-url` (Arbitrum One,
         // chain id 42161) and silently deploying a mainnet Treaty with the sequencer-downtime

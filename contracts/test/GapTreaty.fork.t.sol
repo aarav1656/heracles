@@ -9,7 +9,7 @@ import {Pricer} from "../src/Pricer.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
 
 /// Proves the multi-market mechanism against live Arbitrum One state, pinned to a fixed block
-/// (Item 3: an unreachable RPC now fails the suite, it does not skip it). Arbitrum Sepolia has
+/// (an unreachable RPC fails the suite, it does not skip it). Arbitrum Sepolia has
 /// only one live equity feed (SPY), so this fork test is the only place several markets are
 /// exercised together against real oracle state; the Sepolia deploy binds SPY alone.
 ///

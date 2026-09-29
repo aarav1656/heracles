@@ -12,7 +12,7 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 contract TreatyTest is Test {
     uint256 constant T0 = 1_790_000_000; // a Monday; that week's Fri 19:30/Mon 13:30 below
     uint256 constant CUTOFF = 1_790_364_600; // Fri 2026-09-25 19:30 UTC (T0's week)
-    // Item 6: setReference now waits for `fridayCloseOf(fridayCutoff)`, Friday's official US
+    // setReference now waits for `fridayCloseOf(fridayCutoff)`, Friday's official US
     // market close, not "Saturday 00:00 UTC". T0's week is DST (EDT), so close = Friday 20:00
     // UTC = CUTOFF + 30 minutes (CUTOFF is Friday 19:30 UTC). `SAT_MIDNIGHT` is kept only as a
     // recognizable landmark comment for readers used to the old rule; every timing call below
@@ -122,7 +122,7 @@ contract TreatyTest is Test {
         treaty.bind(_exposure(), RETENTION, 0);
     }
 
-    /// Item 6: a round whose `updatedAt` predates Friday's close (`REF_TIME`) is too old to serve
+    /// a round whose `updatedAt` predates Friday's close (`REF_TIME`) is too old to serve
     /// as the reference round, even once we're well past close, `setReference` must reject it
     /// (`BadRound`), not silently accept whatever round number is passed.
     function test_setReferenceRevertsIfFridayRoundTooOld() public {

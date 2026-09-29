@@ -272,7 +272,7 @@ contract AdversarialGateInvariant is Test {
         treaty = new Treaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
         cap = treaty.capacity();
 
-        // Item 6: setReference now needs its own first-round-after-Friday's-close pair, on top
+        // setReference now needs its own first-round-after-Friday's-close pair, on top
         // of the pre-existing Monday fix round, so each week gets three round ids instead of
         // two: 3w+1 (pre-close predecessor), 3w+2 (the actual Friday reference round, at
         // `fridayCloseOf`, DST-aware and queried live since this 20-week run spans the Nov 2026

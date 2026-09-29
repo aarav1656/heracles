@@ -91,7 +91,7 @@ contract AttackReviewTest is Test {
     {
         vm.prank(who);
         id = treaty.bind(exposure, retention, limit);
-        // Item 6: setReference now waits for `fridayCloseOf` (FRI_CLOSE), not Saturday midnight;
+        // setReference now waits for `fridayCloseOf` (FRI_CLOSE), not Saturday midnight;
         // round 1 (set in setUp, FRI_1900 - 10 minutes) is its required strictly-earlier
         // predecessor, round 2 is the first fresh round at/after FRI_CLOSE.
         feed.set(2, 100e8, FRI_CLOSE);

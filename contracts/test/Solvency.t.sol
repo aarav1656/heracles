@@ -18,7 +18,7 @@ contract SolvencyTest is Test {
     uint256 constant T0 = 1_790_000_000; // a Monday
     uint256 constant CUTOFF = 1_790_364_600; // that week's Fri 19:30 UTC
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
-    // Item 6: setReference now waits for `fridayCloseOf` (T0's week is DST/EDT, so close =
+    // setReference now waits for `fridayCloseOf` (T0's week is DST/EDT, so close =
     // CUTOFF + 30 minutes), not Saturday midnight.
     uint256 constant REF_TIME = CUTOFF + 30 minutes;
     uint40 constant EXPIRY = uint40(1_790_602_200); // that week's Mon 13:30 UTC

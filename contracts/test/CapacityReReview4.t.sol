@@ -62,7 +62,7 @@ contract ReReview4 is Test {
         vm.prank(buyer);
         try treaty.bind(_one(-int256(limit) * 20), 0, limit) returns (uint256 id) {
             if (state == 2) return;
-            // Item 6: round 1 is the pre-close predecessor, round 2 is the actual Friday-close
+            // round 1 is the pre-close predecessor, round 2 is the actual Friday-close
             // reference round (setReference must consume round 2, not round 1).
             (uint256 cutoff,) = treaty.weekWindow(MON0);
             uint256 refTime = treaty.fridayCloseOf(cutoff);

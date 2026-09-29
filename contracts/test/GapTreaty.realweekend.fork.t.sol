@@ -7,7 +7,7 @@ import {Treaty} from "../src/Treaty.sol";
 import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 
-/// Item 3 (docs/loss/A-heracles.md): the full bind -> setReference -> fix -> claim lifecycle,
+/// The full bind -> setReference -> fix -> claim lifecycle,
 /// replayed on a fork of Arbitrum One against the real SPY/USD Chainlink feed's real recorded
 /// rounds for a real past weekend (2026-09-25 close to 2026-09-28 open), not a MockFeed. Every
 /// round id, price and timestamp below was read live off `0x46306F3795342117721D8DEd50fbcF6DF2b3cc10`
