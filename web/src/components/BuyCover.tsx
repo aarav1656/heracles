@@ -61,7 +61,7 @@ export function BuyCover({ terms, quote, book, win, now }: {
   return (
     <div className="buybox">
       {short ? (
-        <button className="buy" disabled>Buy cover</button>
+        <button className="buy" disabled>Buy cover, waiting for writer backing</button>
       ) : !me.address ? (
         <Wallet label="Connect to buy" className="buy" />
       ) : needsApprove ? (

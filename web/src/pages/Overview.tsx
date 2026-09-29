@@ -215,7 +215,7 @@ export function Overview() {
 
       <div className="bar">
         <div>{unbacked ? 'No writer backing yet' : <>Premium<b>{price ? `${usd2.format(toUsd(price.premium))} USDG` : '…'}</b></>}</div>
-        {unbacked ? <button className="buy" disabled>Buy cover</button> : <a className="buy" href="#buy">Buy cover</a>}
+        {unbacked ? <button className="buy" disabled>Waiting for backing</button> : <a className="buy" href="#buy">Buy cover</a>}
       </div>
     </div>
   );
