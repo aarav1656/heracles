@@ -76,7 +76,15 @@ contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
     address writer = makeAddr("real-weekend-writer");
     address buyer = makeAddr("real-weekend-buyer");
 
+    // Gated on FORK_TESTS so a plain `forge test` (CI default, no env var) skips this whole
+    // file instead of hitting a public RPC on every run, same as GapTreaty.fork.t.sol and
+    // GapTreatyFork.lifecycle.t.sol. Checked before `createSelectFork` runs, so with
+    // `FORK_TESTS=1` set an unreachable RPC still fails setUp, never silently skipped.
     function setUp() public {
+        if (!vm.envOr("FORK_TESTS", false)) {
+            vm.skip(true);
+            return;
+        }
         vm.createSelectFork(RPC, FORK_BLOCK);
 
         address[] memory feeds = new address[](1);
