@@ -72,7 +72,8 @@ contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
     uint256 constant LIMIT = 60_000e6;
 
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
     address writer = makeAddr("real-weekend-writer");
     address buyer = makeAddr("real-weekend-buyer");
 
@@ -98,25 +99,30 @@ contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
         // nothing to do with this test (item 7 tracks the mainnet sequencer-feed wiring
         // separately; this test is about the settlement math against real feed data).
         treaty = deployTreaty(address(USDG), address(new Pricer(tableIds)), feeds, 50, address(0));
-        capacity = treaty.capacity();
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
 
         deal(address(USDG), writer, 1_000_000e6);
         vm.prank(writer);
-        USDG.approve(address(capacity), type(uint256).max);
+        USDG.approve(address(firstLoss), type(uint256).max);
         vm.prank(writer);
-        capacity.deposit(500_000e6, writer);
+        firstLoss.deposit(500_000e6, writer);
+        vm.prank(writer);
+        USDG.approve(address(senior), type(uint256).max);
+        vm.prank(writer);
+        senior.deposit(500_000e6, writer);
 
         deal(address(USDG), buyer, 1_000_000e6);
         vm.prank(buyer);
-        USDG.approve(address(capacity), type(uint256).max);
+        USDG.approve(address(treaty), type(uint256).max);
     }
 
     function _layerState(uint256 id) internal view returns (Treaty.State s) {
-        (,,,,, s,,,,,) = treaty.layers(id);
+        (,,,,, s,,,,,) = layerBasics(treaty, id);
     }
 
     function _layerPayout(uint256 id) internal view returns (uint256 p) {
-        (,,,,,,,,,, p) = treaty.layers(id);
+        (,,,,,,,,,, p) = layerBasics(treaty, id);
     }
 
     function test_realWeekend_bindReferenceFixAndClaim() public {
@@ -125,10 +131,10 @@ contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
         int256[] memory exposure = new int256[](1);
         exposure[0] = int256(EXPOSURE);
         vm.prank(buyer);
-        uint256 id = treaty.bind(exposure, RETENTION, LIMIT);
-        assertEq(capacity.locked(), LIMIT);
+        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT);
+        assertEq(firstLoss.locked() + senior.locked(), LIMIT);
 
-        (address l_buyer,,, uint8 referencedCount,,,,,, uint256 premium,) = treaty.layers(id);
+        (address l_buyer,,, uint8 referencedCount,,,,,, uint256 premium,) = layerBasics(treaty, id);
         assertEq(l_buyer, buyer);
         assertGt(premium, 0);
         assertEq(referencedCount, 0);
@@ -174,14 +180,14 @@ contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
         // `_settle` (inside fix, above) already moved the layer's reservation out of `locked`
         // entirely (C1: the unused remainder frees immediately, `payout` moves into `owed`), so
         // `locked` is already 0 here; `claim` only moves `owed` capital to the buyer.
-        assertEq(capacity.locked(), 0, "settle must have already released the full reserved limit");
-        uint256 owedBefore = capacity.owed();
+        assertEq(firstLoss.locked() + senior.locked(), 0, "settle must have already released the full reserved limit");
+        uint256 owedBefore = firstLoss.owed() + senior.owed();
         assertEq(owedBefore, expectedPayout, "settle must have earmarked exactly the payout as owed");
         uint256 buyerBefore = USDG.balanceOf(buyer);
         vm.prank(buyer);
         treaty.claim(id);
         assertEq(USDG.balanceOf(buyer), buyerBefore + expectedPayout, "claim must move exactly the settled payout");
-        assertEq(capacity.owed(), owedBefore - expectedPayout, "claim must clear what it paid out of owed");
+        assertEq(firstLoss.owed() + senior.owed(), owedBefore - expectedPayout, "claim must clear what it paid out of owed");
     }
 
     function _feedAnswer(uint80 roundId) internal view returns (int256 answer) {

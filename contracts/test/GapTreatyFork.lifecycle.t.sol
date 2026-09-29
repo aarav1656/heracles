@@ -35,7 +35,8 @@ contract GapTreatyForkLifecycleTest is Test, TreatyFixture {
     uint256 constant FORK_BLOCK = 313_607_081;
 
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
     MockFeed feed;
     address writer = makeAddr("fork-writer");
     address buyer = makeAddr("fork-buyer");
@@ -64,29 +65,34 @@ contract GapTreatyForkLifecycleTest is Test, TreatyFixture {
         // sequencerUptimeFeed left at address(0): Sepolia has no equivalent feed (SECURITY-REVIEW.md
         // M2), same disabled-on-testnet posture as the live 421614 deploy.
         treaty = deployTreaty(address(USDG), address(new Pricer(oneTableId())), feeds, 50, address(0));
-        capacity = treaty.capacity();
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
 
         deal(address(USDG), writer, 1_000_000e6);
         vm.prank(writer);
-        USDG.approve(address(capacity), type(uint256).max);
+        USDG.approve(address(firstLoss), type(uint256).max);
         vm.prank(writer);
-        capacity.deposit(500_000e6, writer);
+        firstLoss.deposit(500_000e6, writer);
+        vm.prank(writer);
+        USDG.approve(address(senior), type(uint256).max);
+        vm.prank(writer);
+        senior.deposit(500_000e6, writer);
 
         deal(address(USDG), buyer, 1_000_000e6);
         vm.prank(buyer);
-        USDG.approve(address(capacity), type(uint256).max);
+        USDG.approve(address(treaty), type(uint256).max);
     }
 
     function _layerState(uint256 id) internal view returns (Treaty.State s) {
-        (,,,,, s,,,,,) = treaty.layers(id);
+        (,,,,, s,,,,,) = layerBasics(treaty, id);
     }
 
     function _layerPayout(uint256 id) internal view returns (uint256 p) {
-        (,,,,,,,,,, p) = treaty.layers(id);
+        (,,,,,,,,,, p) = layerBasics(treaty, id);
     }
 
     function _layerPremium(uint256 id) internal view returns (uint256 p) {
-        (,,,,,,,,, p,) = treaty.layers(id);
+        (,,,,,,,,, p,) = layerBasics(treaty, id);
     }
 
     /// Warps from whatever the live Sepolia fork's "now" is into next week's bind window (Monday
@@ -104,10 +110,10 @@ contract GapTreatyForkLifecycleTest is Test, TreatyFixture {
         vm.prank(buyer);
         int256[] memory exposure = new int256[](1);
         exposure[0] = EXPOSURE;
-        uint256 id = treaty.bind(exposure, RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT);
         uint256 premium = _layerPremium(id);
         assertGt(premium, 0);
-        assertEq(capacity.locked(), LIMIT);
+        assertEq(firstLoss.locked() + senior.locked(), LIMIT);
         console.log("fork lifecycle: Solidity-twin premium (USDG, 6dp)", premium);
 
         // setReference now waits for Friday's official close (`fridayCloseOf`), not
@@ -132,7 +138,7 @@ contract GapTreatyForkLifecycleTest is Test, TreatyFixture {
         vm.prank(buyer);
         treaty.claim(id);
         assertEq(USDG.balanceOf(buyer), buyerBefore + LIMIT);
-        assertEq(capacity.locked(), 0);
+        assertEq(firstLoss.locked() + senior.locked(), 0);
     }
 
     /// A layer whose market never produces a fresh Monday round within GRACE (SECURITY-REVIEW.md
@@ -151,7 +157,7 @@ contract GapTreatyForkLifecycleTest is Test, TreatyFixture {
         vm.prank(buyer);
         int256[] memory exposure = new int256[](1);
         exposure[0] = EXPOSURE;
-        uint256 id = treaty.bind(exposure, RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT);
         uint256 premium = _layerPremium(id);
         uint256 buyerBefore = USDG.balanceOf(buyer);
 
@@ -164,7 +170,7 @@ contract GapTreatyForkLifecycleTest is Test, TreatyFixture {
         treaty.cancel(id);
 
         assertEq(uint8(_layerState(id)), uint8(Treaty.State.Cancelled));
-        assertEq(capacity.locked(), 0);
+        assertEq(firstLoss.locked() + senior.locked(), 0);
         assertEq(USDG.balanceOf(buyer), buyerBefore + premium);
     }
 }

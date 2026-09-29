@@ -25,7 +25,7 @@ contract LivenessTest is Test, TreatyFixture {
     uint80 constant P1 = uint80(uint256(1) << 64);
     uint80 constant P2 = uint80(uint256(2) << 64);
 
-    function _deploy(uint256 n, address livenessFeed) internal returns (Treaty t, Capacity c) {
+    function _deploy(uint256 n, address livenessFeed) internal returns (Treaty t, Capacity firstLoss, Capacity senior) {
         usdg = new MockUSDG();
         feed = new MockFeed();
         feedB = new MockFeed();
@@ -35,32 +35,37 @@ contract LivenessTest is Test, TreatyFixture {
         t = deployTreaty(
             address(usdg), address(new Pricer(n == 1 ? oneTableId() : nTableIds(n))), feeds, 50, address(0), livenessFeed
         );
-        c = t.capacity();
+        firstLoss = Capacity(t.firstLossVault(0));
+        senior = Capacity(t.seniorVault(0));
         usdg.mint(writer, 1_000_000e6);
         vm.startPrank(writer);
-        usdg.approve(address(c), type(uint256).max);
-        c.deposit(500_000e6, writer);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        firstLoss.deposit(500_000e6, writer);
+        usdg.approve(address(senior), type(uint256).max);
+        senior.deposit(500_000e6, writer);
         vm.stopPrank();
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);
-        usdg.approve(address(c), type(uint256).max);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        vm.prank(buyer);
+        usdg.approve(address(senior), type(uint256).max);
     }
 
     function _bind(Treaty t, uint256 n) internal returns (uint256 id) {
         int256[] memory e = new int256[](n);
         for (uint256 i; i < n; i++) e[i] = 1_000_000e6;
         vm.prank(buyer);
-        id = t.bind(e, 0, 60_000e6);
+        id = t.bind(0, e, 0, 60_000e6);
     }
 
     function _layerState(Treaty t, uint256 id) internal view returns (Treaty.State s) {
-        (,,,,, s,,,,,) = t.layers(id);
+        (,,,,, s,,,,,) = layerBasics(t, id);
     }
 
     /// Liveness guard rule 1: every market's feed must have a round within MAX_ROUND_AGE (26h) of
     /// `block.timestamp`, or bind must reject a layer priced off a feed that is already dead.
     function test_bind_revertsOnStaleFeed() public {
-        (Treaty t,) = _deploy(1, address(0));
+        (Treaty t,,) = _deploy(1, address(0));
         uint256 bindTime = FRI + 10 hours;
         feed.set(1, 770e8, bindTime - 26 hours - 1 seconds); // 26h + 1s old at bind time
         vm.warp(bindTime);
@@ -68,7 +73,7 @@ contract LivenessTest is Test, TreatyFixture {
         int256[] memory e = new int256[](1);
         e[0] = 1_000_000e6;
         vm.expectRevert(Treaty.BadRound.selector);
-        t.bind(e, 0, 60_000e6);
+        t.bind(0, e, 0, 60_000e6);
     }
 
     /// Same check, written as `updatedAt + MAX_ROUND_AGE >= block.timestamp` (addition), must not
@@ -77,7 +82,7 @@ contract LivenessTest is Test, TreatyFixture {
     /// subtraction-based check (`block.timestamp - updatedAt`) would revert with an arithmetic
     /// panic here instead of evaluating the freshness condition normally.
     function test_bind_warpSafe() public {
-        (Treaty t,) = _deploy(1, address(0));
+        (Treaty t,,) = _deploy(1, address(0));
         uint256 bindTime = FRI + 10 hours;
         feed.set(1, 770e8, bindTime + 5 hours); // round's own timestamp is ahead of block.timestamp
         vm.warp(bindTime);
@@ -88,7 +93,7 @@ contract LivenessTest is Test, TreatyFixture {
     /// voidReference's stale proof: the round in effect at close is real (correct phase, correct
     /// timing relative to close) but was already silent for more than MAX_ROUND_AGE before close.
     function test_void_stale() public {
-        (Treaty t,) = _deploy(1, address(0));
+        (Treaty t,,) = _deploy(1, address(0));
         feed.set(P1 | 1, 770e8, CLOSE - 27 hours); // in effect at close, but stale by 1h
         vm.warp(CLOSE - 1 hours);
         uint256 id = _bind(t, 1);
@@ -103,7 +108,7 @@ contract LivenessTest is Test, TreatyFixture {
     /// was actually in effect at close now sits in an older, unreachable phase; the new phase's
     /// own first round already prints after close, proving the crossing happened too late.
     function test_void_phase() public {
-        (Treaty t,) = _deploy(1, address(0));
+        (Treaty t,,) = _deploy(1, address(0));
         feed.set(P1 | 1, 770e8, CLOSE - 3 hours); // would have been in effect at close...
         vm.warp(CLOSE - 1 hours);
         uint256 id = _bind(t, 1);
@@ -118,7 +123,7 @@ contract LivenessTest is Test, TreatyFixture {
     /// runs first locks the outcome, and the other reverts unconditionally afterward regardless of
     /// which round id it is called with (both guards run before either function reads the feed).
     function testFuzz_setAndVoidExclusive(bool voidFirst, uint80 laterRoundId) public {
-        (Treaty t,) = _deploy(1, address(0));
+        (Treaty t,,) = _deploy(1, address(0));
         feed.set(P1 | 1, 770e8, CLOSE - 27 hours); // in effect at close, stale: valid for voidReference
         vm.warp(CLOSE - 1 hours);
         uint256 id = _bind(t, 1);
@@ -144,7 +149,7 @@ contract LivenessTest is Test, TreatyFixture {
     /// genuinely dead (no round past expiry at all).
     function test_cancel_revertsWhileChainNotProvenLive() public {
         MockFeed liveness = new MockFeed();
-        (Treaty t,) = _deploy(1, address(liveness));
+        (Treaty t,,) = _deploy(1, address(liveness));
         feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
         vm.warp(CLOSE - 1 hours);
         uint256 id = _bind(t, 1);
@@ -169,12 +174,12 @@ contract LivenessTest is Test, TreatyFixture {
     /// cancel succeeds instead of staying stuck.
     function test_cancel_G3AnalogueOnRHCSettings() public {
         MockFeed liveness = new MockFeed();
-        (Treaty t, Capacity c) = _deploy(1, address(liveness));
+        (Treaty t, Capacity firstLoss, Capacity senior) = _deploy(1, address(liveness));
         feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
         vm.warp(CLOSE - 1 hours);
         uint256 id = _bind(t, 1);
         uint256 premium;
-        (,,,,,,,,, premium,) = t.layers(id);
+        (,,,,,,,,, premium,) = layerBasics(t, id);
         uint256 buyerBefore = usdg.balanceOf(buyer);
         vm.warp(CLOSE + 1 hours);
         t.setReference(id, 0, P1 | 1);
@@ -190,6 +195,6 @@ contract LivenessTest is Test, TreatyFixture {
         t.cancel(id); // now resolvable, unlike G3's Arbitrum case
         assertEq(uint8(_layerState(t, id)), uint8(Treaty.State.Cancelled));
         assertEq(usdg.balanceOf(buyer), buyerBefore + premium, "premium refunded once the chain is proven live");
-        assertEq(c.locked(), 0);
+        assertEq(firstLoss.locked() + senior.locked(), 0);
     }
 }

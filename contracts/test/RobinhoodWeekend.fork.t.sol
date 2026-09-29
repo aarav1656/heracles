@@ -73,22 +73,27 @@ contract RobinhoodWeekendForkTest is Test, TreatyFixture {
         vm.createSelectFork(RPC);
     }
 
-    function _deploy(address feed, uint8 tableId) internal returns (Treaty t, Capacity c) {
+    function _deploy(address feed, uint8 tableId) internal returns (Treaty t, Capacity firstLoss, Capacity senior) {
         address[] memory feeds = new address[](1);
         feeds[0] = feed;
         uint8[] memory tableIds = new uint8[](1);
         tableIds[0] = tableId;
         // RHC settings: no sequencer-uptime feed (RHC has none), liveness feed wired for real.
         t = deployTreaty(address(USDG), address(new Pricer(tableIds)), feeds, 50, address(0), LIVENESS_FEED);
-        c = t.capacity();
+        firstLoss = Capacity(t.firstLossVault(0));
+        senior = Capacity(t.seniorVault(0));
         deal(address(USDG), writer, 1_000_000e6);
         vm.prank(writer);
-        USDG.approve(address(c), type(uint256).max);
+        USDG.approve(address(firstLoss), type(uint256).max);
         vm.prank(writer);
-        c.deposit(500_000e6, writer);
+        firstLoss.deposit(500_000e6, writer);
+        vm.prank(writer);
+        USDG.approve(address(senior), type(uint256).max);
+        vm.prank(writer);
+        senior.deposit(500_000e6, writer);
         deal(address(USDG), buyer, 1_000_000e6);
         vm.prank(buyer);
-        USDG.approve(address(c), type(uint256).max);
+        USDG.approve(address(t), type(uint256).max);
     }
 
     function _bind(Treaty t, int256 exposure, uint256 retention, uint256 limit) internal returns (uint256 id) {
@@ -96,15 +101,15 @@ contract RobinhoodWeekendForkTest is Test, TreatyFixture {
         int256[] memory e = new int256[](1);
         e[0] = exposure;
         vm.prank(buyer);
-        id = t.bind(e, retention, limit);
+        id = t.bind(0, e, retention, limit);
     }
 
     function _layerState(Treaty t, uint256 id) internal view returns (Treaty.State s) {
-        (,,,,, s,,,,,) = t.layers(id);
+        (,,,,, s,,,,,) = layerBasics(t, id);
     }
 
     function _layerPayout(Treaty t, uint256 id) internal view returns (uint256 p) {
-        (,,,,,,,,,, p) = t.layers(id);
+        (,,,,,,,,,, p) = layerBasics(t, id);
     }
 
     /// setReference now takes the round already in effect the instant Friday's close happened
@@ -113,7 +118,7 @@ contract RobinhoodWeekendForkTest is Test, TreatyFixture {
     /// `BadRound` regardless of round 146's presence, and round 146 must succeed at the live
     /// answer Chainlink actually recorded.
     function test_ref_takesRoundInEffectAtClose() public {
-        (Treaty t,) = _deploy(SPY, SPY_TABLE);
+        (Treaty t,,) = _deploy(SPY, SPY_TABLE);
         uint256 id = _bind(t, 2_000_000e6, 5_000e6, 60_000e6);
         vm.warp(FRI_CLOSE + 1);
 
@@ -137,7 +142,7 @@ contract RobinhoodWeekendForkTest is Test, TreatyFixture {
     /// it: both must agree, or either the live chain state or the spec's own worked example is
     /// wrong.
     function test_rhc_realWeekendPayout() public {
-        (Treaty t, Capacity c) = _deploy(SPY, SPY_TABLE);
+        (Treaty t, Capacity firstLoss, Capacity senior) = _deploy(SPY, SPY_TABLE);
         int256 exposure = 2_000_000e6;
         uint256 retention = 5_000e6;
         uint256 limit = 60_000e6;
@@ -168,7 +173,7 @@ contract RobinhoodWeekendForkTest is Test, TreatyFixture {
         vm.prank(buyer);
         t.claim(id);
         assertEq(USDG.balanceOf(buyer), buyerBefore + expectedPayout, "claim must move exactly the derived payout");
-        assertEq(c.locked(), 0);
+        assertEq(firstLoss.locked() + senior.locked(), 0);
     }
 
     /// Same real weekend, AAPL rounds 671/672/673: AAPL's price rose over the weekend
@@ -177,7 +182,7 @@ contract RobinhoodWeekendForkTest is Test, TreatyFixture {
     /// Round 673 (the fix round) prints 453 seconds after expiry, the spec's own cited timing,
     /// reproduced here from the live `updatedAt`, not hardcoded.
     function test_rhc_realWeekendPayout_AAPL() public {
-        (Treaty t, Capacity c) = _deploy(AAPL, AAPL_TABLE);
+        (Treaty t, Capacity firstLoss, Capacity senior) = _deploy(AAPL, AAPL_TABLE);
         int256 exposure = -2_000_000e6; // short
         uint256 retention = 5_000e6;
         uint256 limit = 60_000e6;
@@ -208,6 +213,6 @@ contract RobinhoodWeekendForkTest is Test, TreatyFixture {
         vm.prank(buyer);
         t.claim(id);
         assertEq(USDG.balanceOf(buyer), buyerBefore + expectedPayout);
-        assertEq(c.locked(), 0);
+        assertEq(firstLoss.locked() + senior.locked(), 0);
     }
 }

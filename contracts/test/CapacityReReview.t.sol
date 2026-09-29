@@ -38,7 +38,8 @@ contract CapacityReReviewTest is Test, TreatyFixture {
     MockUSDG usdg;
     MockFeed feed;
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
     address writer = makeAddr("writer");
     address griefer = makeAddr("griefer");
 
@@ -48,7 +49,8 @@ contract CapacityReReviewTest is Test, TreatyFixture {
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
         treaty = deployTreaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
-        capacity = treaty.capacity();
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
 
         // setReference now needs its own first-round-after-Friday's-close pair, so each
         // week gets three round ids instead of two: 3w+1 (pre-close predecessor, unchanged Fri
@@ -69,10 +71,12 @@ contract CapacityReReviewTest is Test, TreatyFixture {
             feed.set(uint80(3 * w + 3), 100e8, expiry + 1);
         }
         vm.warp(MON0 + 1 hours);
-        usdg.mint(writer, 100_000e6);
+        usdg.mint(writer, 200_000e6);
         vm.startPrank(writer);
-        usdg.approve(address(capacity), type(uint256).max);
-        capacity.deposit(100_000e6, writer);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        firstLoss.deposit(100_000e6, writer);
+        usdg.approve(address(senior), type(uint256).max);
+        senior.deposit(100_000e6, writer);
         vm.stopPrank();
     }
 
@@ -94,7 +98,9 @@ contract CapacityReReviewTest is Test, TreatyFixture {
     function test_H1_rollingDustBindFreezesWritersIndefinitely() public {
         usdg.mint(griefer, 1_000);
         vm.prank(griefer);
-        usdg.approve(address(capacity), type(uint256).max);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        vm.prank(griefer);
+        usdg.approve(address(senior), type(uint256).max);
 
         uint256 exits;
         uint256 prevId = type(uint256).max;
@@ -105,9 +111,9 @@ contract CapacityReReviewTest is Test, TreatyFixture {
             vm.warp(MON0 + w * 7 days + 5 minutes);
             uint256 g = gasleft();
             vm.prank(griefer);
-            uint256 id = treaty.bind(_one(1e6), 1_000_000e6, 200);
+            uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, 200);
             bindGas = g - gasleft();
-            (,,,,,,,,, uint256 premium,) = treaty.layers(id);
+            (,,,,,,,,, uint256 premium,) = layerBasics(treaty, id);
             assertEq(premium, 1, "min nonzero premium is 1 base unit");
 
             if (prevId != type(uint256).max) {
@@ -119,11 +125,13 @@ contract CapacityReReviewTest is Test, TreatyFixture {
                 // capital is always, correctly, reserved for whichever dust layer is currently
                 // open, so a redeem of the full balance can never succeed on any version of this
                 // code. What must succeed every week is a redeem within free capacity.
-                uint256 want = capacity.maxRedeem(writer);
+                // checked against the first-loss vault; the senior vault gets the same guard in
+                // Tranche.t.sol/Books.t.sol.
+                uint256 want = firstLoss.maxRedeem(writer);
                 if (want > 1_000e6) want = 1_000e6;
                 if (want > 0) {
                     vm.prank(writer);
-                    try capacity.redeem(want, writer, writer) {
+                    try firstLoss.redeem(want, writer, writer) {
                         exits++;
                     } catch {}
                 }
@@ -148,20 +156,24 @@ contract CapacityReReviewTest is Test, TreatyFixture {
         address buyer = makeAddr("buyer");
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);
-        usdg.approve(address(capacity), type(uint256).max);
+        usdg.approve(address(firstLoss), type(uint256).max);
         vm.prank(buyer);
-        uint256 a = treaty.bind(_one(-500_000e6), 20_000e6, 10_000e6);
+        usdg.approve(address(senior), type(uint256).max);
+        vm.prank(buyer);
+        uint256 a = treaty.bind(0, _one(-500_000e6), 20_000e6, 10_000e6);
         // Round 1 (set in setUp, w=0) is the pre-close predecessor; round 2 is the actual
         // Friday-close reference round.
         vm.warp(MON0 + 5 days + 1);
         treaty.setReference(a, 0, 2);
         vm.warp(MON0 + 7 days + 9 hours); // Monday 09:00, next week's roll
         vm.prank(buyer);
-        treaty.bind(_one(-500_000e6), 20_000e6, 10_000e6);
+        treaty.bind(0, _one(-500_000e6), 20_000e6, 10_000e6);
         (, uint256 expiryA) = treaty.weekWindow(MON0);
         vm.warp(expiryA + 1);
         treaty.fix(a, 0, 3);
-        assertGt(capacity.maxRedeem(writer), 0, "H1b: exit closed after every past weekend has settled");
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
+        assertGt(firstLoss.maxRedeem(writer), 0, "H1b: exit closed after every past weekend has settled");
     }
 
     /// LOW re-review, closed by always attempting the permit (Resolution 2) instead of the
@@ -172,7 +184,7 @@ contract CapacityReReviewTest is Test, TreatyFixture {
     /// allowance does not already cover the deposit (see heracles web src/hooks).
     function test_L1r_permitAlwaysConsumedNoReplayWindow() public {
         PermitUSDG pu = new PermitUSDG();
-        Capacity cap = new Capacity(pu, address(this));
+        Capacity cap = new Capacity(pu, address(this), "Test Capacity", "tCAP");
         uint256 pk = 0xA11CE;
         address w = vm.addr(pk);
         pu.mint(w, 1_000_000e6);

@@ -19,7 +19,8 @@ contract TreatyReReviewTest is Test, TreatyFixture {
     MockFeed feed;
     Pricer pricer;
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
     address writer = makeAddr("writer");
     address buyer = makeAddr("buyer");
 
@@ -35,22 +36,27 @@ contract TreatyReReviewTest is Test, TreatyFixture {
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
         treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
-        capacity = treaty.capacity();
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
         usdg.mint(writer, 1_000_000e6);
         vm.startPrank(writer);
-        usdg.approve(address(capacity), type(uint256).max);
-        capacity.deposit(500_000e6, writer);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        firstLoss.deposit(500_000e6, writer);
+        usdg.approve(address(senior), type(uint256).max);
+        senior.deposit(500_000e6, writer);
         vm.stopPrank();
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);
-        usdg.approve(address(capacity), type(uint256).max);
+        // Premium is pulled by Treaty itself, never a vault, so the buyer approves the Treaty
+        // contract, not either vault.
+        usdg.approve(address(treaty), type(uint256).max);
     }
 
     function _bind(uint256 exp) internal returns (uint256 id) {
         int256[] memory e = new int256[](1);
         e[0] = int256(exp);
         vm.prank(buyer);
-        id = treaty.bind(e, 0, 60_000e6);
+        id = treaty.bind(0, e, 0, 60_000e6);
     }
 
     /// P3: on a live 24h-heartbeat feed, by `expiry + GRACE` the feed has printed about three
@@ -120,7 +126,7 @@ contract TreatyReReviewTest is Test, TreatyFixture {
         feed.set(3, 700e8, EXPIRY + 5 minutes); // Monday's real post-expiry print settles the layer
         vm.warp(EXPIRY + 10 minutes);
         treaty.fix(id, 0, 3);
-        (,,,,, Treaty.State st,,,,, uint256 payout) = treaty.layers(id);
+        (,,,,, Treaty.State st,,,,, uint256 payout) = layerBasics(treaty, id);
         assertEq(uint8(st), uint8(Treaty.State.Settled));
         assertGt(payout, 0, "the weekend gap off round 1's price must still pay out");
     }

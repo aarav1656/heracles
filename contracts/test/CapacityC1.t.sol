@@ -27,7 +27,8 @@ contract CapacityC1Test is Test, TreatyFixture {
     MockUSDG usdg;
     MockFeed feed;
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
 
     address writer = makeAddr("writer");
     address writerB = makeAddr("writerB");
@@ -40,17 +41,20 @@ contract CapacityC1Test is Test, TreatyFixture {
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
         treaty = deployTreaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
-        capacity = treaty.capacity();
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
         _deposit(writer, 100_000e6);
         _deposit(writerB, 100_000e6);
         vm.warp(FRI_1900);
     }
 
     function _deposit(address who, uint256 amt) internal {
-        usdg.mint(who, amt);
+        usdg.mint(who, amt * 2);
         vm.startPrank(who);
-        usdg.approve(address(capacity), type(uint256).max);
-        capacity.deposit(amt, who);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        firstLoss.deposit(amt, who);
+        usdg.approve(address(senior), type(uint256).max);
+        senior.deposit(amt, who);
         vm.stopPrank();
     }
 
@@ -77,15 +81,22 @@ contract CapacityC1Test is Test, TreatyFixture {
     /// ends with at most what they put in (premium + deposit). Buggy behaviour: they walk off with
     /// the writers' 200k.
     function test_C1_depositWhileLockedStealsWriterCapital() public {
-        uint256 free = capacity.totalAssets();
-        assertEq(free, 200_000e6);
+        assertEq(firstLoss.totalAssets(), 200_000e6);
+        assertEq(senior.totalAssets(), 200_000e6);
+        // Both vaults hold the same 200_000e6, but a bind's limit splits juniorShareBps (firstLoss)
+        // / (BPS - juniorShareBps) (senior); senior absorbs the larger 70% share, so it is the
+        // tighter constraint on how large a limit can lock both vaults' full headroom at once.
+        uint256 free = senior.totalAssets() * 1e4 / (1e4 - treaty.juniorShareBps());
 
         usdg.mint(attacker, 2_000e6);
         vm.startPrank(attacker);
-        usdg.approve(address(capacity), type(uint256).max);
-        uint256 id = treaty.bind(_one(1e6), 1_000_000e6, free); // payout always 0, premium = floor
+        usdg.approve(address(firstLoss), type(uint256).max);
+        usdg.approve(address(senior), type(uint256).max);
+        uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, free); // payout always 0, premium = floor
         uint256 shares;
-        try capacity.deposit(1_000e6, attacker) returns (uint256 sh) {
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
+        try firstLoss.deposit(1_000e6, attacker) returns (uint256 sh) {
             shares = sh;
         } catch {}
         vm.stopPrank();
@@ -93,7 +104,7 @@ contract CapacityC1Test is Test, TreatyFixture {
         _settleNoLoss(id);
 
         vm.prank(attacker);
-        if (shares != 0) capacity.redeem(shares, attacker, attacker);
+        if (shares != 0) firstLoss.redeem(shares, attacker, attacker);
         assertLe(
             usdg.balanceOf(attacker), 2_000e6, "C1: depositor during a live layer must not capture writers' locked capital"
         );
@@ -106,15 +117,18 @@ contract CapacityC1Test is Test, TreatyFixture {
     function test_C1b_redeemWhileLockedForfeitsLockedCapital() public {
         usdg.mint(attacker, 10_000e6);
         vm.startPrank(attacker);
-        usdg.approve(address(capacity), type(uint256).max);
-        treaty.bind(_one(1e6), 1_000_000e6, 100_000e6); // half the pool locked, cannot pay
+        usdg.approve(address(firstLoss), type(uint256).max);
+        usdg.approve(address(senior), type(uint256).max);
+        treaty.bind(0, _one(1e6), 1_000_000e6, 100_000e6); // half the pool locked, cannot pay
         vm.stopPrank();
-        uint256 shares = capacity.balanceOf(writerB);
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
+        uint256 shares = firstLoss.balanceOf(writerB);
         vm.prank(writerB);
-        try capacity.redeem(shares, writerB, writerB) returns (uint256 out) {
+        try firstLoss.redeem(shares, writerB, writerB) returns (uint256 out) {
             assertGe(out, 99_000e6, "C1b: a writer exiting before a zero-loss settle should get ~their 100k back");
         } catch {
-            assertGe(capacity.previewRedeem(shares), 99_000e6, "C1b: exit blocked but value intact");
+            assertGe(firstLoss.previewRedeem(shares), 99_000e6, "C1b: exit blocked but value intact");
         }
     }
 
@@ -126,6 +140,6 @@ contract CapacityC1Test is Test, TreatyFixture {
         address griefer = makeAddr("griefer");
         vm.prank(griefer);
         vm.expectRevert(Treaty.BadParams.selector);
-        treaty.bind(_one(1e6), 1_000_000e6, 199);
+        treaty.bind(0, _one(1e6), 1_000_000e6, 199);
     }
 }

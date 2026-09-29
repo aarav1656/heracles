@@ -23,7 +23,7 @@ contract TreatyVoidTest is Test, TreatyFixture {
     uint80 constant P1 = uint80(uint256(1) << 64);
     uint80 constant P2 = uint80(uint256(2) << 64);
 
-    function _deploy(uint256 n) internal returns (Treaty t, Capacity c) {
+    function _deploy(uint256 n) internal returns (Treaty t, Capacity firstLoss, Capacity senior) {
         usdg = new MockUSDG();
         feed = new MockFeed();
         feedB = new MockFeed();
@@ -31,15 +31,21 @@ contract TreatyVoidTest is Test, TreatyFixture {
         feeds[0] = address(feed);
         if (n > 1) feeds[1] = address(feedB);
         t = deployTreaty(address(usdg), address(new Pricer(n == 1 ? oneTableId() : nTableIds(n))), feeds, 50, address(0));
-        c = t.capacity();
+        firstLoss = Capacity(t.firstLossVault(0));
+        senior = Capacity(t.seniorVault(0));
         usdg.mint(writer, 1_000_000e6);
         vm.startPrank(writer);
-        usdg.approve(address(c), type(uint256).max);
-        c.deposit(500_000e6, writer);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        firstLoss.deposit(500_000e6, writer);
+        usdg.approve(address(senior), type(uint256).max);
+        senior.deposit(500_000e6, writer);
         vm.stopPrank();
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);
-        usdg.approve(address(c), type(uint256).max);
+        // Premium is pulled by Treaty itself (`bind` -> `b.asset.safeTransferFrom(msg.sender,
+        // address(this), premium)`), never by a vault directly, so the buyer approves the Treaty
+        // contract, not either vault.
+        usdg.approve(address(t), type(uint256).max);
     }
 
     function _bind(Treaty t, uint256 n) internal returns (uint256 id) {
@@ -47,13 +53,13 @@ contract TreatyVoidTest is Test, TreatyFixture {
         for (uint256 i; i < n; i++) e[i] = 1_000_000e6;
         vm.warp(CLOSE - 1 hours);
         vm.prank(buyer);
-        id = t.bind(e, 0, 60_000e6);
+        id = t.bind(0, e, 0, 60_000e6);
     }
 
     /// V1: on-time crossing, ITM layer. No round in the phase can be voided (fuzz the round id and
     /// the time); the buyer's payout path stays open and settles.
     function testFuzz_V1_voidNeverHitsReferenceableMarket(uint8 which, uint32 later) public {
-        (Treaty t,) = _deploy(1);
+        (Treaty t,,) = _deploy(1);
         feed.set(P1 | 1, 770e8, CLOSE - 3 hours); // the round genuinely in effect at close
         uint256 id = _bind(t, 1);
         feed.set(P1 | 2, 770e8, CLOSE + 35 hours); // first round after close, well after MAX_ROUND_AGE
@@ -66,14 +72,14 @@ contract TreatyVoidTest is Test, TreatyFixture {
         t.voidReference(id, 0, r);
         t.setReference(id, 0, P1 | 1);
         t.fix(id, 0, P1 | 4);
-        (,,,,, Treaty.State st,,,,,) = t.layers(id);
+        (,,,,, Treaty.State st,,,,,) = layerBasics(t, id);
         assertEq(uint8(st), uint8(Treaty.State.Settled));
     }
 
     /// V2: phase change after close to an aggregator whose own crossing is late. Void is allowed,
     /// but only because setReference is equally impossible in the new phase (checked first).
     function test_V2_phaseChangeVoidOnlyWhenUnreferenceable() public {
-        (Treaty t,) = _deploy(1);
+        (Treaty t,,) = _deploy(1);
         feed.set(P1 | 1, 770e8, CLOSE - 3 hours); // would have been in effect at close...
         uint256 id = _bind(t, 1);
         feed.set(P1 | 2, 771e8, CLOSE + 1 hours); // ...but the phase already crossed
@@ -92,7 +98,7 @@ contract TreatyVoidTest is Test, TreatyFixture {
     /// V3: A referenced (ITM), B void. fix(A) is impossible, only cancel; buyer refunded in full,
     /// capital unlocked, gate reopens.
     function test_V3_voidPlusReferencedOtherOnlyCancels() public {
-        (Treaty t, Capacity c) = _deploy(2);
+        (Treaty t, Capacity firstLoss, Capacity senior) = _deploy(2);
         feed.set(P1 | 1, 770e8, CLOSE - 3 hours); // market0: fresh, in effect at close
         feedB.set(P1 | 1, 100e8, CLOSE - 27 hours); // market1: silent for >26h before close
         uint256 id = _bind(t, 2);
@@ -108,10 +114,12 @@ contract TreatyVoidTest is Test, TreatyFixture {
         t.fix(id, 0, P1 | 3);
         vm.warp(EXPIRY + 3 days);
         t.cancel(id);
-        (,,,,,,,, uint256 limit, uint256 premium,) = t.layers(id);
+        (,,,,,,,, uint256 limit, uint256 premium,) = layerBasics(t, id);
         assertEq(usdg.balanceOf(buyer), buyerAfterBind + premium, "premium refunded");
-        assertEq(c.locked(), 0);
-        assertGt(c.maxRedeem(writer), 0, "gate reopened");
+        assertEq(firstLoss.locked() + senior.locked(), 0);
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
+        assertGt(firstLoss.maxRedeem(writer), 0, "gate reopened");
         limit;
     }
 
@@ -119,7 +127,7 @@ contract TreatyVoidTest is Test, TreatyFixture {
     /// (bad answer) and so would a price-checking void; void only proves timing, so it must still
     /// succeed and let cancel unlock the vault instead of leaving the layer Bound forever.
     function test_V4_lateZeroAnswerRoundIsVoidableThenCancels() public {
-        (Treaty t, Capacity c) = _deploy(1);
+        (Treaty t, Capacity firstLoss,) = _deploy(1);
         feed.set(P1 | 1, 0, CLOSE - 27 hours); // the round in effect at close: stale AND a bad answer
         uint256 id = _bind(t, 1);
         vm.warp(CLOSE + 41 hours);
@@ -128,8 +136,10 @@ contract TreatyVoidTest is Test, TreatyFixture {
         t.voidReference(id, 0, P1 | 1);
         vm.warp(EXPIRY + 3 days);
         t.cancel(id);
-        (,,,,, Treaty.State st,,,,,) = t.layers(id);
+        (,,,,, Treaty.State st,,,,,) = layerBasics(t, id);
         assertEq(uint8(st), uint8(Treaty.State.Cancelled));
-        assertGt(c.maxDeposit(writer), 0);
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
+        assertGt(firstLoss.maxDeposit(writer), 0);
     }
 }

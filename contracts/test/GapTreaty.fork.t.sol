@@ -64,7 +64,8 @@ contract GapTreatyForkTest is Test, TreatyFixture {
     address constant SEQUENCER_FEED = 0xFdB631F5EE196F0ed6FAa767959853A9F217697D;
 
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
     address writer = makeAddr("writer");
     address buyer = makeAddr("buyer");
 
@@ -92,7 +93,8 @@ contract GapTreatyForkTest is Test, TreatyFixture {
         uint8[] memory tableIds = new uint8[](4);
         (tableIds[0], tableIds[1], tableIds[2], tableIds[3]) = (0, 1, 2, 3);
         treaty = deployTreaty(address(USDG), address(new Pricer(tableIds)), feeds, 50, SEQUENCER_FEED);
-        capacity = treaty.capacity();
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
     }
 
     function test_fork_allowlistAcceptsFourTabledRealFeeds() public {
@@ -134,20 +136,24 @@ contract GapTreatyForkTest is Test, TreatyFixture {
 
         deal(address(USDG), buyer, 1_000_000e6);
         vm.prank(buyer);
-        USDG.approve(address(capacity), type(uint256).max);
+        USDG.approve(address(treaty), type(uint256).max);
         deal(address(USDG), writer, 1_000_000e6);
         vm.prank(writer);
-        USDG.approve(address(capacity), type(uint256).max);
+        USDG.approve(address(firstLoss), type(uint256).max);
         vm.prank(writer);
-        capacity.deposit(1_000_000e6, writer);
+        firstLoss.deposit(1_000_000e6, writer);
+        vm.prank(writer);
+        USDG.approve(address(senior), type(uint256).max);
+        vm.prank(writer);
+        senior.deposit(1_000_000e6, writer);
 
         vm.prank(buyer);
-        uint256 id = treaty.bind(exposure, 10_000e6, 50_000e6);
+        uint256 id = treaty.bind(0, exposure, 10_000e6, 50_000e6);
 
-        (address l_buyer,,,,,,,,, uint256 premium,) = treaty.layers(id);
+        (address l_buyer,,,,,,,,, uint256 premium,) = layerBasics(treaty, id);
         assertEq(l_buyer, buyer);
         assertGt(premium, 0);
-        assertEq(capacity.locked(), 50_000e6);
+        assertEq(firstLoss.locked() + senior.locked(), 50_000e6);
         console.log("live 4-market premium (USDG, 6dp)", premium);
     }
 }

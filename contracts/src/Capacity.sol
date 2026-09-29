@@ -100,9 +100,9 @@ contract Capacity is ERC4626 {
         _;
     }
 
-    constructor(IERC20 usdg_, address treaty_)
-        ERC20("Heracles Capacity", "gtUSDG")
-        ERC4626(usdg_)
+    constructor(IERC20 asset_, address treaty_, string memory name_, string memory symbol_)
+        ERC20(name_, symbol_)
+        ERC4626(asset_)
     {
         treaty = treaty_;
     }

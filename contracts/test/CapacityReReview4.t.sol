@@ -23,7 +23,8 @@ contract ReReview4 is Test, TreatyFixture {
     MockUSDG usdg;
     MockFeed feed;
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
     address writer = makeAddr("writer");
     address buyer = makeAddr("buyer");
     address att = makeAddr("att");
@@ -34,7 +35,8 @@ contract ReReview4 is Test, TreatyFixture {
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
         treaty = deployTreaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
-        capacity = treaty.capacity();
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
         vm.warp(MON0 + 1 hours);
         _fund(writer, 1e15);
         _fund(buyer, 1e15);
@@ -44,7 +46,9 @@ contract ReReview4 is Test, TreatyFixture {
     function _fund(address a, uint256 amt) internal {
         usdg.mint(a, amt);
         vm.prank(a);
-        usdg.approve(address(capacity), type(uint256).max);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        vm.prank(a);
+        usdg.approve(address(senior), type(uint256).max);
     }
 
     function _one(int256 e) internal pure returns (int256[] memory x) {
@@ -57,11 +61,13 @@ contract ReReview4 is Test, TreatyFixture {
         if (state == 0) return;
         uint256 w = bound(seed, 200, 1e13);
         vm.prank(writer);
-        capacity.deposit(w, writer);
+        firstLoss.deposit(w, writer);
+        vm.prank(writer);
+        senior.deposit(w, writer);
         if (state == 1) return;
         uint256 limit = bound(limitFrac, 200, w);
         vm.prank(buyer);
-        try treaty.bind(_one(-int256(limit) * 20), 0, limit) returns (uint256 id) {
+        try treaty.bind(0, _one(-int256(limit) * 20), 0, limit) returns (uint256 id) {
             if (state == 2) return;
             // round 1 is the pre-close predecessor, round 2 is the actual Friday-close
             // reference round (setReference must consume round 2, not round 1).
@@ -99,16 +105,18 @@ contract ReReview4 is Test, TreatyFixture {
         // the layer to a terminal state that unlocks its own cutoff bucket before returning here
         // (L1 fix above), so this never actually discards a draw, kept as a defensive guard, not
         // a skip.
-        vm.assume(capacity.maxDeposit(att) != 0);
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
+        vm.assume(firstLoss.maxDeposit(att) != 0);
         a = bound(a, 1, 1e14);
         vm.startPrank(att);
-        uint256 pre = capacity.previewDeposit(a);
-        uint256 sh = capacity.deposit(a, att);
+        uint256 pre = firstLoss.previewDeposit(a);
+        uint256 sh = firstLoss.deposit(a, att);
         assertEq(sh, pre, "previewDeposit == deposit");
-        assertEq(capacity.convertToShares(a) >= 0, true);
-        uint256 mr = capacity.maxRedeem(att);
-        uint256 pr = capacity.previewRedeem(mr);
-        uint256 out = capacity.redeem(mr, att, att);
+        assertEq(firstLoss.convertToShares(a) >= 0, true);
+        uint256 mr = firstLoss.maxRedeem(att);
+        uint256 pr = firstLoss.previewRedeem(mr);
+        uint256 out = firstLoss.redeem(mr, att, att);
         vm.stopPrank();
         assertEq(out, pr, "previewRedeem == redeem");
         assertLe(out, a, "deposit->redeem never profits");
@@ -118,15 +126,17 @@ contract ReReview4 is Test, TreatyFixture {
         uint8 state = uint8(bound(s, 0, 4));
         _enter(state, seed, lf);
         // Same as testFuzz_depositRedeemRoundTrip above: defensive guard, not a skip (L1 fix).
-        vm.assume(capacity.maxMint(att) != 0);
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
+        vm.assume(firstLoss.maxMint(att) != 0);
         sh = bound(sh, 1, 1e14);
         vm.startPrank(att);
-        uint256 pm = capacity.previewMint(sh);
-        uint256 paid = capacity.mint(sh, att);
+        uint256 pm = firstLoss.previewMint(sh);
+        uint256 paid = firstLoss.mint(sh, att);
         assertEq(paid, pm, "previewMint == mint");
-        assertGe(paid, capacity.convertToAssets(sh), "mint cost >= exit value");
-        uint256 mw = capacity.maxWithdraw(att);
-        uint256 burned = capacity.withdraw(mw, att, att);
+        assertGe(paid, firstLoss.convertToAssets(sh), "mint cost >= exit value");
+        uint256 mw = firstLoss.maxWithdraw(att);
+        uint256 burned = firstLoss.withdraw(mw, att, att);
         vm.stopPrank();
         assertLe(burned, sh, "withdraw burns <= minted");
         assertLe(mw, paid, "mint->withdraw never profits");
@@ -135,12 +145,14 @@ contract ReReview4 is Test, TreatyFixture {
     // Exiting writer forfeits at most its pro-rata share of pendingPremium.
     function testFuzz_exitForfeitIsProRata(uint256 seed, uint256 lf, uint256 frac) public {
         _enter(2, seed, lf);
-        uint256 S = capacity.totalSupply();
-        uint256 pp = capacity.pendingPremium();
-        vm.assume(capacity.maxRedeem(writer) > 0);
-        uint256 sh = bound(frac, 1, capacity.maxRedeem(writer));
-        uint256 fair = sh * (capacity.totalAssets() + pp) / S;
-        uint256 got = capacity.previewRedeem(sh);
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
+        uint256 S = firstLoss.totalSupply();
+        uint256 pp = firstLoss.pendingPremium();
+        vm.assume(firstLoss.maxRedeem(writer) > 0);
+        uint256 sh = bound(frac, 1, firstLoss.maxRedeem(writer));
+        uint256 fair = sh * (firstLoss.totalAssets() + pp) / S;
+        uint256 got = firstLoss.previewRedeem(sh);
         uint256 forfeit = fair - got;
         assertLe(forfeit, sh * pp / S + 2, "exit forfeits no more than pro-rata pendingPremium");
     }
@@ -152,18 +164,25 @@ contract ReReview4 is Test, TreatyFixture {
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
         Treaty t = deployTreaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(seq));
-        Capacity c = t.capacity();
+        Capacity c = Capacity(t.firstLossVault(0));
+        Capacity cSenior = Capacity(t.seniorVault(0));
         vm.prank(writer);
         usdg.approve(address(c), type(uint256).max);
+        vm.prank(writer);
+        usdg.approve(address(cSenior), type(uint256).max);
         vm.prank(buyer);
         usdg.approve(address(c), type(uint256).max);
+        vm.prank(buyer);
+        usdg.approve(address(cSenior), type(uint256).max);
         vm.prank(writer);
         c.deposit(1_000_000e6, writer);
+        vm.prank(writer);
+        cSenior.deposit(1_000_000e6, writer);
         // v3 bind() requires every market's feed to carry a round within MAX_ROUND_AGE (26h) of
         // now (decision 3, liveness guard rule 1); `feed` has no round yet at this point.
         feed.set(0, 100e8, block.timestamp - 1);
         vm.prank(buyer);
-        uint256 id = t.bind(_one(-2_000_000e6), 0, 1_000_000e6);
+        uint256 id = t.bind(0, _one(-2_000_000e6), 0, 1_000_000e6);
         (uint256 cutoff,) = t.weekWindow(MON0);
         uint256 refTime = t.fridayCloseOf(cutoff);
         feed.set(1, 100e8, MON0 + 4 days + 19 hours);
@@ -179,7 +198,7 @@ contract ReReview4 is Test, TreatyFixture {
         t.fix(id, 0, 3);
         vm.prank(writer);
         try t.cancel(id) {} catch {}
-        (,,,,, Treaty.State st,,,,,) = t.layers(id);
+        (,,,,, Treaty.State st,,,,,) = layerBasics(t, id);
         assertEq(uint8(st), uint8(Treaty.State.Bound), "G3: cancel lands while fix is blocked by sequencer grace");
     }
 
@@ -187,7 +206,7 @@ contract ReReview4 is Test, TreatyFixture {
     uint40[] cuts;
 
     function testFuzz_F4_cursor(uint256[16] memory ops) public {
-        Capacity cap = new Capacity(IERC20(address(usdg)), address(this));
+        Capacity cap = new Capacity(IERC20(address(usdg)), address(this), "Test Capacity", "tCAP");
         usdg.mint(address(this), 1e18);
         usdg.approve(address(cap), type(uint256).max);
         cap.deposit(1e18, address(this));

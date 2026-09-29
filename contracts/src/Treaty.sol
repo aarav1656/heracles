@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IPricer} from "./IPricer.sol";
 import {Capacity} from "./Capacity.sol";
@@ -18,21 +20,35 @@ interface AggregatorV3Interface {
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 }
 
-/// @notice Weekend-gap excess-of-loss treaty. A vault (buyer) declares its Friday exposure per
-/// market and binds a layer above `retention` up to `limit`; USDG writer capital in `Capacity`
-/// backs the layer and is paid the premium the Stylus/Solidity `Pricer` quotes; Monday's fixing
-/// pays the realized loss, capped at the layer's own locked limit, to the buyer.
+/// @notice Weekend-gap excess-of-loss treaty. A buyer declares its Friday exposure per market and
+/// binds a layer, in one book's asset, above `retention` up to `limit`; writer capital in that
+/// book's two `Capacity` vaults backs the layer and is paid the premium the Stylus/Solidity
+/// `Pricer` quotes; Monday's fixing pays the realized loss, capped at the layer's own locked
+/// limit, to the buyer.
+///
+/// Books: the constructor takes one `address[] assets` array. Every asset must read
+/// `decimals() == 6`, the unit the pricer and every stored amount already use. Each asset gets its
+/// own pair of plain single-asset ERC-4626 vaults, a first-loss vault and a senior vault, so a
+/// layer's collateral, premium and payout are always in that one book's asset; assets never mix.
+/// `bind` takes a `book` index selecting which pair a layer draws on.
+///
+/// Tranches: at bind, a layer's limit `L` splits into a first-loss sub-layer `(retention, J)` and
+/// a senior sub-layer `(retention + J, L - J)`, with `J = L * juniorShareBps / 1e4` and
+/// `juniorShareBps` fixed at deploy. Two `pricer.quote` calls in the same transaction price the
+/// whole layer and the first-loss sub-layer; the senior premium is the remainder, so the split
+/// always comes from the same 504-scenario table the buyer's own price does. At settle, the
+/// first-loss vault absorbs the first `J` of any payout and the senior vault the rest; both are
+/// refunded on cancel and paid on claim from their own vault.
 ///
 /// Fixing rule, allowlist and several checks follow a proven pattern: constructor-fixed feed
 /// allowlist with a `decimals() == 8` check ("writer picks the oracle"), the Chainlink
 /// phase-boundary guard `_latestInPhase`, and matching rules for both ends of the weekend:
 /// `fix()` still takes the first round with `updatedAt >= expiry` (Monday's open, DST-aware,
 /// previous round strictly before `expiry`); `setReference` instead takes the round in effect at
-/// `fridayCloseOf(fridayCutoff)` (Friday's official close, also DST-aware) -- decision 3 of
-/// docs/design/v3.md, see `_isUsDst`/`fridayCloseOf` and `setReference`'s own comment for the rule.
-/// This treaty has no corporate-action multiplier check because it binds raw Chainlink equity
-/// feeds directly, not Robinhood-style Stock Tokens with a `uiMultiplier()`; there is no
-/// multiplier to read.
+/// `fridayCloseOf(fridayCutoff)` (Friday's official close, also DST-aware), see
+/// `_isUsDst`/`fridayCloseOf` and `setReference`'s own comment for the rule. This treaty has no
+/// corporate-action multiplier check because it binds raw Chainlink equity feeds directly, not
+/// Robinhood-style Stock Tokens with a `uiMultiplier()`; there is no multiplier to read.
 ///
 /// Timing (SECURITY-REVIEW.md C1+H1): the caller does not choose `fridayCutoff`/`expiry`. `bind`
 /// only succeeds strictly before the current ISO week's Friday 19:30 UTC (computed on-chain from
@@ -42,25 +58,37 @@ interface AggregatorV3Interface {
 /// than Friday's close under either DST regime (20:00 UTC EDT, 21:00 UTC EST), so a bind can never
 /// land after the reference has already printed. The Friday reference price used for settlement is
 /// not the spot at bind time either: it is fixed afterwards, per market, by `setReference` against
-/// the first round at or after Friday's official close. The premium
-/// is still quoted at bind time (the Pricer's 504-scenario table has no price/date argument, so
-/// "latest" and "reference" price the same premium either way); a floor (H2) guarantees it is
-/// never zero.
+/// the round in effect at Friday's official close. The premium is still quoted at bind time (the
+/// Pricer's 504-scenario table has no price/date argument, so "latest" and "reference" price the
+/// same premium either way); a floor (H2) guarantees the total premium is never zero, and each
+/// tranche's own split is checked separately so no slice can bind for a zero premium either.
 ///
-/// Solvency: `Capacity.locked` reserves a layer's full `limit` at bind; on settle, `Capacity.settle`
-/// moves the unused remainder back to free capacity and the realized `payout` into `Capacity.owed`
-/// (kept reserved until claim), and `Capacity.payOut` reverts if a caller ever asks for more than
-/// is owed. Together with the `payout <= limit` clamp below ("cap the payout at the
-/// escrow"), one layer's settlement can never draw
-/// capital reserved for another layer or for a writer's still-free capacity. `Capacity.totalAssets()`
-/// counts active `locked` capital at face value and nets out only `owed` and `pendingPremium`
-/// (the C1 fix); the gate (`Capacity.maxDeposit`/`maxMint`/`maxRedeem`) closes deposits and
-/// withdrawals from a layer's own `fridayCutoff` until every layer sharing that cutoff has settled
-/// or been cancelled (the re-review's H1 fix: keying the gate on aggregate `locked != 0` let a
-/// rolling weekly bind, timed for a cutoff days away, hold it shut forever). `bind`/`cancel`/
-/// `_settle` below pass each layer's own `L.fridayCutoff` into `capacity.lock`/`unlock`/`settle` so
-/// Capacity can bucket locked capital by the cutoff that actually starts its risk window.
+/// Solvency: `Capacity.locked` reserves a slice's full amount at bind; on settle, `Capacity.settle`
+/// moves the unused remainder back to free capacity and the realized slice payout into
+/// `Capacity.owed` (kept reserved until claim), and `Capacity.payOut` reverts if a caller ever asks
+/// for more than is owed. Together with the `payout <= limit` clamp below (cap the payout at the
+/// escrow), one layer's settlement can never draw capital reserved for another layer, another
+/// tranche, another book, or a writer's still-free capacity. `Capacity.totalAssets()` counts active
+/// `locked` capital at face value and nets out only `owed` and `pendingPremium` (the C1 fix); the
+/// gate (`Capacity.maxDeposit`/`maxMint`/`maxRedeem`) closes deposits and withdrawals from a
+/// vault's own `fridayCutoff` until every layer sharing that cutoff has settled or been cancelled
+/// (the re-review's H1 fix: keying the gate on aggregate `locked != 0` let a rolling weekly bind,
+/// timed for a cutoff days away, hold it shut forever). `bind`/`cancel`/`_settle` below pass each
+/// layer's own `L.fridayCutoff` into each vault's `lock`/`unlock`/`settle` so Capacity can bucket
+/// locked capital by the cutoff that actually starts its risk window. Both vaults of a book hold a
+/// nonzero slice of every layer bound against that book (bind reverts if either slice's premium is
+/// zero), so their gates always open and close together.
+///
+/// Premium flow: the buyer approves this contract, not a vault. `bind` pulls the whole premium
+/// into the treaty, then each vault pulls its own share back out through the existing
+/// `receivePremium(address(this), amount)`, using a max allowance this contract grants every vault
+/// once, at construction. This contract's balance of every book asset is zero after every external
+/// call (T5); as a side effect it also closes the L2 security review's L1/F5 finding (a permit
+/// resetting a buyer's standing premium allowance), since buyers now approve this contract and
+/// writers approve their vault, so no spender carries both allowances.
 contract Treaty is ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     enum State {
         None,
         Bound,
@@ -72,14 +100,29 @@ contract Treaty is ReentrancyGuard {
         address buyer;
         uint40 fridayCutoff;
         uint40 expiry;
+        uint16 book;
         uint8 referencedCount;
         uint8 fixedCount;
         State state;
         bool buyerClaimed;
         uint256 retention;
         uint256 limit;
+        uint256 juniorLimit; // J: the first-loss sub-layer's own limit
         uint256 premium;
+        uint256 premiumJunior;
+        uint256 premiumSenior;
         uint256 payout;
+        uint256 payoutJunior;
+        uint256 payoutSenior;
+    }
+
+    /// One book: a single asset and the pair of plain single-asset ERC-4626 vaults that back every
+    /// layer bound against it, a first-loss vault absorbing the first `juniorShareBps` of each
+    /// layer's limit and a senior vault absorbing the rest.
+    struct Book {
+        IERC20 asset;
+        Capacity firstLoss;
+        Capacity senior;
     }
 
     // F1 (re-review of 96309c8, the security review): a layer's own cutoff to
@@ -90,8 +133,8 @@ contract Treaty is ReentrancyGuard {
     // next cutoff and froze writers indefinitely with one dust bind per week. 3 days (72h) is
     // comfortably under the 102h bound and leaves a 168h - 66h - 72h = 30h open window every week
     // even with a permanently dead feed; a cancel still refunds the buyer's premium in full
-    // (`cancel` below calls `capacity.refundPremium`), so this only shortens the backstop, it does
-    // not change who pays for an unfixable layer.
+    // (`cancel` below calls `refundPremium` on both vaults), so this only shortens the backstop, it
+    // does not change who pays for an unfixable layer.
     uint256 internal constant GRACE = 3 days;
     uint256 internal constant SEQUENCER_GRACE = 1 hours;
     uint256 internal constant BPS = 1e4;
@@ -99,22 +142,20 @@ contract Treaty is ReentrancyGuard {
     // The Pricer's own scenario table never produces |gapBps| above ~1474, so any exposure this
     // pricer would ever quote against is safe, but nothing stopped a caller from binding an
     // exposure so large that a real gap (not just the table's) panics the multiplication forever.
-    // 1e30 is far above any real vault's exposure (USDG has 6 decimals; 1e30 base units is
-    // 1e24 USDG) while leaving `1e30 * 1474` (~1.47e33) nowhere near int256's ~5.79e76 ceiling.
+    // 1e30 is far above any real vault's exposure (every book asset has 6 decimals; 1e30 base
+    // units is 1e24 of that asset) while leaving `1e30 * 1474` (~1.47e33) nowhere near int256's
+    // ~5.79e76 ceiling.
     uint256 internal constant MAX_EXPOSURE = 1e30;
 
-    // Decision 3 (docs/design/v3.md): `setReference` used to accept the first fresh round at or
-    // after `fridayCloseOf`, bounded by a max delay off that boundary. On Robinhood Chain's real
-    // equity feeds that rule never even reaches a round to check: the weekend heartbeat gap is
-    // 52-56h with zero prints in between, so "first round after close" is always the Sunday/Monday
-    // reopen, already carrying the weekend's news, silently absorbing the very gap this treaty
-    // exists to cover (RHC SPY: v3's rule pays 9,470.49 USDG on a real layer, the old rule 6,598.93,
-    // 30% short; v2 as deployed would have voided the market entirely -- docs/design/v3.md "the
-    // finding that shapes decision 3"). v3 instead reads the round already in effect the instant
-    // trading stopped (`setReference` below), which needs no round after close at all, so an
-    // ordinary silent weekend never triggers absorption or void. `MAX_ROUND_AGE` now only bounds
-    // how old *that* round may be (rule 5) and gates `bind`'s own freshness check below; a round
-    // silent for a full weekend before close is still too stale to stand in for it.
+    // `setReference` used to accept the first fresh round at or after `fridayCloseOf`, bounded by
+    // a max delay off that boundary. On Robinhood Chain's real equity feeds that rule never even
+    // reaches a round to check: the weekend heartbeat gap is 52-56h with zero prints in between, so
+    // "first round after close" is always the Sunday/Monday reopen, already carrying the weekend's
+    // news, silently absorbing the very gap this treaty exists to cover. Reading the round already
+    // in effect the instant trading stopped (`setReference` below) needs no round after close at
+    // all, so an ordinary silent weekend never triggers absorption or void. `MAX_ROUND_AGE` now
+    // only bounds how old *that* round may be (rule 5) and gates `bind`'s own freshness check
+    // below; a round silent for a full weekend before close is still too stale to stand in for it.
     uint256 internal constant MAX_ROUND_AGE = 26 hours;
 
     // Weekday math constants (SECURITY-REVIEW.md C1+H1). Epoch day 0 (1970-01-01) was a Thursday.
@@ -135,21 +176,23 @@ contract Treaty is ReentrancyGuard {
     uint256 internal constant FRIDAY_CLOSE_TOD_EDT = 20 hours; // 4:00pm ET, UTC-4
     uint256 internal constant FRIDAY_CLOSE_TOD_EST = 21 hours; // 4:00pm ET, UTC-5
 
-    IERC20 public immutable usdg;
     IPricer public immutable pricer; // L3: fixed at deploy, no setter, no admin path to swap it
-    Capacity public immutable capacity;
     uint256 public immutable minRateOnLineBps; // H2: premium floor, bps of limit
     address public immutable sequencerUptimeFeed; // M2: address(0) disables the check (testnet)
-    // Decision 3 (docs/design/v3.md), `cancel`'s liveness guard: a feed with a heartbeat that
-    // survives weekends (USDC/USD on both Arbitrum Sepolia and Robinhood Chain), read only there.
-    // Proves the chain itself kept receiving Chainlink writes long enough past a layer's expiry
-    // that a live 24h-heartbeat equity feed must have printed its own post-expiry round, so "no
-    // fresh equity round" really means a dead/paused market, not a halted chain silently starving
-    // every feed at once (RHC has no sequencer-uptime feed at all, so this is its only guard
-    // against that race). `address(0)` disables the check and must only ever be passed by unit
-    // tests; every real deploy passes a real feed.
+    // `cancel`'s liveness guard: a feed with a heartbeat that survives weekends (USDC/USD on both
+    // Arbitrum Sepolia and Robinhood Chain), read only there. Proves the chain itself kept
+    // receiving Chainlink writes long enough past a layer's expiry that a live 24h-heartbeat
+    // equity feed must have printed its own post-expiry round, so "no fresh equity round" really
+    // means a dead/paused market, not a halted chain silently starving every feed at once
+    // (Robinhood Chain has no sequencer-uptime feed at all, so this is its only guard against that
+    // race). `address(0)` disables the check and must only ever be passed by unit tests; every real
+    // deploy passes a real feed.
     address public immutable livenessFeed;
+    // Every layer's first-loss sub-limit is `limit * juniorShareBps / BPS`. Fixed at deploy, not
+    // governable: a writer knows their slice of every future layer before depositing.
+    uint256 public immutable juniorShareBps;
     AggregatorV3Interface[] public markets;
+    Book[] public books;
 
     mapping(uint256 => Layer) public layers;
     uint256 public layerCount;
@@ -158,19 +201,25 @@ contract Treaty is ReentrancyGuard {
     mapping(uint256 => mapping(uint256 => uint64)) public mondayPrice;
     mapping(uint256 => mapping(uint256 => bool)) public referenceSet;
     mapping(uint256 => mapping(uint256 => bool)) public marketFixed;
-    // H1, rewritten for decision 3: a market permissionlessly proven, by round data, to have no
-    // reachable round in effect at close (see `voidReference` below for the stale/phase proofs). A
-    // void market can never have its reference set and must not block `cancel` the way a
-    // merely-unreferenced-but-still-fixable market does.
+    // H1, rewritten for the round-in-effect-at-close rule: a market permissionlessly proven, by
+    // round data, to have no reachable round in effect at close (see `voidReference` below for the
+    // stale/phase proofs). A void market can never have its reference set and must not block
+    // `cancel` the way a merely-unreferenced-but-still-fixable market does.
     mapping(uint256 => mapping(uint256 => bool)) public referenceVoid;
 
     event Bound(
-        uint256 indexed id, address indexed buyer, uint256 retention, uint256 limit, uint256 premium, uint40 expiry
+        uint256 indexed id,
+        address indexed buyer,
+        uint256 indexed book,
+        uint256 retention,
+        uint256 limit,
+        uint256 premium,
+        uint40 expiry
     );
     event ReferenceSet(uint256 indexed id, uint256 indexed marketIdx, uint80 roundId, uint64 price);
     event ReferenceVoided(uint256 indexed id, uint256 indexed marketIdx, uint80 roundId, uint256 updatedAt);
     event MarketFixed(uint256 indexed id, uint256 indexed marketIdx, uint80 roundId, int256 answer);
-    event Settled(uint256 indexed id, uint256 payout);
+    event Settled(uint256 indexed id, uint256 payout, uint256 payoutJunior, uint256 payoutSenior);
     event Claimed(uint256 indexed id, address indexed buyer, address to, uint256 amount);
     event Cancelled(uint256 indexed id, uint256 premiumRefunded);
 
@@ -192,25 +241,50 @@ contract Treaty is ReentrancyGuard {
     error ReferenceIsVoid();
 
     constructor(
-        address usdg_,
+        address[] memory assets,
+        string[] memory firstLossNames,
+        string[] memory firstLossSymbols,
+        string[] memory seniorNames,
+        string[] memory seniorSymbols,
         address pricer_,
         address[] memory feeds,
         uint256 minRateOnLineBps_,
         address sequencerUptimeFeed_,
-        address livenessFeed_
+        address livenessFeed_,
+        uint256 juniorShareBps_
     ) {
-        if (usdg_ == address(0) || pricer_ == address(0) || feeds.length == 0) revert BadParams();
-        usdg = IERC20(usdg_);
+        uint256 nAssets = assets.length;
+        if (
+            nAssets == 0 || pricer_ == address(0) || feeds.length == 0
+                || firstLossNames.length != nAssets || firstLossSymbols.length != nAssets
+                || seniorNames.length != nAssets || seniorSymbols.length != nAssets
+                || juniorShareBps_ == 0 || juniorShareBps_ >= BPS
+        ) revert BadParams();
         pricer = IPricer(pricer_);
         minRateOnLineBps = minRateOnLineBps_;
         sequencerUptimeFeed = sequencerUptimeFeed_;
         livenessFeed = livenessFeed_;
+        juniorShareBps = juniorShareBps_;
         for (uint256 i; i < feeds.length; i++) {
             if (feeds[i] == address(0)) revert BadParams();
             if (AggregatorV3Interface(feeds[i]).decimals() != 8) revert BadParams();
             markets.push(AggregatorV3Interface(feeds[i]));
         }
-        capacity = new Capacity(IERC20(usdg_), address(this));
+        for (uint256 i; i < nAssets; i++) {
+            address a = assets[i];
+            if (a == address(0)) revert BadParams();
+            // Decision 1: every book asset must read the same 6 decimals the pricer and every
+            // stored amount already assume; a book on a differently-scaled asset would silently
+            // misprice every layer bound against it.
+            if (IERC20Metadata(a).decimals() != 6) revert BadParams();
+            Capacity firstLoss = new Capacity(IERC20(a), address(this), firstLossNames[i], firstLossSymbols[i]);
+            Capacity senior = new Capacity(IERC20(a), address(this), seniorNames[i], seniorSymbols[i]);
+            // A max allowance so each vault's own `receivePremium` pull (called from `bind` below)
+            // never needs a fresh approval from this contract.
+            IERC20(a).forceApprove(address(firstLoss), type(uint256).max);
+            IERC20(a).forceApprove(address(senior), type(uint256).max);
+            books.push(Book({asset: IERC20(a), firstLoss: firstLoss, senior: senior}));
+        }
     }
 
     function marketsLength() external view returns (uint256) {
@@ -219,6 +293,23 @@ contract Treaty is ReentrancyGuard {
 
     function exposureOf(uint256 id) external view returns (int256[] memory) {
         return _exposure[id];
+    }
+
+    /// Number of books (one per asset the constructor was given).
+    function booksCount() external view returns (uint256) {
+        return books.length;
+    }
+
+    function bookAsset(uint256 book) external view returns (address) {
+        return address(books[book].asset);
+    }
+
+    function firstLossVault(uint256 book) external view returns (address) {
+        return address(books[book].firstLoss);
+    }
+
+    function seniorVault(uint256 book) external view returns (address) {
+        return address(books[book].senior);
     }
 
     /// The ISO week's Friday 19:30 UTC cutoff and the following Monday 9:30am-ET expiry (13:30 UTC
@@ -300,18 +391,22 @@ contract Treaty is ReentrancyGuard {
         return uint256(era * 146097 + int256(doe) - 719468);
     }
 
-    /// Declares exposure per market and locks a layer for the current weekend. Only callable
-    /// strictly before this week's Friday 19:30 UTC cutoff (SECURITY-REVIEW.md C1+H1); the caller
-    /// cannot choose `fridayCutoff` or `expiry`. Quotes the premium from `pricer`, floors it at
-    /// `minRateOnLineBps` of `limit` (H2, a zero quote can never bind), reserves `limit` out of
-    /// `capacity`'s free capital, and pulls the premium straight into `capacity` (the buyer must
-    /// approve `capacity`, not this contract). The Friday reference price is set later, per
-    /// market, by `setReference`, not read here.
-    function bind(int256[] calldata exposure, uint256 retention, uint256 limit)
+    /// Declares exposure per market and locks a layer for the current weekend, in one book's asset.
+    /// Only callable strictly before this week's Friday 19:30 UTC cutoff (SECURITY-REVIEW.md
+    /// C1+H1); the caller cannot choose `fridayCutoff` or `expiry`. Quotes the whole layer's
+    /// premium from `pricer` and floors it at `minRateOnLineBps` of `limit` (H2, a zero quote can
+    /// never bind); a second `pricer.quote` on the first-loss sub-layer `(retention, J)` in the
+    /// same transaction sets `premiumJunior`, and `premiumSenior` is the remainder, so the split
+    /// always comes from the same table the total premium does. Reserves `J` out of the book's
+    /// first-loss vault and `limit - J` out of its senior vault, and pulls the whole premium from
+    /// the buyer into this contract before each vault pulls its own share back out. The Friday
+    /// reference price is set later, per market, by `setReference`, not read here.
+    function bind(uint256 book, int256[] calldata exposure, uint256 retention, uint256 limit)
         external
         nonReentrant
         returns (uint256 id)
     {
+        if (book >= books.length) revert BadParams();
         uint256 n = markets.length;
         if (exposure.length != n) revert BadParams();
         if (limit == 0) revert BadParams();
@@ -333,51 +428,83 @@ contract Treaty is ReentrancyGuard {
         (uint256 cutoff, uint256 expiry) = weekWindow(block.timestamp);
         if (block.timestamp >= cutoff) revert BadTiming();
 
-        // Decision 3, liveness guard rule 1 (docs/design/v3.md): every market's feed must have a
-        // round within MAX_ROUND_AGE of now, or a layer could bind against a feed that is already
-        // dead (an F1-style weekly griefing entry point) or price its volatility off a stale round
-        // during a long outage. Written as an addition, `updatedAt + MAX_ROUND_AGE >=
-        // block.timestamp`, not `block.timestamp - updatedAt`, so a fork test that warps
-        // block.timestamp backward relative to the fork's real "latest" round never underflows.
+        // Liveness guard rule 1: every market's feed must have a round within MAX_ROUND_AGE of
+        // now, or a layer could bind against a feed that is already dead (an F1-style weekly
+        // griefing entry point) or price its volatility off a stale round during a long outage.
+        // Written as an addition, `updatedAt + MAX_ROUND_AGE >= block.timestamp`, not
+        // `block.timestamp - updatedAt`, so a fork test that warps block.timestamp backward never
+        // underflows.
         address[] memory feedAddrs = new address[](n);
         for (uint256 i; i < n; i++) {
             feedAddrs[i] = address(markets[i]);
             (,,, uint256 updatedAt,) = markets[i].latestRoundData();
             if (updatedAt + MAX_ROUND_AGE < block.timestamp) revert BadRound();
         }
-        (uint256 quoted,,) = pricer.quote(exposure, feedAddrs, retention, limit);
+
+        // The first-loss sub-layer's own limit, J = L * juniorShareBps / 1e4. `BadParams` if
+        // either slice would be empty: no vault can lock capital for a zero-sized slice.
+        uint256 juniorLimit = limit * juniorShareBps / BPS;
+        if (juniorLimit == 0 || limit - juniorLimit == 0) revert BadParams();
+
+        (uint256 quotedTotal,,) = pricer.quote(exposure, feedAddrs, retention, limit);
         uint256 floor_ = limit * minRateOnLineBps / BPS;
-        uint256 premium = quoted < floor_ ? floor_ : quoted;
-        // L2 (the security review): the H2 floor itself rounds to zero for any
-        // limit under 200 base units. Harmless alone, but the C1 epoch gate now closes every
-        // writer's deposits and withdrawals while a layer is live, so a free bind becomes a
-        // repeatable weekly griefing lock. A zero-premium layer can never bind.
+        uint256 premium = quotedTotal < floor_ ? floor_ : quotedTotal;
+        // L2 (the security review): the H2 floor itself rounds to zero for any limit under 200
+        // base units. Harmless alone, but the C1 epoch gate now closes every writer's deposits and
+        // withdrawals while a layer is live, so a free bind becomes a repeatable weekly griefing
+        // lock. A zero-premium layer can never bind.
         if (premium == 0) revert BadParams();
+
+        // The first-loss sub-layer's own quote sets its share of the premium; the floor, if it
+        // bound above, is not re-applied to the sub-layer, so a floor top-up always lands in the
+        // senior slice (docs/pricing.md: additivity holds on the unfloored quote, and the senior
+        // slice absorbs whatever the floor added on top of it).
+        (uint256 quotedJunior,,) = pricer.quote(exposure, feedAddrs, retention, juniorLimit);
+        uint256 premiumJunior = quotedJunior;
+        // Additivity (docs/pricing.md, checked in TrancheAdditivity.t.sol) guarantees
+        // quotedJunior <= quotedTotal <= premium, so this never underflows in practice; if the
+        // pricer ever violated that, this reverts instead of silently mispricing the split.
+        uint256 premiumSenior = premium - premiumJunior;
+        // No vault can lock capital for zero premium (generalizes L2 above to each slice): a
+        // dust layer that would price one tranche at zero can never bind at all.
+        if (premiumJunior == 0 || premiumSenior == 0) revert BadParams();
 
         id = layerCount++;
         Layer storage L = layers[id];
         L.buyer = msg.sender;
         L.fridayCutoff = uint40(cutoff);
         L.expiry = uint40(expiry);
+        L.book = uint16(book);
         L.state = State.Bound;
         L.retention = retention;
         L.limit = limit;
+        L.juniorLimit = juniorLimit;
         L.premium = premium;
+        L.premiumJunior = premiumJunior;
+        L.premiumSenior = premiumSenior;
         _exposure[id] = exposure;
 
-        emit Bound(id, msg.sender, retention, limit, premium, uint40(expiry));
+        emit Bound(id, msg.sender, book, retention, limit, premium, uint40(expiry));
 
-        capacity.lock(limit, uint40(cutoff));
-        capacity.receivePremium(msg.sender, premium);
+        Book storage b = books[book];
+        b.firstLoss.lock(juniorLimit, uint40(cutoff));
+        b.senior.lock(limit - juniorLimit, uint40(cutoff));
+        // The buyer approves this contract, not a vault; this pulls the whole premium in, then
+        // each vault pulls its own share back out through its existing `receivePremium`. This
+        // contract's balance of the book asset returns to zero (T5): `premiumJunior +
+        // premiumSenior == premium` exactly, by construction above.
+        b.asset.safeTransferFrom(msg.sender, address(this), premium);
+        b.firstLoss.receivePremium(address(this), premiumJunior);
+        b.senior.receivePremium(address(this), premiumSenior);
     }
 
-    /// Sets one market's Friday reference to the round in effect at Friday's official close
-    /// (docs/design/v3.md, decision 3), not the first round after it: the round whose `updatedAt`
-    /// is at or before `closeTs` and that nothing has superseded before `closeTs` either (rule 4
-    /// below), so it is exactly the price the market was quoting the instant the week's trading
-    /// stopped. Callable only after that close has passed, permissionlessly, same as `fix`.
+    /// Sets one market's Friday reference to the round in effect at Friday's official close, not
+    /// the first round after it: the round whose `updatedAt` is at or before `closeTs` and that
+    /// nothing has superseded before `closeTs` either (rule 4 below), so it is exactly the price
+    /// the market was quoting the instant the week's trading stopped. Callable only after that
+    /// close has passed, permissionlessly, same as `fix`.
     ///
-    /// The five rules (design doc numbering):
+    /// The five rules:
     /// 1. `block.timestamp > closeTs`, strict, so no round can still land at `closeTs` in this block.
     /// 2. `roundId` is in the feed's current phase (`_latestInPhase`) with a positive, in-range
     ///    answer.
@@ -391,7 +518,7 @@ contract Treaty is ReentrancyGuard {
     ///
     /// This never needs a round *after* close, so a market with no weekend heartbeat (Robinhood
     /// Chain's real SPY/AAPL feeds, 52-56h silent every weekend) settles normally instead of
-    /// voiding every ordinary weekend (docs/design/v3.md, "the finding that shapes decision 3").
+    /// voiding every ordinary weekend.
     function setReference(uint256 id, uint256 marketIdx, uint80 roundId) external nonReentrant {
         Layer storage L = layers[id];
         if (L.state != State.Bound) revert WrongState();
@@ -426,15 +553,15 @@ contract Treaty is ReentrancyGuard {
         emit ReferenceSet(id, marketIdx, roundId, price);
     }
 
-    /// Permissionless proof that a market's Friday reference can never be set (docs/design/v3.md,
-    /// decision 3), either proof callable only after `closeTs`:
+    /// Permissionless proof that a market's Friday reference can never be set, either proof
+    /// callable only after `closeTs`:
     ///
     /// - **stale**: `roundId` is the genuine round in effect at close (rules 2-4 above, minus the
     ///   answer-value half of rule 2, see below) but fails rule 5, silent for more than
     ///   `MAX_ROUND_AGE` before close. The answer's *value* is deliberately not checked here
     ///   (unlike `setReference`): a stale round with a bad answer must still be voidable on timing
     ///   alone, or a feed that went both silent and briefly corrupt could leave the layer with
-    ///   neither a reference nor an escape (the same reasoning the pre-v3 void carried; see
+    ///   neither a reference nor an escape (the same reasoning the earlier void carried; see
     ///   `test_V4` in TreatyVoid.t.sol).
     /// - **phase**: `roundId` is the feed's current phase's own first round (`phaseId << 64 | 1`)
     ///   and its `updatedAt` is already after close, so the round that was actually in effect at
@@ -445,7 +572,7 @@ contract Treaty is ReentrancyGuard {
     /// Both proofs and `setReference` exclude each other (`AlreadyFixed`/`ReferenceIsVoid`).
     /// `_anyMarketFixable` below treats a void market the same as a dead one: it stops blocking
     /// `cancel`, so a layer stuck on an unreachable reference reaches `Cancelled` instead of
-    /// staying `Bound` forever with the vault's gate shut and no admin path out.
+    /// staying `Bound` forever with the vaults' gates shut and no admin path out.
     function voidReference(uint256 id, uint256 marketIdx, uint80 roundId) external nonReentrant {
         Layer storage L = layers[id];
         if (L.state != State.Bound) revert WrongState();
@@ -519,13 +646,13 @@ contract Treaty is ReentrancyGuard {
 
     /// If a market's feed never produces a fresh round within `GRACE` of expiry (including the
     /// M3 case: a Chainlink phase change makes every settling round unfixable), anyone can cancel
-    /// the layer, freeing the writer capital it locked. Unlike the earlier build, the buyer's
-    /// premium is refunded here rather than kept by writers for a layer that never resolved
+    /// the layer, freeing the writer capital both its slices locked. The buyer's premium is
+    /// refunded from both vaults here rather than kept by writers for a layer that never resolved
     /// (SECURITY-REVIEW.md M3): writers only earn the premium for a layer that actually settles.
     ///
     /// Cancel is a backstop for a genuinely dead layer, not a shortcut around a layer that
     /// could still be fixed. `_anyMarketFixable` below reverts `StillFixable` if any unfixed
-    /// market already has a Monday round sitting there waiting to be consumed by `fix` -- at that
+    /// market already has a Monday round sitting there waiting to be consumed by `fix`, at that
     /// point the correct call is `fix`, not `cancel`.
     function cancel(uint256 id) external nonReentrant {
         Layer storage L = layers[id];
@@ -533,14 +660,14 @@ contract Treaty is ReentrancyGuard {
         if (block.timestamp < uint256(L.expiry) + GRACE) revert BadTiming();
         // Same sequencer gate as fix: cancel must not land in a window where fix is blocked.
         _requireSequencerUp();
-        // Decision 3, liveness guard rule 3 (docs/design/v3.md): proves the chain itself kept
-        // receiving Chainlink writes long enough after expiry that a live 24h-heartbeat equity
-        // feed must have printed its own post-expiry round, so "no fresh equity round" really
-        // means a dead market, not a halted chain silently starving every feed at once -- the same
-        // race the Arbitrum sequencer-uptime check above guards on Arbitrum, but RHC has no
-        // sequencer-uptime feed at all, so this is its only protection. Reverts the same
-        // `StillFixable` as the check below: both mean "cannot yet prove this layer is really
-        // dead". `livenessFeed == address(0)` disables the check (unit tests only).
+        // Liveness guard rule 3: proves the chain itself kept receiving Chainlink writes long
+        // enough after expiry that a live 24h-heartbeat equity feed must have printed its own
+        // post-expiry round, so "no fresh equity round" really means a dead market, not a halted
+        // chain silently starving every feed at once, the same race the Arbitrum sequencer-uptime
+        // check above guards on Arbitrum, but Robinhood Chain has no sequencer-uptime feed at all,
+        // so this is its only protection. Reverts the same `StillFixable` as the check below: both
+        // mean "cannot yet prove this layer is really dead". `livenessFeed == address(0)` disables
+        // the check (unit tests only).
         if (livenessFeed != address(0)) {
             (,,, uint256 liveUpdatedAt,) = AggregatorV3Interface(livenessFeed).latestRoundData();
             if (liveUpdatedAt < uint256(L.expiry) + MAX_ROUND_AGE) revert StillFixable();
@@ -548,26 +675,28 @@ contract Treaty is ReentrancyGuard {
         if (_anyMarketFixable(id)) revert StillFixable();
         L.state = State.Cancelled;
         emit Cancelled(id, L.premium);
-        capacity.unlock(L.limit, L.fridayCutoff);
-        capacity.refundPremium(L.buyer, L.premium);
+        Book storage b = books[L.book];
+        b.firstLoss.unlock(L.juniorLimit, L.fridayCutoff);
+        b.senior.unlock(L.limit - L.juniorLimit, L.fridayCutoff);
+        b.firstLoss.refundPremium(L.buyer, L.premiumJunior);
+        b.senior.refundPremium(L.buyer, L.premiumSenior);
     }
 
     /// True if some not-yet-fixed market on this layer is still fixable: either its Monday round
     /// (against `L.expiry`) could still be produced, or, if the reference was never set, it has
     /// not been proven void.
     ///
-    /// Decision 3 (docs/design/v3.md): `setReference` now reads the round already in effect the
-    /// instant Friday's close happened, which always exists once close has passed (barring a feed
-    /// with no history at all) -- it never waits for a round *after* the boundary the way `fix`'s
-    /// Monday-open rule still does. An unreferenced market is therefore always resolvable unless
-    /// `voidReference` has proven it stranded (the stale/phase proofs there); the old
-    /// `_isMarketDead(markets[i], refBoundary)` check on the Friday side no longer applies to this
-    /// branch (that function's question, "has a round printed past this boundary yet", is not the
-    /// one v3's reference rule asks).
+    /// `setReference` reads the round already in effect the instant Friday's close happened, which
+    /// always exists once close has passed (barring a feed with no history at all): it never waits
+    /// for a round *after* the boundary the way `fix`'s Monday-open rule still does. An
+    /// unreferenced market is therefore always resolvable unless `voidReference` has proven it
+    /// stranded (the stale/phase proofs there); the old `_isMarketDead(markets[i], refBoundary)`
+    /// check on the Friday side no longer applies to this branch (that function's question, "has a
+    /// round printed past this boundary yet", is not the one this reference rule asks).
     ///
     /// H1/H2 (re-review of 23e632f): `fix` requires every market's reference to be set
     /// (`ReferenceNotSet`) before any one of them can settle. So the instant one market can never
-    /// get a reference -- proven void -- `fix` can never succeed for this layer again, no matter
+    /// get a reference, proven void, `fix` can never succeed for this layer again, no matter
     /// what any other market looks like. Returning `false` immediately in that case (rather than
     /// only `continue`, the old per-market-only view) is what lets `cancel` actually terminate a
     /// layer stuck behind one unreferenceable market instead of deadlocking on another market's
@@ -591,7 +720,7 @@ contract Treaty is ReentrancyGuard {
     /// A market counts as dead against `boundary` only if its latest round predates `boundary`
     /// (nothing has printed past it yet), or the current Chainlink phase's own first round
     /// (`phaseId << 64 | 1`, one extra read) is already at or past `boundary` (the crossing round
-    /// lives in an older, now-unreachable phase -- the M3 scenario `fix`'s own `_latestInPhase`
+    /// lives in an older, now-unreachable phase, the M3 scenario `fix`'s own `_latestInPhase`
     /// guard cannot cross). Any other case means a genuine first-round-after-`boundary` exists
     /// somewhere in the current phase. `try` because a phase's own first round (or a roundId of 0)
     /// can be unset/unreadable on some feed implementations and must count as dead, not fixable.
@@ -611,7 +740,8 @@ contract Treaty is ReentrancyGuard {
 
     /// Pull claim for the buyer's realized payout, paid to the caller. `claimTo` lets the buyer
     /// redirect to another address (L4: a blocklisted buyer is not stuck forever); only the
-    /// buyer who owns the claim can call either.
+    /// buyer who owns the claim can call either. Pays from both of the layer's book vaults, each
+    /// its own slice, in the book's asset.
     function claim(uint256 id) external {
         claimTo(id, msg.sender);
     }
@@ -626,7 +756,9 @@ contract Treaty is ReentrancyGuard {
 
         L.buyerClaimed = true;
         emit Claimed(id, L.buyer, to, L.payout);
-        capacity.payOut(to, L.payout);
+        Book storage b = books[L.book];
+        b.firstLoss.payOut(to, L.payoutJunior);
+        b.senior.payOut(to, L.payoutSenior);
     }
 
     function _settle(uint256 id) internal {
@@ -641,10 +773,10 @@ contract Treaty is ReentrancyGuard {
             // Slither divide-before-multiply (Treaty.sol:357-358 pre-fix): the
             // old two-step computation truncated the gap to whole bps (`* 10000 / friday`) before
             // multiplying by exposure, losing up to 0.005% of the true gap per market, always
-            // rounded toward the writers (up to ~100 USDG of error on 1e12 exposure). One division
-            // keeps full precision; `friday` can never be 0 (`setReference` requires a Chainlink
-            // `answer > 0`), and Solidity's `int256` division truncates toward zero either way, so
-            // this changes precision, not rounding direction. See
+            // rounded toward the writers (up to ~100 base units of error on 1e12 exposure). One
+            // division keeps full precision; `friday` can never be 0 (`setReference` requires a
+            // Chainlink `answer > 0`), and Solidity's `int256` division truncates toward zero
+            // either way, so this changes precision, not rounding direction. See
             // contracts/test/TreatyPrecision.t.sol for the measured before/after difference.
             int256 pnl = (exposure[i] * (monday - friday)) / friday;
             if (pnl < 0) totalLoss -= pnl;
@@ -656,17 +788,29 @@ contract Treaty is ReentrancyGuard {
         // The attachment/limit clamp: a layer can never pay more than the capital locked for it.
         if (payout > L.limit) payout = L.limit;
 
-        L.payout = payout;
-        L.state = State.Settled;
-        emit Settled(id, payout);
+        // The waterfall: the first-loss vault absorbs the first `juniorLimit` of the payout, the
+        // senior vault the rest. `payoutJunior + payoutSenior == payout` always, and
+        // `payoutSenior > 0` only once the first-loss slice has paid its full `juniorLimit`.
+        uint256 payoutJunior = payout < L.juniorLimit ? payout : L.juniorLimit;
+        uint256 payoutSenior = payout - payoutJunior;
 
-        // C1: moves this layer's reservation out of `locked` entirely. The unused remainder
-        // becomes free capacity again; `payout` moves into `owed`, still excluded from
-        // totalAssets() but earmarked for `payOut` (claim) instead of this layer's own hold.
-        capacity.settle(L.limit - payout, payout, L.fridayCutoff);
-        // M1: the premium was withheld from share pricing since bind (Capacity.pendingPremium);
-        // now that this weekend's risk has actually played out, it vests to whoever holds shares.
-        capacity.releasePremium(L.premium);
+        L.payout = payout;
+        L.payoutJunior = payoutJunior;
+        L.payoutSenior = payoutSenior;
+        L.state = State.Settled;
+        emit Settled(id, payout, payoutJunior, payoutSenior);
+
+        // C1: moves this layer's reservation out of each vault's `locked` entirely. The unused
+        // remainder becomes free capacity again in that vault; the slice's own payout moves into
+        // its `owed` (still excluded from totalAssets(), now earmarked for `payOut`/claim).
+        Book storage b = books[L.book];
+        b.firstLoss.settle(L.juniorLimit - payoutJunior, payoutJunior, L.fridayCutoff);
+        b.senior.settle((L.limit - L.juniorLimit) - payoutSenior, payoutSenior, L.fridayCutoff);
+        // M1: each slice's premium was withheld from its own vault's share pricing since bind
+        // (Capacity.pendingPremium); now that this weekend's risk has actually played out, it
+        // vests to whoever holds shares in that vault.
+        b.firstLoss.releasePremium(L.premiumJunior);
+        b.senior.releasePremium(L.premiumSenior);
     }
 
     /// Chainlink proxy ids are phaseId << 64 | aggregatorRound; only the proxy's current phase is

@@ -55,7 +55,8 @@ contract TreatyPrecisionTest is Test, TreatyFixture {
     MockFeed feed;
     Pricer pricer;
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
 
     address writer = makeAddr("writer");
     address buyer = makeAddr("buyer");
@@ -69,17 +70,24 @@ contract TreatyPrecisionTest is Test, TreatyFixture {
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
         treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
-        capacity = treaty.capacity();
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
 
         usdg.mint(writer, 10_000_000e6);
         vm.prank(writer);
-        usdg.approve(address(capacity), type(uint256).max);
+        usdg.approve(address(firstLoss), type(uint256).max);
         vm.prank(writer);
-        capacity.deposit(5_000_000e6, writer);
+        firstLoss.deposit(5_000_000e6, writer);
+        vm.prank(writer);
+        usdg.approve(address(senior), type(uint256).max);
+        vm.prank(writer);
+        senior.deposit(5_000_000e6, writer);
 
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);
-        usdg.approve(address(capacity), type(uint256).max);
+        // Premium is pulled by Treaty itself, never a vault, so the buyer approves the Treaty
+        // contract, not either vault.
+        usdg.approve(address(treaty), type(uint256).max);
 
         vm.warp(T0);
     }
@@ -112,7 +120,7 @@ contract TreatyPrecisionTest is Test, TreatyFixture {
         vm.prank(buyer);
         int256[] memory exposure = new int256[](1);
         exposure[0] = EXPOSURE;
-        uint256 id = treaty.bind(exposure, RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT);
 
         // round 2: first round at/after Friday's close (REF_TIME); round 1 (setUp, Friday
         // CUTOFF - 1 hours) is its required strictly-earlier predecessor.
@@ -124,7 +132,7 @@ contract TreatyPrecisionTest is Test, TreatyFixture {
         vm.warp(uint256(EXPIRY) + 20);
         treaty.fix(id, 0, 3);
 
-        (,,,,, Treaty.State state,,,,, uint256 payout) = treaty.layers(id);
+        (,,,,, Treaty.State state,,,,, uint256 payout) = layerBasics(treaty, id);
         assertEq(uint8(state), uint8(Treaty.State.Settled));
 
         uint256 expectedPayoutNew = uint256(-EXPECTED_PNL_NEW); // retention 0, well under LIMIT
