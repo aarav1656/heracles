@@ -22,3 +22,63 @@ Read live on Arbitrum Sepolia (421614), deployer
 | Bind | `Treaty.bind` | not yet run on this deployment; `scripts/monday-bind.sh` points at the new addresses, its small bind layer quotes 890 base units, so the 50 bps floor (0.002 USDG) sets its premium, and the whole deposit plus bind needs under 1 USDG |
 
 Runs against the previous deployment are in this file's git history.
+
+## Full lifecycle on a fork of real Arbitrum One state, weekend of 2026-09-25/28
+
+Loss-audit item 3: a Foundry fork test that binds, sets the Friday reference, fixes the Monday
+price, settles and claims, entirely against a real Chainlink round history (not a MockFeed), so
+the payout is provably the treaty's own settlement math applied to prices that actually printed.
+Test: `contracts/test/GapTreaty.realweekend.fork.t.sol`.
+
+Round data was read live off the Arbitrum One SPY/USD feed
+(`0x46306F3795342117721D8DEd50fbcF6DF2b3cc10`) on 2026-09-29:
+
+```
+$ SPY=0x46306F3795342117721D8DEd50fbcF6DF2b3cc10; RPC=https://arb1.arbitrum.io/rpc
+$ for agground in 358 359 360 361 362; do
+    rid=$(python3 -c "print((2<<64) | $agground)")
+    cast call $SPY "getRoundData(uint80)(uint80,int256,uint256,uint256,uint80)" $rid --rpc-url $RPC
+  done
+agground=358 answer=76874000000 updatedAt=1790337627 (Fri 2026-09-25 12:00:27 UTC, pre-close)
+agground=359 answer=77134250000 updatedAt=1790424033 (Sat 2026-09-26 12:00:33 UTC) <- Friday reference
+agground=360 answer=77134250000 updatedAt=1790510439 (Sun 2026-09-27 12:00:39 UTC)
+agground=361 answer=77134250000 updatedAt=1790596846 (Mon 2026-09-28 12:00:46 UTC, pre-open)
+agground=362 answer=76748000000 updatedAt=1790602546 (Mon 2026-09-28 13:35:46 UTC) <- Monday fix
+```
+
+Round 359 is the first round with `updatedAt >= fridayCloseOf` (Fri 20:00 UTC EDT close,
+1,790,366,400) whose predecessor (358) is strictly earlier; round 362 is the first round with
+`updatedAt >= expiry` (Mon 13:30 UTC EDT open, 1,790,602,200) whose predecessor (361) is strictly
+earlier. Both match `Treaty.sol`'s `NotFirstRound` guard exactly. At the pinned fork block
+(509,949,410, `cast block-number` on 2026-09-29) round 362 is also the feed's actual
+`latestRoundData()`, so `_latestInPhase` accepts both rounds with no phase change involved.
+
+Real gap: `(76748000000 - 77134250000) / 77134250000 = -0.50072%`. Test binds 2,000,000 USDG long
+SPY exposure with a 5,000 USDG retention and a 60,000 USDG limit:
+
+```
+$ cd contracts && forge test --match-contract GapTreatyRealWeekendForkTest -vv
+[PASS] test_realWeekend_bindReferenceFixAndClaim() (gas: 5115069)
+Logs:
+  real-weekend premium against live SPY vol (USDG, 6dp) 3907493904
+[PASS] test_realWeekend_predecessorRoundsAreCorrectlyOrdered() (gas: 36614)
+Suite result: ok. 2 passed; 0 failed; 0 skipped
+```
+
+`_settle`'s own `(exposure * (monday - friday)) / friday` formula produces a real loss of
+10,015.006303 USDG; after the 5,000 USDG retention the layer settles a payout of 5,015.006303
+USDG, `claim()` moves exactly that amount of the real forked USDG token to the buyer, and
+`capacity.owed()` clears to 0. The test asserts the payout against this exact number, not a
+tolerance band.
+
+**Mutation proof (the check can fail):** temporarily replaced `_settle`'s
+`int256 p = totalLoss - int256(L.retention);` with `int256 p = totalLoss;` (dropping the
+retention deduction) in `contracts/src/Treaty.sol`, re-ran the same test:
+
+```
+[FAIL: payout must match _settle's real-price math: 10015006303 != 5015006303]
+test_realWeekend_bindReferenceFixAndClaim()
+```
+
+Restored `Treaty.sol` from git (`git diff --stat contracts/src/Treaty.sol` empty afterwards),
+re-ran: both tests green again (gas 5,115,069 / 36,614, matching the original run above).

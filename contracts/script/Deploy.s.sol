@@ -42,6 +42,16 @@ contract Deploy is Script {
     address constant SEQUENCER_FEED = address(0); // no Arbitrum Sepolia equivalent exists
 
     function run() external returns (Treaty treaty) {
+        // Mainnet sequencer-feed trap (loss-audit item 7, docs/loss/A-heracles.md): this script
+        // hardcodes `SEQUENCER_FEED = address(0)` and `SPY_FEED`'s Sepolia address above. Nothing
+        // previously stopped it from being run against a different `--rpc-url` (Arbitrum One,
+        // chain id 42161) and silently deploying a mainnet Treaty with the sequencer-downtime
+        // check disabled and Sepolia's feed address wired in as the "SPY" market. This script is
+        // Sepolia-only; a mainnet deploy needs its own script passing the real
+        // `0xFdB631F5EE196F0ed6FAa767959853A9F217697D` sequencer feed and the real Arbitrum One
+        // SPY feed, not a copy-paste of this one with the RPC flag changed.
+        require(block.chainid == 421614, "Deploy.s.sol is Sepolia-only (chain id 421614)");
+
         address pricer = vm.envAddress("PRICER");
         address[] memory feeds = new address[](1);
         feeds[0] = SPY_FEED;

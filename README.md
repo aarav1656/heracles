@@ -29,10 +29,14 @@ block 313,869,456, status success), and the Stylus Pricer above is a fresh deplo
 block 313,689,917: 25,765 bytes compressed, deployed as two fragments behind a 48-byte
 root contract, constructed with table id `[2]` (SPY). Treaty and Capacity are
 Sourcify-verified (`exact_match`, both creation and runtime, matchId 53809711 and
-53809724, checked live via `sourcify.dev/server/v2/contract/421614/<address>`); the
-Pricer is not, since Sourcify's Solidity route doesn't take Stylus/WASM bytecode and
-`cargo stylus verify`'s own reproducible-build route needs a Docker daemon that was
-unavailable in this deploy run.
+53809724, checked live via `sourcify.dev/server/v2/contract/421614/<address>`) and
+Blockscout-verified (`is_verified: true`, checked live via
+`arbitrum-sepolia.blockscout.com/api/v2/smart-contracts/<address>`):
+[Treaty on Blockscout](https://arbitrum-sepolia.blockscout.com/address/0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27?tab=contract),
+[Capacity on Blockscout](https://arbitrum-sepolia.blockscout.com/address/0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159?tab=contract).
+The Pricer is verified on neither, since Sourcify's Solidity route and Blockscout's
+verifier both take EVM bytecode, not Stylus/WASM, and `cargo stylus verify`'s own
+reproducible-build route needs a Docker daemon that was unavailable in this deploy run.
 
 Every wiring read on the new Treaty checks out live: `pricer()` and `capacity()` point at
 the two addresses above, `usdg()` points at the Paxos USDG address, and
@@ -77,6 +81,81 @@ covering the sum of each losing market's gap across the markets it lists at bind
 (`_settle` sums only the legs that moved against the buyer, per market, never netted
 against a gain on another leg in the same layer): a different buyer, a different
 instrument, a cross-market design rather than a single-ticker one.
+
+## Why would a vault buy this
+
+Ostium and Gains Network gTrade are named above as prospects on the strength of their
+public TVL/OI numbers, not as users: neither has signed, deposited, or otherwise
+confirmed intent to buy this cover, and that gap is tracked as an open risk, not implied
+away.
+
+**What they use today, and why it does not close the gap:**
+
+- **Ostium's own affiliate buffer capital** absorbs trader PnL first, but it is sized off
+  the pool's own capital, not off a weekend-gap distribution; once the buffer is spent the
+  vault "enters UC state and automatically blocks new deposits"
+  (docs.ostium.com/vault/overview). It is the same capital taking every other risk the
+  pool already carries, not capital set aside specifically for the Friday-to-Monday gap.
+- **An offchain hedge reconciled against a broker** (the pattern Ostium already runs with
+  Jump Trading, docs.ostium.com) needs a signed counterparty, a settlement process outside
+  the chain, and trust that the reconciliation actually happens; nothing about it is
+  verifiable from on-chain state the way a Chainlink round id and a `Settled` event are.
+- **Reopening the position in CME equity-index futures (ES/NQ) Sunday evening** only
+  exists for broad indices, trades on a different clock (CME's own Sunday 6pm ET open, not
+  the underlying stock's Monday 9:30am ET open), and does not exist at all for a
+  single-name gap (NVDA, AAPL, TSLA): an index future cannot hedge one ticker's
+  idiosyncratic weekend move.
+- **Listed single-stock options** close at Friday's regular session close along with the
+  underlying, so they cannot be bought or sold to cover a gap that has not happened yet
+  without already being held going into the weekend, and CBOE has no standing
+  Saturday/Sunday session to trade them in.
+
+None of these four is a defined-risk, on-chain, permissionlessly-priced weekend put; all
+of them either need a standing relationship, cover only part of the exposure, or use
+capital that is also on the hook for every other risk the pool runs. That is the gap
+Heracles is a candidate for filling, contingent on Ostium or Gains actually wanting to buy
+it (unconfirmed, tracked as this submission's kill shot).
+
+**Honest cost, recomputed from this repo's own data, not restated from memory:**
+
+```
+$ python3 -c "
+gaps = [int(x) for x in open('evidence/gap-tables/SPY.gaps.txt').read().strip().split(',')]
+exposure, retention, limit = 2_000_000_000_000, 20_000_000_000, 60_000_000_000
+payouts = [min(limit, max(0, max(0, exposure*(-b)//10000) - retention)) for b in gaps]
+print(sum(1 for p in payouts if p > 0), '/', len(gaps), 'weekends pay')
+el = sum(payouts)/len(payouts)
+tvar95 = sum(sorted(payouts, reverse=True)[:25])/25
+premium = el + 30_000*(tvar95-el)/1e6 + 40_000*limit*7/(365*1e6)
+print('premium', premium/1e6, 'USDG =', premium/limit*100, '% of limit')
+"
+36 / 504 weekends pay
+premium 1676.7221591650357 USDG = 2.794536931941726 % of limit
+```
+
+For a long 2,000,000 USDG SPY position with a 20,000 USDG retention and a 60,000 USDG
+limit (the same parameters as the live quote above), the headline layer pays out on 36 of
+the 504 ten-year historical Friday-to-Monday weekends in the SPY table (7.1% of
+weekends), and its risk-neutral-plus-load premium is 2.79% of the limit per weekend
+bound, matching the live on-chain quote (1,676.722158 USDG) to the last cent. This is not
+a small number restated as a rounding error: a vault buying this cover every week for a
+year pays roughly 145% of the limit in premium (52 x 2.79%) against a 7.1% chance of
+collecting per week, which only makes sense priced against the tail it is not willing to
+carry itself, not as a routine weekly expense.
+
+**Who is already eating this gap today, unhedged:**
+
+- **Aave started lending USDC against seven tokenized stocks (NVDA and AMZN among them)
+  on 2026-09-25, capped at $21M. The price feeds hold Friday's close until 8pm Sunday ET
+  while loans keep running, so the tokens trade all weekend on a frozen price and USDC
+  lenders eat the Monday gap.**
+  (@MoneyNomads1, 2026-09-28, https://x.com/MoneyNomads1/status/2104630009302290492) This
+  is a major lending protocol now structurally exposed to exactly the gap this treaty
+  prices, with a real cap already hit, not a hypothetical.
+- **"Billion-dollar-plus days in Stock Token volume, 72% of it on weekends."** (Johann
+  Kerbrat, SVP & GM Crypto and International, Robinhood, 2026-09-26,
+  https://x.com/JohannKerbrat/status/2103874953053622694) The weekend is not the tail case
+  for this asset class, it is the majority of flow.
 
 ## Why Arbitrum
 
@@ -163,7 +242,7 @@ Mutation check (this build): removing the H2 floor turned
 liabilities subtraction in `Capacity.totalAssets()` turned
 `test_H3_lossSharedProRataRegardlessOfWithdrawOrder` red (546% relative error against a
 1% tolerance); restoring both returned the full suite to green (`forge test --summary`:
-120 tests, 22 suites, 0 failed, re-run 2026-09-29).
+122 tests, 23 suites, 0 failed, re-run 2026-09-29).
 
 ### Stylus program expiry and reactivation (L3)
 
@@ -203,9 +282,10 @@ performance number is claimed here.
 
 ## What works
 
-- Full local suite, 2026-09-28: 120 Foundry tests pass across 22 suites, 0 failed, 0
-  skipped. This count moves as tests are added; verify with `forge test --summary`
-  rather than trusting this number stale.
+- Full local suite, 2026-09-29: 122 Foundry tests pass across 23 suites, 0 failed, 0
+  skipped (includes `GapTreatyRealWeekendForkTest`, a full bind-reference-fix-claim
+  lifecycle replayed against real Chainlink round data). This count moves as tests are
+  added; verify with `forge test --summary` rather than trusting this number stale.
 - Mutation checks (this build, each independently confirmed red then green): removing
   the H2 premium floor turns `test_H2_premiumFloorPreventsZeroPremiumLayer` red; removing
   the H3 liabilities subtraction in `Capacity.totalAssets()` turns
@@ -224,9 +304,16 @@ performance number is claimed here.
   and 0 USDG (`cast balance` / `cast call USDG balanceOf`, same block); the Paxos testnet
   faucet has not delivered USDG to it. `contracts/deployments/421614.json` lists only the
   three deploy transactions, no deposit, bind, settle or claim hashes. See "Live testnet
-  state" below for what blocks a deposit and the full bind-to-claim lifecycle is instead
-  proven end to end on a pinned Arbitrum One fork with real Chainlink rounds; see
-  `docs/e2e/` for the command and output.
+  state" below for what blocks a deposit. The full bind -> setReference -> fix -> claim
+  lifecycle is instead proven end to end on a pinned Arbitrum One fork against the real
+  SPY/USD feed's actual recorded rounds for the real 2026-09-25/28 weekend, not a
+  MockFeed: `contracts/test/GapTreaty.realweekend.fork.t.sol`, a real 0.50% Monday-below-
+  Friday gap, 2,000,000 USDG exposure, 5,000 USDG retention, settles a 5,015.006303 USDG
+  payout and `claim()` moves exactly that much of the real forked USDG token to the buyer.
+  Mutation-checked (deleting `_settle`'s retention subtraction moves the asserted payout
+  from 5,015.006303 to a wrong 10,015.006303 and the test goes red; restoring returns it
+  to green); see `docs/e2e/heracles.md` for the full round-selection derivation and
+  command output.
 
 ## Scope of this deployment
 
