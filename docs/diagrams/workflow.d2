@@ -1,0 +1,57 @@
+vars: {
+  d2-config: {
+    layout-engine: elk
+    pad: 24
+  }
+}
+direction: down
+style: {
+  fill: "#F4F2EC"
+}
+classes: {
+  step: {
+    style: {fill: "#FFFFFF"; stroke: "#1C1A16"; stroke-width: 2; font-color: "#1C1A16"; border-radius: 10; font-size: 28}
+  }
+  cover: {
+    style: {fill: "#FFFFFF"; stroke: "#0B6B6B"; stroke-width: 4; font-color: "#1C1A16"; border-radius: 10; font-size: 28}
+  }
+  quiet: {
+    style: {fill: "#EDEBE4"; stroke: "#C9C5BA"; stroke-width: 2; font-color: "#4A4740"; border-radius: 10; font-size: 26}
+  }
+  flow: {
+    style: {stroke: "#0B6B6B"; stroke-width: 3; font-color: "#0B6B6B"; font-size: 26}
+  }
+  side: {
+    style: {stroke: "#6B675F"; stroke-width: 2; stroke-dash: 5; font-color: "#4A4740"; font-size: 26}
+  }
+}
+
+title: "One weekend, start to finish\nThe payout is worked out from the price feed and the position\nthe vault declared, never from its books." {
+  shape: text
+  near: top-center
+  style: {font-size: 30; font-color: "#1C1A16"}
+}
+
+bind: "Monday to Friday 19:30 UTC\nThe vault calls bind(position, retention, limit)" {class: cover}
+quote: "The Stylus pricer quotes each slice (v3)\npremium = first-loss share + senior share" {class: step}
+lock: "The premium goes to the writers' vaults\nand the limit is locked until settlement" {class: step}
+ref: "Friday 4:00pm New York close\nsetReference: feed round in effect at the close (v3)" {class: cover}
+gap: "Weekend: markets shut, the gap forms" {class: quiet}
+fix: "Monday 9:30am New York open\nfix: first feed round after the open" {class: cover}
+payout: "payout = min(limit, max(0, Σ losing legs of position × gap − retention))" {class: cover}
+none: "Gap inside the retention: payout is 0,\nwriters keep the premium" {class: quiet}
+junior: "First-loss vault pays first,\nup to its slice" {class: step}
+senior: "Senior vault pays the rest" {class: step}
+claim: "The vault calls claim → payout" {class: cover}
+
+bind -> quote: "quote" {class: flow}
+quote -> lock: "receivePremium · lock" {class: flow}
+lock -> ref {class: flow}
+ref -> gap {class: flow}
+gap -> fix {class: flow}
+fix -> payout: "settle" {class: flow}
+payout -> none: "no loss past retention" {class: side}
+payout -> junior: "loss past retention" {class: flow}
+junior -> senior: "if the loss is bigger\nthan the first-loss slice" {class: flow}
+junior -> claim {class: flow}
+senior -> claim {class: flow}

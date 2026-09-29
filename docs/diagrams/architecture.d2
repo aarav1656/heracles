@@ -1,0 +1,83 @@
+vars: {
+  d2-config: {
+    layout-engine: elk
+    pad: 24
+  }
+}
+style: {
+  fill: "#F4F2EC"
+}
+classes: {
+  actor: {
+    style: {fill: "#FFFFFF"; stroke: "#1C1A16"; stroke-width: 2; font-color: "#1C1A16"; border-radius: 10; font-size: 30; bold: true}
+  }
+  core: {
+    style: {fill: "#FFFFFF"; stroke: "#0B6B6B"; stroke-width: 4; font-color: "#1C1A16"; border-radius: 10; font-size: 30; bold: true}
+  }
+  vault: {
+    style: {fill: "#FFFFFF"; stroke: "#6B675F"; stroke-width: 2; font-color: "#1C1A16"; border-radius: 8; font-size: 26}
+  }
+  book: {
+    style: {fill: "#F4F2EC"; stroke: "#C9C5BA"; border-radius: 10; font-color: "#1C1A16"; font-size: 26; bold: true}
+  }
+  feed: {
+    shape: cylinder
+    style: {fill: "#FFFFFF"; stroke: "#6B675F"; stroke-width: 2; font-color: "#1C1A16"; font-size: 24}
+  }
+  cover: {
+    style: {stroke: "#0B6B6B"; stroke-width: 4; font-color: "#0B6B6B"; font-size: 30}
+  }
+  plain: {
+    style: {stroke: "#6B675F"; stroke-width: 2; font-color: "#4A4740"; font-size: 30}
+  }
+  guard: {
+    style: {stroke: "#6B675F"; stroke-width: 2; stroke-dash: 5}
+  }
+}
+
+title: "Heracles: how one weekend cover is wired\nA vault pays a premium. If the stock gaps on Monday, Treaty pays\nfrom the feed price, first-loss writers before senior." {
+  shape: text
+  near: top-center
+  style: {font-size: 30; font-color: "#1C1A16"}
+}
+
+writers: "Writers\nback cover, earn premium" {class: actor}
+buyer: "LP vault (buyer)\ndeclares its weekend position" {class: actor}
+pricer: "Stylus pricer\n504 weekends per market" {class: core}
+
+capacity: "Capacity" {
+  style: {fill: "#EDEBE4"; stroke: "#C9C5BA"; border-radius: 12; font-color: "#1C1A16"; font-size: 28; bold: true}
+  usdc: "USDC book (v3)" {
+    class: book
+    direction: down
+    junior: "First-loss" {class: vault}
+    senior: "Senior" {class: vault}
+  }
+  usdg: "USDG book" {
+    class: book
+    direction: down
+    junior: "First-loss (v3)" {class: vault}
+    senior: "Senior (v3)" {class: vault}
+  }
+}
+treaty: "Treaty" {class: core}
+equity: "Chainlink equity feeds\nSPY · NVDA · AAPL · TSLA" {class: feed}
+
+guards: "Guards" {
+  direction: down
+  style: {fill: "#EDEBE4"; stroke: "#C9C5BA"; border-radius: 12; font-color: "#1C1A16"; font-size: 26; bold: true}
+  liveness: "USDC/USD feed (v3)\ncancel waits for a fresh round" {class: feed}
+  sequencer: "Sequencer uptime feed\nArbitrum One: pauses bind · fix" {class: feed}
+}
+
+buyer <-> treaty: "bind + premium  ·  claim → payout" {class: cover}
+treaty -> pricer: "quote ×2 (v3)" {class: cover}
+pricer -> equity: "latestRoundData" {class: plain}
+treaty -> equity: "setReference · fix" {class: cover}
+writers -> capacity: "depositWithPermit" {class: plain}
+treaty -> capacity: "lock · receivePremium · settle" {class: plain}
+treaty -> guards {class: guard}
+
+# Layout only: invisible edges that set row order, so the diagram stays narrow.
+pricer -> capacity: {style.opacity: 0}
+equity -> guards: {style.opacity: 0}

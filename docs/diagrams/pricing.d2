@@ -1,0 +1,61 @@
+vars: {
+  d2-config: {
+    layout-engine: elk
+    pad: 24
+  }
+}
+direction: down
+style: {
+  fill: "#F4F2EC"
+}
+classes: {
+  data: {
+    shape: cylinder
+    style: {fill: "#FFFFFF"; stroke: "#6B675F"; stroke-width: 2; font-color: "#1C1A16"; font-size: 26}
+  }
+  input: {
+    style: {fill: "#FFFFFF"; stroke: "#1C1A16"; stroke-width: 2; font-color: "#1C1A16"; border-radius: 10; font-size: 26}
+  }
+  step: {
+    style: {fill: "#FFFFFF"; stroke: "#0B6B6B"; stroke-width: 3; font-color: "#1C1A16"; border-radius: 10; font-size: 26}
+  }
+  result: {
+    style: {fill: "#FFFFFF"; stroke: "#0B6B6B"; stroke-width: 5; font-color: "#0B6B6B"; border-radius: 10; font-size: 30; bold: true}
+  }
+  flow: {
+    style: {stroke: "#0B6B6B"; stroke-width: 3; font-color: "#0B6B6B"; font-size: 24}
+  }
+  plain: {
+    style: {stroke: "#6B675F"; stroke-width: 2; font-color: "#4A4740"; font-size: 24}
+  }
+}
+
+title: "How the premium is priced, on chain\nThe Stylus pricer replays 504 real weekends against the layer and prices what it would have paid." {
+  shape: text
+  near: top-center
+  style: {font-size: 28; font-color: "#1C1A16"}
+}
+
+table: "504 weekends per market\nFriday close → Monday open, in bps\n(api.nasdaq.com, 2016 to 2026)" {class: data}
+feed: "Chainlink feed\nlast 8 rounds" {class: data}
+layer: "The vault's terms\nposition per market · retention · limit" {class: input}
+
+scale: "Volatility scale\n1.0x to 3.0x, never below 1.0x" {class: step}
+loss: "For each of the 504 weekends:\nloss = Σ losing legs of position × gap × scale" {class: step}
+paid: "What the layer would have paid:\nmin(limit, max(0, loss − retention))" {class: step}
+el: "Expected loss (EL)\nmean of the 504 payouts" {class: step}
+tvar: "TVaR95\nmean of the worst 25 payouts" {class: step}
+premium: "premium = EL + 3% × (TVaR95 − EL)\n+ 4% a year × limit × 7 / 365" {class: result}
+floor: "Treaty charges at least 0.5% of the limit\nv3: priced once per slice, first-loss + senior" {class: input}
+
+table -> loss: "gap" {class: plain}
+feed -> scale: "latestRoundData" {class: plain}
+scale -> loss {class: flow}
+layer -> loss {class: flow}
+layer -> paid: "retention · limit" {class: plain}
+loss -> paid {class: flow}
+paid -> el {class: flow}
+paid -> tvar {class: flow}
+el -> premium {class: flow}
+tvar -> premium {class: flow}
+premium -> floor: "bind" {class: flow}
