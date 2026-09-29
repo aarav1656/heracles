@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup A: the exhibit</title>
+<link rel="stylesheet" href="/node_modules/@fontsource-variable/newsreader/opsz.css" />
+<link rel="stylesheet" href="/node_modules/@fontsource-variable/atkinson-hyperlegible-next/index.css" />
+<style>
+  :root { --paper:#F3F0E8; --paper-2:#EBE7DC; --ink:#1C1A16; --ink-2:#57534A; --ink-3:#8A8578; --ink-4:#B9B3A5; --rule:rgba(28,26,22,.13); --layer:#D2431C; --serif:'Newsreader Variable', Georgia, serif; --sans:'Atkinson Hyperlegible Next Variable', sans-serif; }
+  * { box-sizing:border-box; margin:0; }
+  body { font:380 15px/24px var(--sans); color:var(--ink); background:linear-gradient(#F6F3EC, #EFEBE1) fixed; min-height:100vh; }
+  body::before { content:''; position:fixed; inset:0; pointer-events:none; opacity:.035; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .wrap { max-width:1240px; margin:0 auto; padding:0 32px; }
+  header.top { display:flex; align-items:center; gap:40px; height:64px; border-bottom:1px solid var(--rule); }
+  .mark { font:500 21px/1 var(--serif); letter-spacing:-.2px; display:flex; align-items:center; gap:10px; }
+  nav { display:flex; gap:28px; font-size:15px; } nav a { color:var(--ink-3); text-decoration:none; } nav a.on { color:var(--ink); }
+  .btn { font:500 15px/1 var(--sans); border-radius:8px; padding:12px 18px; border:1px solid var(--ink); background:var(--ink); color:var(--paper); text-decoration:none; display:inline-block; }
+  .btn.ghost { background:transparent; color:var(--ink); }
+  header .btn { margin-left:auto; padding:9px 14px; font-size:14px; }
+  .grid { display:grid; grid-template-columns:1fr 360px; gap:48px; padding-top:40px; }
+  h1 { font:380 56px/60px var(--serif); letter-spacing:-1.23px; max-width:14ch; }
+  .lede { font:360 18px/28px var(--sans); color:var(--ink-2); max-width:58ch; margin-top:16px; }
+  .chart { margin-top:36px; }
+  .chart h2 { font:420 20px/26px var(--serif); letter-spacing:-.2px; }
+  .chart h2 span { color:var(--ink-3); }
+  .chart .sub { font-size:14px; color:var(--ink-2); margin-top:2px; }
+  .plot { position:relative; margin-top:18px; aspect-ratio: 1000 / 330; }
+  .plot svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .tag { position:absolute; font:600 11.5px/16px var(--sans); letter-spacing:.9px; text-transform:uppercase; white-space:nowrap; }
+  .tag b { font-weight:600; }
+  .tag.l { color:var(--layer); } .tag.k { color:var(--ink-3); }
+  .tag.w { color:var(--ink); text-transform:none; letter-spacing:0; font:400 13px/18px var(--sans); }
+  .src { font-size:13px; line-height:20px; color:var(--ink-3); margin-top:14px; }
+  .src a { color:var(--ink-2); }
+  aside.ticket { background:var(--paper-2); border-radius:12px; padding:28px; align-self:start; margin-top:8px;
+    box-shadow:0 1px 0 rgba(28,26,22,.05), 0 18px 40px -24px rgba(28,26,22,.28); }
+  .lab { font:600 11.5px/16px var(--sans); letter-spacing:.9px; text-transform:uppercase; color:var(--ink-3); display:flex; align-items:center; gap:8px; }
+  .sw { width:10px; height:10px; background:var(--layer); display:inline-block; }
+  .terms { font:400 21px/30px var(--serif); letter-spacing:-.1px; margin-top:12px; }
+  .terms .fig { font-weight:500; }
+  .terms .c { font-size:.62em; vertical-align:.5em; }
+  dl { display:grid; grid-template-columns:1fr auto; margin-top:20px; font-variant-numeric:tabular-nums; }
+  dt, dd { padding:9px 0; border-top:1px solid var(--rule); font-size:14px; } dt { color:var(--ink-2); } dd { text-align:right; }
+  .acts { display:grid; gap:10px; margin-top:22px; } .acts .btn { text-align:center; }
+  .fine { font-size:13px; line-height:20px; color:var(--ink-3); margin-top:16px; }
+  @keyframes rise { from { opacity:0; transform:translateY(10px); } }
+  @keyframes grow { from { transform:scaleY(0); } }
+  @keyframes wipe { from { clip-path:inset(0 100% 0 0); } }
+  @keyframes fade { from { opacity:0; } }
+  h1, .lede { animation:rise 420ms cubic-bezier(.2,.7,.2,1) both; } .lede { animation-delay:60ms; }
+  .bar { transform-box:fill-box; animation:grow 240ms cubic-bezier(.2,.7,.2,1) both; }
+  .band { animation:wipe 340ms 900ms cubic-bezier(.2,.7,.2,1) both; }
+  .tag, .paid { animation:fade 240ms 1240ms both; }
+  aside.ticket { animation:fade 360ms 280ms both; }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="mark">Heracles</span>
+    <nav><a class="on" href="#">Weekend gaps</a><a href="#">Price a layer</a><a href="#">Write capacity</a></nav>
+    <a class="btn" href="#">Connect wallet</a>
+  </header>
+  <div class="grid">
+    <main>
+      <h1>Reinsurance for the Monday gap</h1>
+      <p class="lede">When a stock reopens on Monday away from Friday's close, a perp LP vault takes the loss. The vault keeps the first slice; a Heracles layer pays the next, priced on chain from 504 recorded weekends.</p>
+      <section class="chart">
+        <h2>SPY, every weekend since September 2016 <span>and the layer across it</span></h2>
+        <p class="sub">Friday close to next open. Bars reaching the band are weekends the reference layer would have paid.</p>
+        <div class="plot" id="plot"></div>
+        <p class="src">504 weekends, 30 Sep 2016 to 18 Sep 2026. Source <a href="#">evidence/gap-tables/SPY.json</a>, api.nasdaq.com, fetched 28 Sep 2026.</p>
+      </section>
+    </main>
+    <aside class="ticket">
+      <p class="lab"><i class="sw"></i>Reference layer</p>
+      <p class="terms" id="terms"></p>
+      <dl id="dl"></dl>
+      <div class="acts"><a class="btn" href="#">Price your own layer</a><a class="btn ghost" href="#">Write capacity</a></div>
+      <p class="fine" id="fine"></p>
+    </aside>
+  </div>
+</div>
+<script type="module">
+import { load, QUOTE, REF, day, pct, n0 } from './data.js';
+const d = await load();
+const W = 1000, H = 330, top = 420, bot = -1120; // bps domain
+const y = (b) => ((top - b) / (top - bot)) * H;
+const bw = W / d.ws.length;
+let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">';
+s += '<defs><pattern id="h" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="1.6" height="4" fill="#D2431C"/></pattern></defs>';
+for (let t = 400; t >= -1000; t -= 250) s += `<line x1="0" x2="${W}" y1="${y(t)}" y2="${y(t)}" stroke="${t === 0 ? '#1C1A16' : 'rgba(28,26,22,.08)'}" stroke-width="${t === 0 ? 1 : 1}"/><text x="-8" y="${y(t) + 4}" text-anchor="end" font-size="11" fill="#8A8578" font-family="Atkinson Hyperlegible Next Variable">${t === 0 ? '0%' : pct(t).replace('.00', '').replace('.50', '.5')}</text>`;
+d.ws.forEach((w, i) => { if (i && w.friday.slice(0, 4) !== d.ws[i - 1].friday.slice(0, 4)) s += `<text x="${i * bw}" y="${H + 16}" font-size="11" fill="#8A8578" font-family="Atkinson Hyperlegible Next Variable">${w.friday.slice(0, 4)}</text><line x1="${i * bw}" x2="${i * bw}" y1="0" y2="${H}" stroke="rgba(28,26,22,.05)"/>`; });
+s += `<g class="band"><rect x="0" width="${W}" y="${y(d.attach)}" height="${y(d.exhaust) - y(d.attach)}" fill="rgba(210,67,28,.07)"/><line x1="0" x2="${W}" y1="${y(d.attach)}" y2="${y(d.attach)}" stroke="#D2431C" stroke-width="1"/><line x1="0" x2="${W}" y1="${y(d.exhaust)}" y2="${y(d.exhaust)}" stroke="#D2431C" stroke-width="1"/></g>`;
+d.ws.forEach((w, i) => {
+  const x = i * bw + bw * 0.15, wd = bw * 0.7, delay = 160 + (i / d.ws.length) * 560;
+  const y0 = y(0), y1 = y(w.gap);
+  const col = w.gap >= 0 ? '#B9B3A5' : '#8A8578';
+  s += `<rect class="bar" style="animation-delay:${delay}ms;transform-origin:${w.gap >= 0 ? 'bottom' : 'top'}" x="${x}" width="${wd}" y="${Math.min(y0, y1)}" height="${Math.max(.6, Math.abs(y1 - y0))}" fill="${col}"/>`;
+  if (d.pay[i] > 0) { const a = y(d.attach), b = y(Math.max(w.gap, d.exhaust)); s += `<rect class="paid" x="${i * bw - bw * .6}" width="${bw * 2.2}" y="${a}" height="${b - a}" fill="url(#h)"/><rect class="paid" x="${i * bw - bw * .6}" width="${bw * 2.2}" y="${b - 1.2}" height="1.2" fill="#D2431C"/>`; }
+});
+s += '</svg>';
+const wk = d.ws[d.worst];
+s += `<span class="tag k" style="left:8px;top:calc(${y(d.attach) / H * 100}% - 20px)">Vault keeps the first 20,000 (a 1% gap)</span>`;
+s += `<span class="tag l" style="left:8px;top:calc(${(y(d.attach) + y(d.exhaust)) / 2 / H * 100}% - 8px)">Layer pays the next 60,000, from 1% to 4%</span>`;
+s += `<span class="tag w" style="left:calc(${d.worst / d.ws.length * 100}% + 10px);top:calc(${y(wk.gap) / H * 100}% - 18px)">${day(wk.friday)}, ${pct(wk.gap)}: the layer paid its full limit</span>`;
+document.getElementById('plot').innerHTML = s;
+const [w0, c0] = QUOTE.premium.toFixed(2).split('.');
+document.getElementById('terms').innerHTML = `A vault long 2,000,000 USDG of SPY keeps the first 20,000 of a weekend loss. Writers pay the next 60,000. The cover costs <span class="fig">${Number(w0).toLocaleString('en-US')}<span class="c">.${c0}</span> USDG</span> for one weekend.`;
+document.getElementById('dl').innerHTML = `<dt>Rate on line</dt><dd>${(QUOTE.premium / REF.limit * 100).toFixed(2)}%</dd><dt>Expected loss</dt><dd>${QUOTE.el.toLocaleString('en-US', { minimumFractionDigits: 2 })}</dd><dt>TVaR95</dt><dd>${QUOTE.tvar.toLocaleString('en-US', { minimumFractionDigits: 2 })}</dd><dt>Weekends it pays</dt><dd>${d.paid} of 504</dd><dt>Full limit</dt><dd>${d.full} of 504</dd>`;
+document.getElementById('fine').innerHTML = `Quoted by the Stylus pricer at block #${QUOTE.block.toLocaleString('en-US')}. The same call costs 8.01x less L2 execution gas than its Solidity twin (block #313,704,736, docs/pricing.md).`;
+</script>
+</body>
+</html>

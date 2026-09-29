@@ -328,7 +328,8 @@ lavender-on-violet dark palette.
 - **Secondary: Our World in Data grapher.** A history chart whose title says what is
   drawn, whose subtitle is the caveat, and whose source, note and date sit under the plot.
 
-Single moves borrowed from the rest: Stripe Capital's hatched slice inside each bar and the
-named zero; Teenage Engineering's one accent with one job; Linear's tracking ratios and
-the date rail; Carta's tags pinned onto the drawing; Swiss Re's quiet voice and dated
-figures. Ethena and Gauntlet are mostly kept as a list of what not to do.
+Minor citations only (principles, never the source of Heracles's type, palette, skeleton or
+motion, per the coordinator's registry notes): Teenage Engineering's one accent with one job;
+Carta's tags pinned onto the drawing and its measured display tracking (-0.03em); Swiss
+Re's quiet voice and dated figures. Stripe (claimed by Payday) and Linear were studied and
+are not used. Ethena and Gauntlet are kept as a list of what not to do.

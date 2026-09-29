@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup B: the slip</title>
+<link rel="stylesheet" href="/node_modules/@fontsource-variable/newsreader/opsz.css" />
+<link rel="stylesheet" href="/node_modules/@fontsource-variable/atkinson-hyperlegible-next/index.css" />
+<style>
+  :root { --paper:#FBF8F1; --ink:#15171C; --ink-2:#4B4F58; --ink-3:#8B8E95; --rule:#15171C; --hair:rgba(21,23,28,.12); --layer:#23408E; --serif:'Newsreader Variable', Georgia, serif; --sans:'Atkinson Hyperlegible Next Variable', sans-serif; }
+  * { box-sizing:border-box; margin:0; }
+  body { font:400 17px/26px var(--serif); color:var(--ink); background:var(--paper); }
+  .doc { max-width:1120px; margin:0 auto; padding:28px 40px 0; }
+  .masthead { display:flex; align-items:baseline; gap:24px; border-bottom:2px solid var(--rule); padding-bottom:12px; }
+  .masthead b { font:500 26px/1 var(--serif); letter-spacing:-.3px; }
+  .masthead nav { display:flex; gap:22px; font:400 14px var(--sans); } .masthead nav a { color:var(--ink-3); text-decoration:none; } .masthead nav a.on { color:var(--ink); }
+  .masthead .btn { margin-left:auto; }
+  .btn { font:500 14px/1 var(--sans); padding:10px 16px; border:1px solid var(--ink); color:var(--ink); text-decoration:none; background:transparent; }
+  .btn.solid { background:var(--ink); color:var(--paper); }
+  .slip { display:grid; grid-template-columns: 1.05fr 1fr; gap:0; border-bottom:1px solid var(--rule); }
+  .slip .lhs { padding:28px 32px 28px 0; border-right:1px solid var(--rule); }
+  h1 { font:360 44px/48px var(--serif); letter-spacing:-.9px; }
+  .lhs p { margin-top:14px; color:var(--ink-2); max-width:44ch; }
+  .fields { display:grid; grid-template-columns: 150px 1fr; }
+  .fields div { padding:11px 0 11px 24px; border-bottom:1px solid var(--hair); }
+  .fields div:nth-child(odd) { font:600 11px/26px var(--sans); letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); }
+  .fields .prem { font-size:28px; letter-spacing:-.4px; }
+  .fields .prem small { font-size:.6em; vertical-align:.5em; }
+  .acts { display:flex; gap:10px; padding:16px 0 0 24px; }
+  .exhibit { padding:22px 0 8px; }
+  .exhibit h2 { font:italic 400 18px/24px var(--serif); }
+  .exhibit h2 span { font-style:normal; font:600 11px/1 var(--sans); letter-spacing:1px; text-transform:uppercase; color:var(--ink-3); margin-right:12px; }
+  .plot { position:relative; margin-top:12px; aspect-ratio: 1000 / 250; }
+  .plot svg { position:absolute; inset:0; width:100%; height:100%; }
+  .foot { font:400 13px/20px var(--sans); color:var(--ink-3); padding:10px 0 20px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="masthead"><b>Heracles</b><nav><a class="on" href="#">Weekend gaps</a><a href="#">Price a layer</a><a href="#">Write capacity</a></nav><a class="btn" href="#">Connect wallet</a></div>
+  <section class="slip">
+    <div class="lhs">
+      <h1>Excess of loss cover for the weekend gap</h1>
+      <p>The LP vault of a stock perp exchange loses when a stock reopens away from Friday's close. It keeps the first slice. This slip covers the next one, priced on chain from 504 recorded weekends.</p>
+    </div>
+    <div>
+      <div class="fields" id="f"></div>
+      <div class="acts"><a class="btn solid" href="#">Price your own layer</a><a class="btn" href="#">Write capacity</a></div>
+    </div>
+  </section>
+  <section class="exhibit">
+    <h2><span>Exhibit A</span>SPY, Friday close to next open, every weekend since September 2016</h2>
+    <div class="plot" id="plot"></div>
+    <p class="foot">504 weekends, source evidence/gap-tables/SPY.json (api.nasdaq.com, fetched 28 Sep 2026). Blue: the slice this slip would have paid.</p>
+  </section>
+</div>
+<script type="module">
+import { load, QUOTE, day, pct } from './data.js';
+const d = await load();
+const [w0, c0] = QUOTE.premium.toFixed(2).split('.');
+document.getElementById('f').innerHTML = [
+  ['Type', 'Excess of loss, one weekend'], ['Interest', 'Vault long 2,000,000 USDG of SPY'], ['Retention', 'First 20,000 USDG, a 1% gap'], ['Limit', 'Next 60,000 USDG, 1% to 4%'],
+  ['Premium', `<span class="prem">${Number(w0).toLocaleString('en-US')}<small>.${c0}</small> USDG</span>`], ['Rated by', `Stylus pricer, block #${QUOTE.block.toLocaleString('en-US')}`], ['History', `Pays on ${d.paid} of 504 weekends, full limit on ${d.full}`],
+].map(([k, v]) => `<div>${k}</div><div>${v}</div>`).join('');
+const W = 1000, H = 250, top = 420, bot = -1120, y = (b) => ((top - b) / (top - bot)) * H, bw = W / d.ws.length;
+let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="#15171C"/>`;
+s += `<rect x="0" width="${W}" y="${y(d.attach)}" height="${y(d.exhaust) - y(d.attach)}" fill="rgba(35,64,142,.08)"/>`;
+d.ws.forEach((w, i) => { const y1 = y(w.gap), y0 = y(0); s += `<rect x="${i * bw + .2}" width="${bw * .6}" y="${Math.min(y0, y1)}" height="${Math.max(.5, Math.abs(y1 - y0))}" fill="#8B8E95"/>`; if (d.pay[i] > 0) s += `<rect x="${i * bw - .4}" width="${bw * 1.8}" y="${y(d.attach)}" height="${y(Math.max(w.gap, d.exhaust)) - y(d.attach)}" fill="#23408E"/>`; });
+document.getElementById('plot').innerHTML = s + '</svg>';
+</script>
+</body>
+</html>

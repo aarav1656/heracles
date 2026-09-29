@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup C: the tape</title>
+<link rel="stylesheet" href="/node_modules/@fontsource-variable/newsreader/opsz.css" />
+<link rel="stylesheet" href="/node_modules/@fontsource-variable/atkinson-hyperlegible-next/index.css" />
+<style>
+  :root { --bg:#0F1411; --ink:#E9E6DC; --ink-2:#A8A597; --ink-3:#6C6B61; --layer:#E8A33D; --serif:'Newsreader Variable', Georgia, serif; --sans:'Atkinson Hyperlegible Next Variable', sans-serif; }
+  * { box-sizing:border-box; margin:0; }
+  body { font:380 15px/24px var(--sans); color:var(--ink); background:radial-gradient(120% 80% at 50% 0%, #17201A, #0F1411 60%); min-height:100vh; }
+  header { display:flex; align-items:center; gap:36px; padding:22px 48px; }
+  header b { font:500 20px var(--serif); } header nav { display:flex; gap:24px; } header a { color:var(--ink-3); text-decoration:none; } header a.on { color:var(--ink); }
+  header .btn { margin-left:auto; }
+  .btn { font:500 14px/1 var(--sans); padding:11px 16px; border-radius:999px; border:1px solid var(--ink-3); color:var(--ink); text-decoration:none; }
+  .btn.solid { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+  .tape { position:relative; height:430px; margin:8px 0 0; }
+  .tape svg { position:absolute; inset:0; width:100%; height:100%; }
+  .tape .lab { position:absolute; right:48px; font:400 13px var(--sans); color:var(--layer); }
+  .below { display:grid; grid-template-columns: 1.2fr 1fr; gap:64px; padding:28px 48px 0; }
+  h1 { font:300 60px/62px var(--serif); letter-spacing:-1.4px; }
+  .say { font:400 22px/32px var(--serif); color:var(--ink-2); } .say b { color:var(--ink); font-weight:500; }
+  .acts { display:flex; gap:10px; margin-top:22px; }
+  .fine { font-size:13px; color:var(--ink-3); margin-top:14px; }
+</style>
+</head>
+<body>
+<header><b>Heracles</b><nav><a class="on" href="#">Weekend gaps</a><a href="#">Price a layer</a><a href="#">Write capacity</a></nav><a class="btn" href="#">Connect wallet</a></header>
+<div class="tape" id="tape"></div>
+<div class="below">
+  <h1>Ten years of Monday reopens, and the slice a vault should not keep.</h1>
+  <div>
+    <p class="say" id="say"></p>
+    <div class="acts"><a class="btn solid" href="#">Price your own layer</a><a class="btn" href="#">Write capacity</a></div>
+    <p class="fine" id="fine"></p>
+  </div>
+</div>
+<script type="module">
+import { load, QUOTE } from './data.js';
+const d = await load();
+const W = 1440, H = 430, top = 450, bot = -1100, y = (b) => ((top - b) / (top - bot)) * H, bw = W / d.ws.length;
+let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><rect x="0" width="${W}" y="${y(d.attach)}" height="${y(d.exhaust) - y(d.attach)}" fill="rgba(232,163,61,.10)"/>`;
+s += `<line x1="0" x2="${W}" y1="${y(d.attach)}" y2="${y(d.attach)}" stroke="#E8A33D" stroke-dasharray="2 4"/><line x1="0" x2="${W}" y1="${y(d.exhaust)}" y2="${y(d.exhaust)}" stroke="#E8A33D" stroke-dasharray="2 4"/>`;
+let p = ''; d.ws.forEach((w, i) => { p += `${i ? 'L' : 'M'}${(i + .5) * bw},${y(0)} L${(i + .5) * bw},${y(w.gap)} L${(i + .5) * bw},${y(0)} `; });
+s += `<path d="${p}" stroke="#A8A597" stroke-width="1.1" fill="none"/>`;
+d.ws.forEach((w, i) => { if (d.pay[i] > 0) s += `<line x1="${(i + .5) * bw}" x2="${(i + .5) * bw}" y1="${y(d.attach)}" y2="${y(Math.max(w.gap, d.exhaust))}" stroke="#E8A33D" stroke-width="2.4"/>`; });
+document.getElementById('tape').innerHTML = s + `</svg><span class="lab" style="top:${(y(d.attach) + y(d.exhaust)) / 2 - 10}px">the layer: 1% to 4% gaps, paid ${d.paid} of 504 weekends</span>`;
+const [w0, c0] = QUOTE.premium.toFixed(2).split('.');
+document.getElementById('say').innerHTML = `A vault long 2,000,000 USDG of SPY keeps the first 20,000 of a weekend loss and cedes the next 60,000 for <b>${Number(w0).toLocaleString('en-US')}.${c0} USDG</b> a weekend.`;
+document.getElementById('fine').textContent = `Stylus pricer at block #${QUOTE.block.toLocaleString('en-US')}. SPY Friday close to next open, 504 weekends from evidence/gap-tables/SPY.json.`;
+</script>
+</body>
+</html>
