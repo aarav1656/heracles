@@ -273,7 +273,7 @@ contract Treaty is ReentrancyGuard {
         for (uint256 i; i < nAssets; i++) {
             address a = assets[i];
             if (a == address(0)) revert BadParams();
-            // Decision 1: every book asset must read the same 6 decimals the pricer and every
+            // Every book asset must read the same 6 decimals the pricer and every
             // stored amount already assume; a book on a differently-scaled asset would silently
             // misprice every layer bound against it.
             if (IERC20Metadata(a).decimals() != 6) revert BadParams();
