@@ -38,7 +38,7 @@ import {TreatyFixture} from "./utils/TreatyFixture.sol";
 /// the test from the fetched round data via `_settle`'s own
 /// `(exposure * (monday - friday)) / friday` formula, not hardcoded.
 contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
-    string constant RPC = "https://arb1.arbitrum.io/rpc";
+    string constant RPC = "https://arbitrum.gateway.tenderly.co"; // archive: arb1.arbitrum.io prunes state at the pinned block
     // `cast block-number` on 2026-09-29 was 509,951,410; pinned 2,000 blocks back for the same
     // reorg/archive-depth safety margin as GapTreaty.fork.t.sol. Its timestamp (1,790,663,892) is
     // ~17h after round 362's updatedAt, so both rounds already sit in the feed's on-chain history

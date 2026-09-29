@@ -26,7 +26,7 @@ import {TreatyFixture} from "./utils/TreatyFixture.sol";
 /// gap tables are sourced and added to the Pricer, and the addresses stay below purely as a record
 /// of the live feeds this treaty cannot yet price.
 contract GapTreatyForkTest is Test, TreatyFixture {
-    string constant RPC = "https://arb1.arbitrum.io/rpc";
+    string constant RPC = "https://arbitrum.gateway.tenderly.co"; // archive: arb1.arbitrum.io prunes state at the pinned block
     // forking at "latest" with no pinned block meant this
     // suite's result silently depended on whatever round Arbitrum One's live feeds happened to be
     // on when CI ran, and reproducing a failure required forking at the same unrecorded moment.
@@ -137,7 +137,7 @@ contract GapTreatyForkTest is Test, TreatyFixture {
         deal(address(USDG), buyer, 1_000_000e6);
         vm.prank(buyer);
         USDG.approve(address(treaty), type(uint256).max);
-        deal(address(USDG), writer, 1_000_000e6);
+        deal(address(USDG), writer, 2_000_000e6);
         vm.prank(writer);
         USDG.approve(address(firstLoss), type(uint256).max);
         vm.prank(writer);

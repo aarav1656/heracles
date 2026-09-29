@@ -25,7 +25,7 @@ import {TreatyFixture} from "./utils/TreatyFixture.sol";
 /// bit-for-bit parity between the two for these same cases, so the premium computed here is the
 /// number the live Stylus pricer would also return.
 contract GapTreatyForkLifecycleTest is Test, TreatyFixture {
-    string constant RPC = "https://sepolia-rollup.arbitrum.io/rpc";
+    string constant RPC = "https://arbitrum-sepolia.drpc.org"; // archive: the public Sepolia RPC prunes the pinned block
     IERC20 constant USDG = IERC20(0xFFC95faa3d63Cde504a05B567C600B78C0b41892);
     // same fix as GapTreaty.fork.t.sol, pinned to a real
     // Arbitrum Sepolia block read via `cast block-number` on 2026-09-28 (313,609,081), 2,000
