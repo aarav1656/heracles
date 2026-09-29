@@ -8,6 +8,7 @@ import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Full settlement lifecycle (bind -> setReference -> fix -> settle -> claim, and the
 /// cancel-after-grace path) on a fork of live Arbitrum Sepolia (421614) at its latest block: today
@@ -23,7 +24,7 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 /// fork instead; `test/PricerParity.t.sol` plus a live `cast call` comparison already establish
 /// bit-for-bit parity between the two for these same cases, so the premium computed here is the
 /// number the live Stylus pricer would also return.
-contract GapTreatyForkLifecycleTest is Test {
+contract GapTreatyForkLifecycleTest is Test, TreatyFixture {
     string constant RPC = "https://sepolia-rollup.arbitrum.io/rpc";
     IERC20 constant USDG = IERC20(0xFFC95faa3d63Cde504a05B567C600B78C0b41892);
     // same fix as GapTreaty.fork.t.sol, pinned to a real
@@ -54,7 +55,7 @@ contract GapTreatyForkLifecycleTest is Test {
         feeds[0] = address(feed);
         // sequencerUptimeFeed left at address(0): Sepolia has no equivalent feed (SECURITY-REVIEW.md
         // M2), same disabled-on-testnet posture as the live 421614 deploy.
-        treaty = new Treaty(address(USDG), address(new Pricer(oneTableId())), feeds, 50, address(0));
+        treaty = deployTreaty(address(USDG), address(new Pricer(oneTableId())), feeds, 50, address(0));
         capacity = treaty.capacity();
 
         deal(address(USDG), writer, 1_000_000e6);

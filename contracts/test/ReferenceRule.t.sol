@@ -8,12 +8,13 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// `setReference`'s calendar math (`fridayCloseOf`, DST-aware) unit
 /// tested directly against known real-world dates, plus the specific Labor Day 2026 holiday
 /// scenario this test cites as unaddressed ("a holiday-heartbeat
 /// test uses the Labor Day rounds above").
-contract ReferenceRuleTest is Test {
+contract ReferenceRuleTest is Test, TreatyFixture {
     MockUSDG usdg;
     MockFeed feed;
     Pricer pricer;
@@ -29,7 +30,7 @@ contract ReferenceRuleTest is Test {
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(pricer), feeds, 50, address(0));
+        treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
         capacity = treaty.capacity();
 
         usdg.mint(writer, 1_000_000e6);

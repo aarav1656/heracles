@@ -8,9 +8,10 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Reviewer scratch suite for a1f9809: voidReference griefing / phase edges / void+other market.
-contract TreatyVoidTest is Test {
+contract TreatyVoidTest is Test, TreatyFixture {
     MockUSDG usdg;
     MockFeed feed;
     MockFeed feedB;
@@ -29,7 +30,7 @@ contract TreatyVoidTest is Test {
         address[] memory feeds = new address[](n);
         feeds[0] = address(feed);
         if (n > 1) feeds[1] = address(feedB);
-        t = new Treaty(address(usdg), address(new Pricer(n == 1 ? oneTableId() : nTableIds(n))), feeds, 50, address(0));
+        t = deployTreaty(address(usdg), address(new Pricer(n == 1 ? oneTableId() : nTableIds(n))), feeds, 50, address(0));
         c = t.capacity();
         usdg.mint(writer, 1_000_000e6);
         vm.startPrank(writer);

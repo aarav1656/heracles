@@ -8,6 +8,7 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 uint256 constant AMON0 = 1_789_948_800; // Monday 00:00 UTC (week 0)
 uint256 constant AWEEKS = 20;
@@ -257,7 +258,7 @@ contract AdvHandler is Test {
     }
 }
 
-contract AdversarialGateInvariant is Test {
+contract AdversarialGateInvariant is Test, TreatyFixture {
     AdvHandler h;
     Treaty treaty;
     Capacity cap;
@@ -269,7 +270,7 @@ contract AdversarialGateInvariant is Test {
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
+        treaty = deployTreaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
         cap = treaty.capacity();
 
         // setReference now needs its own first-round-after-Friday's-close pair, on top

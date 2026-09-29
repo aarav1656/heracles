@@ -8,6 +8,7 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Port of the reviewer's DR1/DR2 PoCs (docs/security/capacity-review.md "Re-review (2026-09-28)",
 /// findings H1/H2; original scratch suite at /tmp/heracles-dr/proj/contracts/test/DR.t.sol). H1/H2
@@ -18,7 +19,7 @@ import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
 /// `_anyMarketFixable` H1/H2 change: run these against an unpatched Treaty (revert the
 /// `voidReference` function and the `_anyMarketFixable`/`REFERENCE_MAX_DELAY` changes) to see DR1
 /// and DR2 go red again.
-contract DRTest is Test {
+contract DRTest is Test, TreatyFixture {
     MockUSDG usdg;
     MockFeed feed;
     MockFeed feedB;
@@ -38,7 +39,7 @@ contract DRTest is Test {
         address[] memory feeds = new address[](n);
         feeds[0] = address(feed);
         if (n > 1) feeds[1] = address(feedB);
-        t = new Treaty(address(usdg), address(new Pricer(n == 1 ? oneTableId() : nTableIds(n))), feeds, 50, address(0));
+        t = deployTreaty(address(usdg), address(new Pricer(n == 1 ? oneTableId() : nTableIds(n))), feeds, 50, address(0));
         c = t.capacity();
         usdg.mint(writer, 1_000_000e6);
         vm.startPrank(writer);

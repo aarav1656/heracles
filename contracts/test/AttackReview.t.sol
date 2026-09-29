@@ -9,12 +9,13 @@ import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {MockSequencerFeed} from "./mocks/MockSequencerFeed.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Adversarial review (SECURITY-REVIEW.md), post-fix. Each test now asserts the FIXED behaviour:
 /// green here means the finding is closed. Where the original attack is now structurally
 /// impossible (e.g. H1's caller-chosen expiry), the test instead proves the replacement invariant
 /// (expiry is always the following Monday 13:30 UTC) and/or that the old attack call now reverts.
-contract AttackReviewTest is Test {
+contract AttackReviewTest is Test, TreatyFixture {
     uint256 constant FRI_CLOSE = 1_790_366_400; // Fri 2026-09-25 20:00 UTC
     uint256 constant FRI_1900 = FRI_CLOSE - 1 hours; // bind time, before the 19:30 cutoff
     uint256 constant CUTOFF = FRI_CLOSE - 30 minutes; // Fri 19:30 UTC
@@ -39,7 +40,7 @@ contract AttackReviewTest is Test {
         feed.set(1, 100e8, FRI_1900 - 10 minutes); // Friday reference round
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(pricer), feeds, 50, address(0));
+        treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
         capacity = treaty.capacity();
         _deposit(writerA, 100_000e6);
         _deposit(writerB, 100_000e6);
@@ -218,7 +219,7 @@ contract AttackReviewTest is Test {
         MockSequencerFeed seq = new MockSequencerFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        Treaty guarded = new Treaty(address(usdg), address(pricer), feeds, 50, address(seq));
+        Treaty guarded = deployTreaty(address(usdg), address(pricer), feeds, 50, address(seq));
         Capacity gCap = guarded.capacity();
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);

@@ -8,6 +8,7 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// (Slither divide-before-multiply, Treaty.sol:357-358
 /// pre-fix): proves the old two-step formula (`gapBps = diff * 10000 / friday; pnl = exposure *
@@ -18,7 +19,7 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 /// same inputs and shows they diverge by a nonzero, non-rounding-noise amount; it then drives the
 /// real deployed contract through bind -> setReference -> fix and shows the live payout matches
 /// only the new formula, never the old one.
-contract TreatyPrecisionTest is Test {
+contract TreatyPrecisionTest is Test, TreatyFixture {
     uint256 constant T0 = 1_790_000_000; // a Monday; that week's Fri 19:30/Mon 13:30 below
     uint256 constant CUTOFF = 1_790_364_600; // Fri 2026-09-25 19:30 UTC (T0's week)
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
@@ -67,7 +68,7 @@ contract TreatyPrecisionTest is Test {
 
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(pricer), feeds, 50, address(0));
+        treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
         capacity = treaty.capacity();
 
         usdg.mint(writer, 10_000_000e6);

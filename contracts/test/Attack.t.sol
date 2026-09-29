@@ -8,11 +8,12 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Attack surface: drain across layers, stale round, phase change, early fix, payout cap.
 /// Every test here is a check that can fail: each one is paired with the exploit it defeats,
 /// not just a happy path re-run.
-contract AttackTest is Test {
+contract AttackTest is Test, TreatyFixture {
     uint256 constant T0 = 1_790_000_000; // a Monday
     uint256 constant CUTOFF = 1_790_364_600; // that week's Fri 19:30 UTC
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
@@ -45,7 +46,7 @@ contract AttackTest is Test {
 
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(pricer), feeds, 50, address(0));
+        treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
         capacity = treaty.capacity();
 
         usdg.mint(writer, 200_000e6);

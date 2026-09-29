@@ -8,8 +8,9 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
-contract TreatyTest is Test {
+contract TreatyTest is Test, TreatyFixture {
     uint256 constant T0 = 1_790_000_000; // a Monday; that week's Fri 19:30/Mon 13:30 below
     uint256 constant CUTOFF = 1_790_364_600; // Fri 2026-09-25 19:30 UTC (T0's week)
     // setReference now waits for `fridayCloseOf(fridayCutoff)`, Friday's official US
@@ -45,7 +46,7 @@ contract TreatyTest is Test {
 
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(pricer), feeds, 50, address(0));
+        treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
         capacity = treaty.capacity();
 
         usdg.mint(writer, 1_000_000e6);

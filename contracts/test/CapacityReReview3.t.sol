@@ -10,6 +10,7 @@ import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PermitUSDG} from "./CapacityReReview.t.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Re-review of 96309c8. Every test here is red on 96309c8 (the security review
 /// "Re-review of 96309c8"). F1 and F4 are ported unmodified and green after Resolution 3 (GRACE
@@ -23,7 +24,7 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 ///   it; the original subtraction underflows on that dust, so the test compares absolute amounts.
 /// - F5 is deliberately not fixed on-chain (Resolution 3): the test now documents the accepted
 ///   behaviour (permit still wipes a standing allowance) instead of asserting the un-chosen fix.
-contract ReReview3Findings is Test {
+contract ReReview3Findings is Test, TreatyFixture {
     uint256 constant MON0 = 1_789_948_800; // Monday 00:00 UTC, week 0
     uint256 constant CUT = 4 days + 19 hours + 30 minutes; // Fri 19:30 offset in a week
     uint256 constant EXP = 7 days + 13 hours + 30 minutes; // following Mon 13:30
@@ -40,7 +41,7 @@ contract ReReview3Findings is Test {
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
+        treaty = deployTreaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
         capacity = treaty.capacity();
         vm.warp(MON0 + 1 hours);
         _fund(writer, 100_000e6);

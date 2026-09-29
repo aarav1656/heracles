@@ -8,6 +8,7 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// the security review's Critical C1 and Low L2. Ported from the
 /// reviewer's scratch suite at the reviewer's own scratch copy. These tests are red against the code
@@ -16,7 +17,7 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 /// redeem the writers' capital after settle. Green once `Capacity` counts active `locked`
 /// capital at face value, tracks a settled-but-unclaimed payout separately in `owed`, and closes
 /// deposits/withdrawals while any layer is live.
-contract CapacityC1Test is Test {
+contract CapacityC1Test is Test, TreatyFixture {
     uint256 constant FRI_CLOSE = 1_790_366_400;
     uint256 constant FRI_1900 = FRI_CLOSE - 1 hours;
     uint256 constant CUTOFF = FRI_CLOSE - 30 minutes;
@@ -38,7 +39,7 @@ contract CapacityC1Test is Test {
         feed.set(1, 100e8, FRI_1900 - 10 minutes);
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
+        treaty = deployTreaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
         capacity = treaty.capacity();
         _deposit(writer, 100_000e6);
         _deposit(writerB, 100_000e6);

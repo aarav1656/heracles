@@ -8,12 +8,13 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Re-review of 6af8b2b..79320b8 (docs/security/capacity-review.md, "Re-review (2026-09-28)"),
 /// P3 and P5. Ported from the reviewer's scratch suite at
 /// /tmp/heracles-rr/proj/test/ReReview.t.sol; every test here now asserts the *fixed* behaviour
 /// (the reviewer's copy asserted the pre-fix bug and was red against the unpatched contracts).
-contract TreatyReReviewTest is Test {
+contract TreatyReReviewTest is Test, TreatyFixture {
     MockUSDG usdg;
     MockFeed feed;
     Pricer pricer;
@@ -33,7 +34,7 @@ contract TreatyReReviewTest is Test {
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(pricer), feeds, 50, address(0));
+        treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
         capacity = treaty.capacity();
         usdg.mint(writer, 1_000_000e6);
         vm.startPrank(writer);

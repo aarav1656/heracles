@@ -8,13 +8,14 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {nTableIds} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Solvency fuzz: across many layers spanning multiple markets, with randomized exposures and
 /// randomized Monday prices, the pool must never be asked to pay out more than it holds, and
 /// `locked` must never exceed `totalAssets()`. This is the property the per-layer limit clamp
 /// and `Capacity.locked` bookkeeping exist to guarantee; the fuzz explores paths a handful of
 /// hand-written unit tests would not reach.
-contract SolvencyTest is Test {
+contract SolvencyTest is Test, TreatyFixture {
     uint256 constant T0 = 1_790_000_000; // a Monday
     uint256 constant CUTOFF = 1_790_364_600; // that week's Fri 19:30 UTC
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
@@ -46,7 +47,7 @@ contract SolvencyTest is Test {
             feeds[i].set(2, 100e8, REF_TIME);
             feedAddrs[i] = address(feeds[i]);
         }
-        treaty = new Treaty(address(usdg), address(pricer), feedAddrs, 50, address(0));
+        treaty = deployTreaty(address(usdg), address(pricer), feedAddrs, 50, address(0));
         capacity = treaty.capacity();
 
         usdg.mint(writer, POOL);

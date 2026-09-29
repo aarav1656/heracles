@@ -6,6 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Treaty} from "../src/Treaty.sol";
 import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// The full bind -> setReference -> fix -> claim lifecycle,
 /// replayed on a fork of Arbitrum One against the real SPY/USD Chainlink feed's real recorded
@@ -32,7 +33,7 @@ import {Pricer} from "../src/Pricer.sol";
 /// of 10,015.006303 USDG; with a 5,000 USDG retention and a 60,000 USDG limit the layer owes the
 /// buyer 5,015.006303 USDG, the exact number asserted below, computed by `_settle`'s own
 /// `(exposure * (monday - friday)) / friday` formula, not restated independently.
-contract GapTreatyRealWeekendForkTest is Test {
+contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
     string constant RPC = "https://arb1.arbitrum.io/rpc";
     // `cast block-number` on 2026-09-29 was 509,951,410; pinned 2,000 blocks back for the same
     // reorg/archive-depth safety margin as GapTreaty.fork.t.sol. Its timestamp (1,790,663,892) is
@@ -84,7 +85,7 @@ contract GapTreatyRealWeekendForkTest is Test {
         // `_requireSequencerUp`'s `block.timestamp - startedAt` and revert for a reason that has
         // nothing to do with this test (item 7 tracks the mainnet sequencer-feed wiring
         // separately; this test is about the settlement math against real feed data).
-        treaty = new Treaty(address(USDG), address(new Pricer(tableIds)), feeds, 50, address(0));
+        treaty = deployTreaty(address(USDG), address(new Pricer(tableIds)), feeds, 50, address(0));
         capacity = treaty.capacity();
 
         deal(address(USDG), writer, 1_000_000e6);

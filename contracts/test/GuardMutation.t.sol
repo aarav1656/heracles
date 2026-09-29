@@ -8,6 +8,7 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Three money-path guards, and every `onlyTreaty` entry
 /// point, had zero test references and all three hand mutants survived the
@@ -16,7 +17,7 @@ import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
 /// file's matching test, confirm red; restore, confirm green), see SECURITY-REVIEW.md for the
 /// transcript of that run. `WrongState`, which was also at zero references, gets
 /// its own guard tests at the bottom.
-contract GuardMutationTest is Test {
+contract GuardMutationTest is Test, TreatyFixture {
     uint256 constant T0 = 1_790_000_000; // a Monday; that week's Fri 19:30/Mon 13:30 below
     uint256 constant CUTOFF = 1_790_364_600; // Fri 2026-09-25 19:30 UTC (T0's week)
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
@@ -48,7 +49,7 @@ contract GuardMutationTest is Test {
 
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(pricer), feeds, 50, address(0));
+        treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
         capacity = treaty.capacity();
 
         usdg.mint(writer, 1_000_000e6);
@@ -116,7 +117,7 @@ contract GuardMutationTest is Test {
         // pricer (setUp) is a single-market Pricer; this layer spans 2 markets, so it needs its
         // own Pricer configured with 2 table ids (P2 re-review: MissingTable otherwise).
         Pricer pricer2 = new Pricer(nTableIds(2));
-        Treaty t2 = new Treaty(address(usdg), address(pricer2), feeds, 50, address(0));
+        Treaty t2 = deployTreaty(address(usdg), address(pricer2), feeds, 50, address(0));
         Capacity cap2 = t2.capacity();
 
         usdg.mint(writer, 1_000_000e6);

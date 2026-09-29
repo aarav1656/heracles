@@ -7,6 +7,7 @@ import {Treaty} from "../src/Treaty.sol";
 import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Proves the multi-market mechanism against live Arbitrum One state, pinned to a fixed block
 /// (an unreachable RPC fails the suite, it does not skip it). Arbitrum Sepolia has
@@ -24,7 +25,7 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 /// (MSFT, AMZN, GOOGL, META, COIN) remain a mainnet blocker: mainnet cannot bind them until their
 /// gap tables are sourced and added to the Pricer, and the addresses stay below purely as a record
 /// of the live feeds this treaty cannot yet price.
-contract GapTreatyForkTest is Test {
+contract GapTreatyForkTest is Test, TreatyFixture {
     string constant RPC = "https://arb1.arbitrum.io/rpc";
     // forking at "latest" with no pinned block meant this
     // suite's result silently depended on whatever round Arbitrum One's live feeds happened to be
@@ -82,7 +83,7 @@ contract GapTreatyForkTest is Test {
         (feeds[0], feeds[1], feeds[2], feeds[3]) = (NVDA, AAPL, SPY, TSLA);
         uint8[] memory tableIds = new uint8[](4);
         (tableIds[0], tableIds[1], tableIds[2], tableIds[3]) = (0, 1, 2, 3);
-        treaty = new Treaty(address(USDG), address(new Pricer(tableIds)), feeds, 50, SEQUENCER_FEED);
+        treaty = deployTreaty(address(USDG), address(new Pricer(tableIds)), feeds, 50, SEQUENCER_FEED);
         capacity = treaty.capacity();
     }
 
@@ -101,7 +102,7 @@ contract GapTreatyForkTest is Test {
         bad[0] = USDC;
         address pricerAddr = address(new Pricer(oneTableId()));
         vm.expectRevert(Treaty.BadParams.selector);
-        new Treaty(address(USDG), pricerAddr, bad, 50, SEQUENCER_FEED);
+        deployTreaty(address(USDG), pricerAddr, bad, 50, SEQUENCER_FEED);
     }
 
     /// Binds real exposure across the 4 tabled live markets in one layer, reading each market's
