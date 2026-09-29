@@ -4,11 +4,11 @@ import { arbitrumSepolia } from '../chain';
 import { short } from '../lib/format';
 
 /**
- * One "Connect wallet" CTA, GMX's own label and colour (gmx-trade study.md,
- * order-form CTA). Which wallet it means is the connector list underneath,
- * shown as a menu only when there is more than one to choose from.
+ * One connect CTA. Which wallet it means is the connector list underneath, shown as a menu only
+ * when there is more than one to choose from. `label` and `className` let the buy panel use it as
+ * its own "Buy cover" button before a wallet is connected.
  */
-export function Wallet() {
+export function Wallet({ label = 'Connect', className = 'btn' }: { label?: string; className?: string } = {}) {
   const conn = useConnection();
   const connectors = useConnectors();
   const { mutate: connect, isPending } = useConnect();
@@ -21,13 +21,13 @@ export function Wallet() {
     return (
       <div className="wallet-menu">
         <button
-          className="btn"
+          className={className}
           disabled={isPending || connectors.length === 0}
           onClick={() => (single ? connect({ connector: connectors[0] }) : setOpen((o) => !o))}
           aria-haspopup={single ? undefined : 'menu'}
           aria-expanded={single ? undefined : open}
         >
-          Connect wallet
+          {label}
         </button>
         {!single && open && (
           <div className="wallet-menu-list" role="menu">

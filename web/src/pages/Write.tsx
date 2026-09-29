@@ -5,11 +5,12 @@ import { CAPACITY_ADDRESS, capacityAbi } from '../abi';
 import { useBook } from '../hooks/useBook';
 import { useTx } from '../hooks/useTx';
 import { useDepositWithPermit } from '../hooks/useDepositWithPermit';
-import { useOnChain } from '../components/Wallet';
+import { Wallet, useOnChain } from '../components/Wallet';
 import { Stamp } from '../components/Stamp';
 import { Money } from '../components/Money';
 import { TxNote } from '../components/TxNote';
-import { fmtUsdg, parseUsdg } from '../lib/format';
+import { fmtUsdg, parseUsdg, short } from '../lib/format';
+import { explorer } from '../chain';
 import { explainError } from '../lib/revert';
 import { CapacityStrip } from './Overview';
 import { useReferenceQuote } from '../hooks/useReferenceQuote';
@@ -67,102 +68,127 @@ export function Write() {
   };
 
   return (
-    <>
-      <header className="argument row">
-        <h1 className="title">Back the cover, earn the premium</h1>
-        <p className="lede">Deposit USDG into the pool that pays out. Each cover bought pays the pool its price; when a Monday gap reaches a cover's band, the pool pays it.</p>
-      </header>
-
-      <div className="desk">
-        <section className="main-col exhibit" aria-labelledby="path-h">
-          <div className="exhibit-head">
-            <h2 id="path-h" className="chart-title">A writer backing the example cover, every SPY weekend since 2016</h2>
+    <div className="page form-first">
+      <div className="lead">
+        <h1 className="hero">Write <span>cover</span></h1>
+        <div className="meta">
+          <a href={explorer.address(CAPACITY_ADDRESS)} target="_blank" rel="noreferrer">{short(CAPACITY_ADDRESS)} ↗</a>
+          <span><i />Arbitrum Sepolia</span>
+          <span><i className="t" />SPY weekend cover</span>
+          <span><i />USDG</span>
+        </div>
+        <p className="desc">
+          Deposit USDG into the pool that backs the cover. Each cover bought pays the pool its premium; when a Monday
+          gap reaches a cover's band, the pool pays the vault the amount the feed and the declared position set.
+        </p>
+        <div className="kpi" aria-live="polite">
+          <div>
+            <p>Backing the cover</p>
+            <strong>{cap ? usd0.format(toUsd(cap.balance)) : '…'}<span> USDG</span></strong>
+            <small>{book.data ? <Stamp block={book.data.block} label="Read at block" /> : 'Reading the pool'}</small>
           </div>
-          <p className="caveat">In-sample backtest, not a forecast. The pricer is fit to these same weekends, so the line ends above zero by construction; read it for the path, for how deep a bad month cuts.</p>
+          <div>
+            <p>Free for new cover</p>
+            <strong>{cap ? usd0.format(toUsd(cap.free)) : '…'}<span> USDG</span></strong>
+            <small>{cap ? `${usd0.format(toUsd(cap.locked))} locked under bound covers` : ' '}</small>
+          </div>
+          <div>
+            <p>Premium waiting</p>
+            <strong>{cap ? usd0.format(toUsd(cap.pendingPremium)) : '…'}<span> USDG</span></strong>
+            <small>paid in by covers not yet settled</small>
+          </div>
+        </div>
+      </div>
+
+      <aside className="panel" aria-label="Deposit and withdraw">
+        <div className="box form">
+          <div className="field">
+            <label htmlFor="dep">Deposit USDG</label>
+            <input id="dep" inputMode="decimal" autoComplete="off" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+            <span className={`hint${amountError ? ' bad' : ''}`}>
+              {amountError ?? (cap ? `Your balance is ${fmtUsdg(cap.myUsdg)} USDG.` : 'Reading your USDG balance from the chain.')}
+            </span>
+            {cap && cap.myUsdg > 0n && (
+              <div className="fills">
+                {[25, 50, 75].map((pct) => (
+                  <button key={pct} type="button" onClick={() => setAmount(formatUnits((cap.myUsdg * BigInt(pct)) / 100n, 6))}>
+                    {pct}%
+                  </button>
+                ))}
+                <button type="button" onClick={() => setAmount(formatUnits(cap.myUsdg, 6))}>Max</button>
+              </div>
+            )}
+          </div>
+        </div>
+        {me.address ? (
+          <button className="buy" disabled={!me.ready || permitTx.busy || !!amountError || !parsed} onClick={deposit}>Deposit USDG</button>
+        ) : (
+          <Wallet label="Deposit USDG" className="buy" />
+        )}
+        {me.address && !me.ready && <p className="wn">{me.reason}</p>}
+        <TxNote status={permitTx.status} hash={permitTx.hash} error={permitTx.error} />
+
+        <div className="box form sub">
+          <div className="field">
+            <label htmlFor="exit">Withdraw free USDG</label>
+            <input id="exit" inputMode="decimal" autoComplete="off" value={exitAmount} onChange={(e) => setExitAmount(e.target.value)} placeholder="0.00" />
+            <span className={`hint${exitError ? ' bad' : ''}`}>
+              {exitError ?? (cap ? `At most ${fmtUsdg(cap.free)} USDG is free. Your redeemable max is ${fmtUsdg(cap.maxRedeem)} USDG.` : 'Reading the free balance from the chain.')}
+            </span>
+            {cap && cap.free > 0n && (
+              <div className="fills">
+                <button type="button" onClick={() => setExitAmount(formatUnits(cap.free, 6))}>Free</button>
+                <button type="button" onClick={() => setExitAmount(formatUnits(cap.maxRedeem, 6))}>Max</button>
+              </div>
+            )}
+          </div>
+          <button className="btn line" disabled={!me.ready || exitTx.busy} onClick={withdraw}>Withdraw</button>
+          <TxNote status={exitTx.status} hash={exitTx.hash} error={exitTx.error} />
+        </div>
+        <p className="wn">Only free USDG can leave while covers are live; the part under a bound cover stays until it settles.</p>
+      </aside>
+
+      <div className="body">
+        <section className="cc" aria-labelledby="path-h">
+          <div className="ch">
+            <div>
+              <p>In-sample backtest, not a forecast</p>
+              <h2 id="path-h">A writer on the example cover<span>, every SPY weekend</span></h2>
+            </div>
+          </div>
+          <p className="cn">The pricer is fit to these same weekends, so the line ends above zero by construction. Read it for the path: how deep a bad month cuts.</p>
           <WriterPath />
         </section>
 
-        <aside className="ticket" aria-label="Deposit and withdraw">
-          <h2 className="label">Deposit USDG</h2>
-          <div className="form">
-            <div className="field">
-              <label htmlFor="dep">Amount, USDG</label>
-              <input id="dep" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
-              <span className={`hint${amountError ? ' bad' : ''}`}>
-                {amountError ?? (cap ? `Your balance is ${fmtUsdg(cap.myUsdg)} USDG.` : 'Reading your USDG balance from the chain.')}
-              </span>
-              {cap && cap.myUsdg > 0n && (
-                <div className="fills">
-                  {[25, 50, 75].map((pct) => (
-                    <button key={pct} type="button" onClick={() => setAmount(formatUnits((cap.myUsdg * BigInt(pct)) / 100n, 6))}>
-                      {pct}%
-                    </button>
-                  ))}
-                  <button type="button" onClick={() => setAmount(formatUnits(cap.myUsdg, 6))}>Max</button>
-                </div>
-              )}
-            </div>
-          </div>
-          {!me.ready && <p className="note">{me.reason}</p>}
-          <div className="acts">
-            <button className="btn" disabled={!me.ready || permitTx.busy || !!amountError || !parsed} onClick={deposit}>
-              Deposit USDG
-            </button>
-          </div>
-          <TxNote status={permitTx.status} hash={permitTx.hash} error={permitTx.error} />
-
-          <h2 className="label sub">Withdraw free USDG</h2>
-          <div className="form">
-            <div className="field">
-              <label htmlFor="exit">Amount, USDG</label>
-              <input id="exit" inputMode="decimal" value={exitAmount} onChange={(e) => setExitAmount(e.target.value)} placeholder="0.00" />
-              <span className={`hint${exitError ? ' bad' : ''}`}>
-                {exitError ?? (cap ? `At most ${fmtUsdg(cap.free)} USDG is free. Your redeemable max is ${fmtUsdg(cap.maxRedeem)} USDG.` : 'Reading the free balance from the chain.')}
-              </span>
-              {cap && cap.free > 0n && (
-                <div className="fills">
-                  <button type="button" onClick={() => setExitAmount(formatUnits(cap.free, 6))}>Free</button>
-                  <button type="button" onClick={() => setExitAmount(formatUnits(cap.maxRedeem, 6))}>Max</button>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="acts">
-            <button className="btn line" disabled={!me.ready || exitTx.busy} onClick={withdraw}>
-              Withdraw
-            </button>
-          </div>
-          <TxNote status={exitTx.status} hash={exitTx.hash} error={exitTx.error} />
-        </aside>
+        <section className="doc pool" aria-labelledby="pool-h">
+          <h2 id="pool-h" className="section">The pool</h2>
+          {book.isLoading ? (
+            <p className="note">Reading the pool at the latest block.</p>
+          ) : book.error ? (
+            <p className="err" role="alert"><b>{explainError(book.error).name}</b> {explainError(book.error).words}</p>
+          ) : cap && cap.balance === 0n && cap.myShares === 0n ? (
+            <p className="prose">
+              Empty: no writer has deposited on this deployment yet, so nothing is locked and no
+              premium is pending. The first deposit sets the share price one to one.
+            </p>
+          ) : cap ? (
+            <>
+              <CapacityStrip locked={cap.locked} owed={cap.liabilities} free={cap.free} balance={cap.balance} pending={cap.pendingPremium} />
+              <div className="rows figs">
+                <div className="row"><span className="k">Your shares</span><span className="v">{fmtUsdg(cap.myShares)} gtUSDG</span></div>
+                <div className="row"><span className="k">Your USDG</span><span className="v">{fmtUsdg(cap.myUsdg)} USDG</span></div>
+              </div>
+            </>
+          ) : null}
+          {book.data && <p className="src"><Stamp block={book.data.block} label="Read at block" /></p>}
+        </section>
       </div>
-
-      <section className="doc pool" aria-labelledby="pool-h">
-        <h2 id="pool-h" className="section">The pool</h2>
-        {book.isLoading ? (
-          <p className="note">Reading the pool at the latest block.</p>
-        ) : book.error ? (
-          <p className="err" role="alert"><b>{explainError(book.error).name}</b> {explainError(book.error).words}</p>
-        ) : cap && cap.balance === 0n && cap.myShares === 0n ? (
-          <p className="prose">
-            Empty: no writer has deposited on this deployment yet, so nothing is locked and no
-            premium is pending. The first deposit sets the share price one to one.
-          </p>
-        ) : cap ? (
-          <>
-            <CapacityStrip locked={cap.locked} owed={cap.liabilities} free={cap.free} balance={cap.balance} pending={cap.pendingPremium} />
-            <div className="rows figs">
-              <div className="row"><span className="k">Your shares</span><span className="v">{fmtUsdg(cap.myShares)} gtUSDG</span></div>
-              <div className="row"><span className="k">Your USDG</span><span className="v">{fmtUsdg(cap.myUsdg)} USDG</span></div>
-            </div>
-          </>
-        ) : null}
-        {book.data && <p className="src"><Stamp block={book.data.block} label="Read at block" /></p>}
-      </section>
-    </>
+    </div>
   );
 }
 
 const usd0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const toUsd = (v: bigint) => Number(v) / 1e6;
 const k = (v: number) => `${v < 0 ? '−' : v > 0 ? '+' : ''}${usd0.format(Math.abs(Math.round(v / 1000)))}k`;
 
 /**

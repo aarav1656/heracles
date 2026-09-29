@@ -4,6 +4,8 @@ import { backtest, extremes, fmtBps, fmtDay, type GapTable } from '../lib/gaps';
 type LayerTerms = { exposure: number; retention: number; limit: number };
 
 const usd0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+/** -400 -> "4%", -125 -> "1.25%". */
+const span = (bps: number) => `${(Math.abs(bps) / 100).toFixed(2).replace(/\.?0+$/, '')}%`;
 const LEFT = 52;
 const TOP = 10;
 const BOTTOM = 30;
@@ -15,7 +17,7 @@ const BOTTOM = 30;
  * the part of each weekend's bar inside the band is the payout, filled teal. Drawn in real
  * pixels (the SVG is measured), so labels are true 12px. Pointer or arrow keys walk the weekends.
  */
-export function GapChart({ table, layer, notes = true, simple = false }: { table: GapTable; layer?: LayerTerms; notes?: boolean; simple?: boolean }) {
+export function GapChart({ table, layer, notes = true, simple = false, compact = false }: { table: GapTable; layer?: LayerTerms; notes?: boolean; simple?: boolean; compact?: boolean }) {
   const ws = table.weekends;
   const ext = useMemo(() => extremes(ws), [ws]);
   const bt = useMemo(() => (layer ? backtest(ws, layer.exposure, layer.retention, layer.limit) : undefined), [ws, layer]);
@@ -34,8 +36,8 @@ export function GapChart({ table, layer, notes = true, simple = false }: { table
   useEffect(() => { const t = setTimeout(() => setEntering(false), 1500); return () => clearTimeout(t); }, []);
 
   const wide = W >= 700;
-  const H = wide ? 380 : 260;
-  const RIGHT = wide && bt && notes ? 176 : 8;
+  const H = wide ? (compact ? 290 : 380) : 240;
+  const RIGHT = wide && bt && notes ? (compact ? 112 : 176) : 8;
   const pw = Math.max(40, W - LEFT - RIGHT);
   const ph = H - TOP - BOTTOM;
 
@@ -173,7 +175,7 @@ export function GapChart({ table, layer, notes = true, simple = false }: { table
 
         {bt && notes && wide && (
           <div className="gc-notes" aria-hidden="true" style={{ left: LEFT + pw + 16 }}>
-            {!simple && [
+            {!simple && !compact && [
               { b: bt.attachBps, words: 'the cover starts paying' },
               { b: bt.exhaustBps, words: `it pays its cap, ${usd0.format(layer!.limit)}` },
             ].map((n) => (
@@ -181,7 +183,11 @@ export function GapChart({ table, layer, notes = true, simple = false }: { table
                 <b>{fmtBps(n.b)}</b> {n.words}
               </span>
             ))}
-            {(simple || bandBot - bandTop >= 40) && (
+            {compact ? (
+              <span className="gc-note layer" style={{ top: (bandTop + bandBot) / 2 }}>
+                Cover pays<small>{span(bt.attachBps)} to {span(bt.exhaustBps)} {lossSideDown ? 'down' : 'up'}</small>
+              </span>
+            ) : (simple || bandBot - bandTop >= 40) && (
               <span className="gc-note layer" style={{ top: (bandTop + bandBot) / 2 }}>
                 {simple ? <>Heracles pays when the Monday gap reaches this band</> : <>the cover pays inside this band</>}
               </span>
