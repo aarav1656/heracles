@@ -1,0 +1,483 @@
+{
+ "url": "https://ourworldindata.org/grapher/natural-disasters-by-type",
+ "body": {
+  "tag": "body",
+  "text": "Our World\nin Data\nBrowse by topic\nData\nLatest\nResources\nAbou",
+  "fontFamily": "Lato, \"Helvetica Neue\", Helvetica, Arial, \"Liberation Sans\", sans-serif",
+  "fontSize": "16px",
+  "fontWeight": "400",
+  "lineHeight": "25.6px",
+  "letterSpacing": "normal",
+  "color": "rgb(29, 61, 99)",
+  "background": "rgb(255, 255, 255)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(29, 61, 99)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "\"calt\", \"kern\", \"liga\", \"lnum\""
+ },
+ "h1": {
+  "tag": "h1",
+  "text": "Global reported natural disasters by type1970 to 2025",
+  "fontFamily": "\"Playfair Display\", Georgia, \"Times New Roman\", \"Liberation Serif\", serif",
+  "fontSize": "25px",
+  "fontWeight": "600",
+  "lineHeight": "30px",
+  "letterSpacing": "normal",
+  "color": "rgb(45, 46, 45)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(45, 46, 45)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "\"calt\", \"kern\", \"liga\", \"lnum\""
+ },
+ "h2": {
+  "tag": "h2",
+  "text": "ADD/REMOVE DISASTER TYPES",
+  "fontFamily": "Lato, \"Helvetica Neue\", Helvetica, Arial, \"Liberation Sans\", sans-serif",
+  "fontSize": "12px",
+  "fontWeight": "900",
+  "lineHeight": "15.9996px",
+  "letterSpacing": "1.2px",
+  "color": "rgb(118, 118, 118)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(118, 118, 118)",
+  "boxShadow": "none",
+  "textTransform": "uppercase",
+  "fontFeatureSettings": "\"calt\", \"kern\", \"liga\", \"lnum\""
+ },
+ "h3": {
+  "tag": "h3",
+  "text": "Natural Disasters",
+  "fontFamily": "\"Playfair Display\", Georgia, \"Times New Roman\", \"Liberation Serif\", serif",
+  "fontSize": "18px",
+  "fontWeight": "700",
+  "lineHeight": "23.9999px",
+  "letterSpacing": "normal",
+  "color": "rgb(29, 61, 99)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(29, 61, 99)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "\"calt\", \"kern\", \"liga\", \"lnum\""
+ },
+ "p": {
+  "tag": "p",
+  "text": "The annual reported number of natural disasters, categorized",
+  "fontFamily": "Lato, \"Helvetica Neue\", Helvetica, Arial, \"Liberation Sans\", sans-serif",
+  "fontSize": "15px",
+  "fontWeight": "400",
+  "lineHeight": "19.2857px",
+  "letterSpacing": "normal",
+  "color": "rgb(91, 91, 91)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(91, 91, 91)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "\"calt\", \"kern\", \"liga\", \"lnum\""
+ },
+ "a_nav": {
+  "tag": "a",
+  "text": "Our World\nin Data",
+  "fontFamily": "Lato, \"Helvetica Neue\", Helvetica, Arial, \"Liberation Sans\", sans-serif",
+  "fontSize": "20px",
+  "fontWeight": "400",
+  "lineHeight": "24px",
+  "letterSpacing": "normal",
+  "color": "rgb(255, 255, 255)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(255, 255, 255)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "\"calt\", \"kern\", \"liga\", \"lnum\""
+ },
+ "button": {
+  "tag": "button",
+  "text": "Browse by topic",
+  "fontFamily": "Lato, \"Helvetica Neue\", Helvetica, Arial, \"Liberation Sans\", sans-serif",
+  "fontSize": "14px",
+  "fontWeight": "500",
+  "lineHeight": "21px",
+  "letterSpacing": "normal",
+  "color": "rgb(219, 229, 240)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(219, 229, 240)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "normal"
+ },
+ "label_small": {
+  "tag": "div",
+  "text": "GLOBAL REPORTED NATURAL DISASTERS BY TYPE",
+  "fontFamily": "Lato, \"Helvetica Neue\", Helvetica, Arial, \"Liberation Sans\", sans-serif",
+  "fontSize": "12px",
+  "fontWeight": "900",
+  "lineHeight": "16px",
+  "letterSpacing": "1.2px",
+  "color": "rgb(87, 114, 145)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(87, 114, 145)",
+  "boxShadow": "none",
+  "textTransform": "uppercase",
+  "fontFeatureSettings": "\"calt\", \"kern\", \"liga\", \"lnum\""
+ },
+ "fontsUsed": [
+  [
+   "Lato",
+   1001
+  ],
+  [
+   "\"Playfair Display\"",
+   9
+  ]
+ ],
+ "typeScale": [
+  [
+   "16px/400/normal",
+   756
+  ],
+  [
+   "13px/400/0.13px",
+   50
+  ],
+  [
+   "14px/500/normal",
+   34
+  ],
+  [
+   "12px/400/normal",
+   34
+  ],
+  [
+   "10px/400/normal",
+   32
+  ],
+  [
+   "14px/400/normal",
+   26
+  ],
+  [
+   "13px/500/0.13px",
+   18
+  ],
+  [
+   "11px/400/normal",
+   16
+  ],
+  [
+   "13px/400/normal",
+   10
+  ],
+  [
+   "12px/500/0.13px",
+   8
+  ],
+  [
+   "15px/400/normal",
+   6
+  ],
+  [
+   "25px/600/normal",
+   4
+  ]
+ ],
+ "colors": [
+  [
+   "rgb(91, 91, 91)",
+   769
+  ],
+  [
+   "rgb(29, 61, 99)",
+   78
+  ],
+  [
+   "rgb(255, 255, 255)",
+   61
+  ],
+  [
+   "rgb(118, 118, 118)",
+   31
+  ],
+  [
+   "rgb(0, 0, 0)",
+   20
+  ],
+  [
+   "rgb(87, 114, 145)",
+   13
+  ],
+  [
+   "rgb(219, 229, 240)",
+   11
+  ],
+  [
+   "rgb(16, 89, 229)",
+   10
+  ],
+  [
+   "rgb(38, 38, 39)",
+   5
+  ],
+  [
+   "rgb(45, 46, 45)",
+   4
+  ],
+  [
+   "rgb(161, 161, 161)",
+   3
+  ],
+  [
+   "rgb(78, 78, 78)",
+   3
+  ]
+ ],
+ "backgrounds": [
+  [
+   "rgb(255, 255, 255)",
+   28
+  ],
+  [
+   "rgb(235, 238, 242)",
+   19
+  ],
+  [
+   "rgb(164, 182, 202)",
+   17
+  ],
+  [
+   "rgb(242, 242, 242)",
+   5
+  ],
+  [
+   "rgb(0, 33, 71)",
+   3
+  ],
+  [
+   "rgb(161, 161, 161)",
+   2
+  ],
+  [
+   "rgb(29, 61, 99)",
+   1
+  ],
+  [
+   "rgb(206, 38, 30)",
+   1
+  ],
+  [
+   "rgb(219, 229, 240)",
+   1
+  ],
+  [
+   "rgb(231, 231, 231)",
+   1
+  ]
+ ],
+ "radii": [
+  [
+   "2px",
+   21
+  ],
+  [
+   "4px",
+   14
+  ],
+  [
+   "100%",
+   2
+  ],
+  [
+   "3px",
+   2
+  ]
+ ],
+ "spacing": [
+  [
+   "9px",
+   38
+  ],
+  [
+   "16px",
+   13
+  ],
+  [
+   "8px",
+   13
+  ],
+  [
+   "0px 24px",
+   6
+  ],
+  [
+   "24px",
+   4
+  ],
+  [
+   "2px",
+   3
+  ],
+  [
+   "7px",
+   3
+  ],
+  [
+   "10px",
+   3
+  ],
+  [
+   "1px",
+   2
+  ],
+  [
+   "40px normal 24px",
+   2
+  ],
+  [
+   "6px",
+   2
+  ],
+  [
+   "12px normal 24px",
+   1
+  ]
+ ],
+ "shadows": [
+  [
+   "rgba(0, 0, 0, 0.1) 0px 2px 2px 0px",
+   2
+  ],
+  [
+   "rgb(231, 231, 231) 0px 0px 0px 1px inset",
+   1
+  ]
+ ],
+ "borders": [
+  [
+   "1px solid rgb(242, 242, 242)",
+   20
+  ],
+  [
+   "1px solid rgb(164, 182, 202)",
+   16
+  ],
+  [
+   "1px solid rgba(0, 0, 0, 0)",
+   3
+  ],
+  [
+   "1px solid rgb(231, 231, 231)",
+   3
+  ],
+  [
+   "1px solid rgb(218, 218, 218)",
+   3
+  ],
+  [
+   "2px solid rgb(255, 255, 255)",
+   2
+  ],
+  [
+   "1px solid rgb(255, 255, 255)",
+   1
+  ],
+  [
+   "1px solid rgb(118, 118, 118)",
+   1
+  ]
+ ],
+ "cssVars": {
+  "--amber": "#f7c020",
+  "--sdg-color-1": "#c9182d",
+  "--sdg-color-2": "#dda63a",
+  "--sdg-color-3": "#3f842e",
+  "--sdg-color-4": "#a71526",
+  "--sdg-color-5": "#e91a00",
+  "--sdg-color-6": "#26bde2",
+  "--sdg-color-7": "#fcc30b",
+  "--sdg-color-8": "#8a1538",
+  "--sdg-color-9": "#fd6925",
+  "--sdg-color-10": "#bc1058",
+  "--sdg-color-11": "#fd9d24",
+  "--sdg-color-12": "#bf8b2e",
+  "--sdg-color-13": "#366b3a",
+  "--sdg-color-14": "#0879ae",
+  "--sdg-color-15": "#56c02b",
+  "--sdg-color-16": "#005885",
+  "--sdg-color-17": "#153d5a",
+  "--grid-gap": "24px",
+  "--viewport-height": "100vh",
+  "--aa-search-input-height": "44px",
+  "--aa-input-icon-size": "20px",
+  "--aa-base-unit": "16",
+  "--aa-spacing-factor": "1",
+  "--aa-spacing": "calc(var(--aa-base-unit) * var(--aa-spacing-factor) * 1px)",
+  "--aa-spacing-half": "calc(var(--aa-spacing) / 2)",
+  "--aa-panel-max-height": "650px",
+  "--aa-base-z-index": "9999",
+  "--aa-font-size": "calc(var(--aa-base-unit) * 1px)",
+  "--aa-font-family": "inherit",
+  "--aa-font-weight-medium": "500",
+  "--aa-font-weight-semibold": "600",
+  "--aa-font-weight-bold": "700",
+  "--aa-icon-size": "20px",
+  "--aa-icon-stroke-width": "1.6",
+  "--aa-icon-color-rgb": "119, 119, 163",
+  "--aa-icon-color-alpha": "1",
+  "--aa-action-icon-size": "20px",
+  "--aa-text-color-rgb": "38, 38, 39",
+  "--aa-text-color-alpha": "1",
+  "--aa-primary-color-rgb": "62, 52, 211",
+  "--aa-primary-color-alpha": ".2",
+  "--aa-muted-color-rgb": "128, 126, 163",
+  "--aa-muted-color-alpha": ".6",
+  "--aa-panel-border-color-rgb": "128, 126, 163",
+  "--aa-panel-border-color-alpha": ".3",
+  "--aa-input-border-color-rgb": "128, 126, 163",
+  "--aa-input-border-color-alpha": ".8",
+  "--aa-background-color-rgb": "255, 255, 255",
+  "--aa-background-color-alpha": "1",
+  "--aa-input-background-color-rgb": "255, 255, 255",
+  "--aa-input-background-color-alpha": "1",
+  "--aa-selected-color-rgb": "179, 173, 214",
+  "--aa-selected-color-alpha": ".205",
+  "--aa-description-highlight-background-color-rgb": "245, 223, 77",
+  "--aa-description-highlight-background-color-alpha": ".5",
+  "--aa-detached-media-query": "(max-width: 680px)",
+  "--aa-detached-modal-media-query": "not all",
+  "--aa-detached-modal-max-width": "680px",
+  "--aa-detached-modal-max-height": "500px",
+  "--aa-overlay-color-rgb": "115, 114, 129",
+  "--aa-overlay-color-alpha": ".4",
+  "--aa-panel-shadow": "0 0 0 1px #23263b1a, 0 6px 16px -4px #23263b26",
+  "--aa-scrollbar-width": "13px",
+  "--aa-scrollbar-track-background-color-rgb": "234, 234, 234",
+  "--aa-scrollbar-track-background-color-alpha": "1",
+  "--aa-scrollbar-thumb-background-color-rgb": "var(--aa-background-color-rgb)",
+  "--aa-scrollbar-thumb-background-color-alpha": "1",
+  "--ease-out": "cubic-bezier(.23, 1, .32, 1)",
+  "--ease-in-out": "cubic-bezier(.77, 0, .175, 1)",
+  "--ease-drawer": "cubic-bezier(.32, .72, 0, 1)",
+  "--duration-hover": ".1s",
+  "--duration-press": ".15s",
+  "--duration-popover": ".2s",
+  "--duration-panel": ".25s",
+  "--duration-drawer": ".3s",
+  "--banner-height": "200px"
+ },
+ "extractedVia": "CDP getComputedStyle in the deepsurge profile, 1440x900, 2026-09-29"
+}

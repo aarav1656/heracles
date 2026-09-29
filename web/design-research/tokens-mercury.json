@@ -1,0 +1,389 @@
+{
+ "url": "https://demo.mercury.com/accounts",
+ "body": {
+  "tag": "body",
+  "text": "Explore the Mercury Demo.Customize your experience\nViewing a",
+  "fontFamily": "\"Arcadia Text\", system-ui, sans-serif",
+  "fontSize": "16px",
+  "fontWeight": "360",
+  "lineHeight": "16px",
+  "letterSpacing": "normal",
+  "color": "rgb(255, 255, 255)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(255, 255, 255)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "normal"
+ },
+ "h1": {
+  "tag": "h1",
+  "text": "Accounts",
+  "fontFamily": "\"Arcadia Display\", system-ui, sans-serif",
+  "fontSize": "28px",
+  "fontWeight": "380",
+  "lineHeight": "36px",
+  "letterSpacing": "normal",
+  "color": "rgb(255, 255, 255)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(255, 255, 255)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "normal"
+ },
+ "h2": {
+  "tag": "h2",
+  "text": "Available",
+  "fontFamily": "\"Arcadia Text\", system-ui, sans-serif",
+  "fontSize": "14px",
+  "fontWeight": "400",
+  "lineHeight": "20px",
+  "letterSpacing": "normal",
+  "color": "rgb(195, 195, 204)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(195, 195, 204)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "normal"
+ },
+ "h3": null,
+ "p": {
+  "tag": "p",
+  "text": "Pending deposits",
+  "fontFamily": "\"Arcadia Text\", system-ui, sans-serif",
+  "fontSize": "14px",
+  "fontWeight": "400",
+  "lineHeight": "20px",
+  "letterSpacing": "normal",
+  "color": "rgb(195, 195, 204)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(195, 195, 204)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "normal"
+ },
+ "a_nav": {
+  "tag": "a",
+  "text": "Home",
+  "fontFamily": "\"Arcadia Text\", system-ui, sans-serif",
+  "fontSize": "16px",
+  "fontWeight": "360",
+  "lineHeight": "16px",
+  "letterSpacing": "normal",
+  "color": "rgb(255, 255, 255)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "8px",
+  "padding": "2px 8px 2px 2px",
+  "border": "0px none rgb(255, 255, 255)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "normal"
+ },
+ "button": {
+  "tag": "button",
+  "text": "Customize your experience",
+  "fontFamily": "\"Arcadia Text\", system-ui, sans-serif",
+  "fontSize": "15px",
+  "fontWeight": "400",
+  "lineHeight": "24px",
+  "letterSpacing": "normal",
+  "color": "rgb(221, 221, 229)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(221, 221, 229)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "normal"
+ },
+ "label_small": null,
+ "fontsUsed": [
+  [
+   "\"Arcadia Text\"",
+   754
+  ],
+  [
+   "\"Arcadia Display\"",
+   7
+  ]
+ ],
+ "typeScale": [
+  [
+   "16px/360/normal",
+   427
+  ],
+  [
+   "15px/400/normal",
+   68
+  ],
+  [
+   "13.3333px/360/normal",
+   54
+  ],
+  [
+   "12px/360/normal",
+   50
+  ],
+  [
+   "15px/400/-0.45px",
+   29
+  ],
+  [
+   "11px/360/normal",
+   26
+  ],
+  [
+   "13px/360/normal",
+   24
+  ],
+  [
+   "10.95px/400/0.005475px",
+   18
+  ],
+  [
+   "12px/400/0.2px",
+   11
+  ],
+  [
+   "14px/400/normal",
+   9
+  ],
+  [
+   "17px/400/normal",
+   7
+  ],
+  [
+   "13px/400/-0.39px",
+   6
+  ]
+ ],
+ "colors": [
+  [
+   "rgb(255, 255, 255)",
+   412
+  ],
+  [
+   "rgb(157, 157, 168)",
+   116
+  ],
+  [
+   "rgb(221, 221, 229)",
+   109
+  ],
+  [
+   "rgb(195, 195, 204)",
+   83
+  ],
+  [
+   "rgb(112, 112, 125)",
+   16
+  ],
+  [
+   "rgb(251, 252, 253)",
+   14
+  ],
+  [
+   "rgb(141, 164, 245)",
+   5
+  ],
+  [
+   "rgb(244, 245, 249)",
+   4
+  ],
+  [
+   "rgb(128, 128, 128)",
+   2
+  ]
+ ],
+ "backgrounds": [
+  [
+   "rgba(180, 183, 200, 0.12)",
+   15
+  ],
+  [
+   "rgba(180, 183, 200, 0.2)",
+   15
+  ],
+  [
+   "rgb(23, 23, 33)",
+   7
+  ],
+  [
+   "rgb(30, 30, 42)",
+   3
+  ],
+  [
+   "rgb(54, 54, 68)",
+   2
+  ],
+  [
+   "rgba(119, 190, 207, 0.2)",
+   2
+  ],
+  [
+   "rgb(39, 39, 53)",
+   2
+  ],
+  [
+   "rgb(82, 102, 235)",
+   1
+  ],
+  [
+   "rgb(16, 16, 26)",
+   1
+  ],
+  [
+   "rgba(141, 164, 245, 0.2)",
+   1
+  ]
+ ],
+ "radii": [
+  [
+   "8px",
+   28
+  ],
+  [
+   "4px",
+   21
+  ],
+  [
+   "9999px",
+   20
+  ],
+  [
+   "50%",
+   10
+  ],
+  [
+   "12px",
+   2
+  ],
+  [
+   "6px",
+   1
+  ],
+  [
+   "10px",
+   1
+  ],
+  [
+   "100%",
+   1
+  ],
+  [
+   "100px",
+   1
+  ],
+  [
+   "24px 24px 36px 36px",
+   1
+  ],
+  [
+   "24px 24px 0px 0px",
+   1
+  ],
+  [
+   "24px",
+   1
+  ]
+ ],
+ "spacing": [
+  [
+   "8px",
+   29
+  ],
+  [
+   "4px",
+   26
+  ],
+  [
+   "6px",
+   21
+  ],
+  [
+   "-1px",
+   19
+  ],
+  [
+   "12px",
+   11
+  ],
+  [
+   "2px 6px",
+   10
+  ],
+  [
+   "2px",
+   8
+  ],
+  [
+   "16px 12px",
+   6
+  ],
+  [
+   "4px 6px",
+   5
+  ],
+  [
+   "10px",
+   3
+  ],
+  [
+   "8px 12px",
+   2
+  ],
+  [
+   "16px 8px",
+   2
+  ]
+ ],
+ "shadows": [
+  [
+   "rgba(175, 178, 206, 0.56) 0px 0px 2px 0px, rgba(4, 4, 52, 0.1) 0px 1px 4px 0px",
+   2
+  ],
+  [
+   "rgba(112, 115, 147, 0.1) 0px 1px 2px 0px",
+   1
+  ],
+  [
+   "rgba(180, 183, 200, 0.12) 0px -1px 0px 0px inset",
+   1
+  ],
+  [
+   "rgb(141, 164, 245) 0px -2px 0px 0px inset",
+   1
+  ],
+  [
+   "rgba(175, 178, 206, 0.65) 0px 0px 2px 0px, rgba(0, 0, 0, 0.09) 0px 0px 3px 0px, rgba(0, 0, 0, 0.01) 0px 12px 16px 0px, rgba(0, 0, 0, 0.04) 0px 22px 28px 0px",
+   1
+  ]
+ ],
+ "borders": [
+  [
+   "1px solid rgba(180, 183, 200, 0.12)",
+   8
+  ],
+  [
+   "1px solid rgba(180, 183, 200, 0.2)",
+   7
+  ],
+  [
+   "1px solid rgba(180, 183, 200, 0.36)",
+   4
+  ],
+  [
+   "1px solid rgba(0, 0, 0, 0)",
+   2
+  ]
+ ],
+ "cssVars": {},
+ "extractedVia": "CDP getComputedStyle in the deepsurge profile, 1440x900, 2026-09-29"
+}

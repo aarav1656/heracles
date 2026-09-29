@@ -1,0 +1,79 @@
+{
+ "title": "Morpho Markets | Variable Rate",
+ "h1": null,
+ "h2": null,
+ "h3": null,
+ "body": {
+  "text": "Connect\nVaults\nVariable Rate Markets\nPortfolio\nNetwork\nLoan\n",
+  "font": "\"FK Grotesk\", ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+  "size": "16px",
+  "weight": "400",
+  "tracking": "normal",
+  "leading": "24px",
+  "color": "rgba(255, 255, 255, 0.95)",
+  "bg": "rgba(0, 0, 0, 0)",
+  "radius": "0px",
+  "padding": "0px",
+  "border": "0px none rgba(255, 255, 255, 0.07)",
+  "transform": "none",
+  "features": "normal"
+ },
+ "p": null,
+ "a": {
+  "text": "Vaults",
+  "font": "\"FK Grotesk\", ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+  "size": "12px",
+  "weight": "400",
+  "tracking": "normal",
+  "leading": "12px",
+  "color": "rgba(255, 255, 255, 0.95)",
+  "bg": "rgba(0, 0, 0, 0)",
+  "radius": "8px",
+  "padding": "4px 12px",
+  "border": "0.5px solid rgba(0, 0, 0, 0)",
+  "transform": "none",
+  "features": "normal"
+ },
+ "button": {
+  "text": "Connect",
+  "font": "\"FK Grotesk\", ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+  "size": "13.008px",
+  "weight": "400",
+  "tracking": "normal",
+  "leading": "13.008px",
+  "color": "rgba(255, 255, 255, 0.95)",
+  "bg": "rgb(41, 115, 255)",
+  "radius": "8px",
+  "padding": "0px 16px",
+  "border": "0.5px solid rgba(0, 0, 0, 0)",
+  "transform": "none",
+  "features": "normal"
+ },
+ "input": {
+  "text": "",
+  "font": "\"FK Grotesk\", ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+  "size": "12px",
+  "weight": "400",
+  "tracking": "normal",
+  "leading": "normal",
+  "color": "rgba(255, 255, 255, 0.95)",
+  "bg": "rgba(0, 0, 0, 0)",
+  "radius": "0px",
+  "padding": "0px",
+  "border": "0px none rgba(255, 255, 255, 0.07)",
+  "transform": "none",
+  "features": "normal"
+ },
+ "loadedFonts": [
+  "FK Grotesk"
+ ],
+ "htmlBg": "rgba(0, 0, 0, 0)",
+ "textLen": 6164,
+ "height": 11911,
+ "url": "https://app.morpho.org/ethereum/borrow",
+ "viewport": [
+  390,
+  844
+ ],
+ "lumaStddev": 37.5
+}

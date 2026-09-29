@@ -1,0 +1,394 @@
+{
+ "url": "https://app.morpho.org/ethereum/vault/0xBEEF01735c132Ada46AA9aA4c54623cAA92A64CB/steakhouse-usdc#overview",
+ "body": {
+  "tag": "body",
+  "text": "Vaults\nVariable Rate Markets\nFixed Rate Markets\nPortfolio\nCo",
+  "fontFamily": "\"FK Grotesk\", ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+  "fontSize": "16px",
+  "fontWeight": "400",
+  "lineHeight": "24px",
+  "letterSpacing": "normal",
+  "color": "rgba(255, 255, 255, 0.95)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgba(255, 255, 255, 0.07)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "normal"
+ },
+ "h1": {
+  "tag": "h1",
+  "text": "Steakhouse\nUSDC",
+  "fontFamily": "\"FK Grotesk\", ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+  "fontSize": "16px",
+  "fontWeight": "400",
+  "lineHeight": "24px",
+  "letterSpacing": "normal",
+  "color": "rgba(255, 255, 255, 0.95)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgba(255, 255, 255, 0.07)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "normal"
+ },
+ "h2": {
+  "tag": "h2",
+  "text": "Overview",
+  "fontFamily": "\"FK Grotesk\", ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+  "fontSize": "20px",
+  "fontWeight": "400",
+  "lineHeight": "24px",
+  "letterSpacing": "normal",
+  "color": "rgba(255, 255, 255, 0.95)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "0px",
+  "padding": "0px",
+  "border": "0px none rgba(255, 255, 255, 0.07)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "normal"
+ },
+ "h3": null,
+ "p": null,
+ "a_nav": {
+  "tag": "a",
+  "text": "Vaults",
+  "fontFamily": "\"FK Grotesk\", ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+  "fontSize": "13.008px",
+  "fontWeight": "400",
+  "lineHeight": "13.008px",
+  "letterSpacing": "normal",
+  "color": "rgba(255, 255, 255, 0.95)",
+  "background": "rgba(250, 250, 250, 0.1)",
+  "borderRadius": "8px",
+  "padding": "0px 16px",
+  "border": "0.5px solid rgba(0, 0, 0, 0)",
+  "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+  "textTransform": "none",
+  "fontFeatureSettings": "normal"
+ },
+ "button": {
+  "tag": "button",
+  "text": "Portfolio",
+  "fontFamily": "\"FK Grotesk\", ui-sans-serif, system-ui, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+  "fontSize": "13.008px",
+  "fontWeight": "400",
+  "lineHeight": "13.008px",
+  "letterSpacing": "normal",
+  "color": "rgba(255, 255, 255, 0.95)",
+  "background": "rgba(0, 0, 0, 0)",
+  "borderRadius": "8px",
+  "padding": "0px 16px",
+  "border": "0.5px solid rgba(0, 0, 0, 0)",
+  "boxShadow": "none",
+  "textTransform": "none",
+  "fontFeatureSettings": "normal"
+ },
+ "label_small": null,
+ "fontsUsed": [
+  [
+   "\"FK Grotesk\"",
+   872
+  ],
+  [
+   "Helvetica",
+   29
+  ]
+ ],
+ "typeScale": [
+  [
+   "16px/400/normal",
+   432
+  ],
+  [
+   "12px/400/normal",
+   304
+  ],
+  [
+   "11.008px/400/normal",
+   63
+  ],
+  [
+   "13.008px/400/normal",
+   35
+  ],
+  [
+   "11px/400/normal",
+   21
+  ],
+  [
+   "10px/400/normal",
+   17
+  ],
+  [
+   "38px/400/normal",
+   10
+  ],
+  [
+   "15.008px/400/normal",
+   9
+  ],
+  [
+   "12.8px/400/normal",
+   4
+  ],
+  [
+   "60px/300/normal",
+   2
+  ],
+  [
+   "20px/400/normal",
+   2
+  ],
+  [
+   "18px/400/normal",
+   1
+  ]
+ ],
+ "colors": [
+  [
+   "rgba(255, 255, 255, 0.95)",
+   749
+  ],
+  [
+   "rgba(255, 255, 255, 0.698)",
+   114
+  ],
+  [
+   "rgba(0, 0, 0, 0)",
+   27
+  ],
+  [
+   "rgba(255, 255, 255, 0.5)",
+   9
+  ],
+  [
+   "rgb(41, 115, 255)",
+   2
+  ]
+ ],
+ "backgrounds": [
+  [
+   "rgba(250, 250, 250, 0.05)",
+   67
+  ],
+  [
+   "rgba(250, 250, 250, 0.08)",
+   12
+  ],
+  [
+   "rgba(255, 255, 255, 0.5)",
+   8
+  ],
+  [
+   "rgba(250, 250, 250, 0.1)",
+   5
+  ],
+  [
+   "rgb(41, 115, 255)",
+   3
+  ],
+  [
+   "rgb(9, 9, 9)",
+   2
+  ],
+  [
+   "rgb(16, 16, 17)",
+   1
+  ],
+  [
+   "rgb(40, 40, 41)",
+   1
+  ],
+  [
+   "rgba(0, 0, 0, 0.5)",
+   1
+  ]
+ ],
+ "radii": [
+  [
+   "1.67772e+07px",
+   20
+  ],
+  [
+   "8px",
+   17
+  ],
+  [
+   "20px",
+   8
+  ],
+  [
+   "6px",
+   8
+  ],
+  [
+   "16px",
+   1
+  ],
+  [
+   "20px 0px 0px",
+   1
+  ],
+  [
+   "0px 20px 0px 0px",
+   1
+  ]
+ ],
+ "spacing": [
+  [
+   "8px",
+   110
+  ],
+  [
+   "2px",
+   46
+  ],
+  [
+   "4px",
+   45
+  ],
+  [
+   "-1px",
+   16
+  ],
+  [
+   "12px",
+   15
+  ],
+  [
+   "10px",
+   9
+  ],
+  [
+   "80px",
+   6
+  ],
+  [
+   "32px",
+   6
+  ],
+  [
+   "3px 4px",
+   4
+  ],
+  [
+   "4px 4px",
+   4
+  ],
+  [
+   "24px",
+   2
+  ],
+  [
+   "6px",
+   2
+  ]
+ ],
+ "shadows": [
+  [
+   "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+   10
+  ],
+  [
+   "rgba(0, 0, 0, 0.06) 0px 1px 6px 0px, rgba(0, 0, 0, 0.16) 0px 2px 32px 0px",
+   1
+  ]
+ ],
+ "borders": [
+  [
+   "0.5px solid rgba(0, 0, 0, 0)",
+   23
+  ],
+  [
+   "0.5px solid rgba(255, 255, 255, 0.07)",
+   8
+  ]
+ ],
+ "cssVars": {
+  "--light-background": "#f5f5f5",
+  "--dark-background": "#090909",
+  "--light-foreground": "#1b1b1b",
+  "--dark-foreground": "#fffffff2",
+  "--light-card": "#fafcff",
+  "--dark-card": "#101011",
+  "--light-card-foreground": "#1b1b1b",
+  "--dark-card-foreground": "#fffffff2",
+  "--light-popover": "#fafcff",
+  "--dark-popover": "#282829",
+  "--light-popover-foreground": "#1b1b1b",
+  "--dark-popover-foreground": "#fffffff2",
+  "--light-primary": "#0f5ae6d9",
+  "--dark-primary": "#2973ff",
+  "--light-primary-foreground": "#fffffff2",
+  "--dark-primary-foreground": "#fffffff2",
+  "--light-secondary": "#fafcff",
+  "--dark-secondary": "#fafafa1a",
+  "--light-secondary-foreground": "#1b1b1bcc",
+  "--dark-secondary-foreground": "#ffffffb2",
+  "--light-muted": "#191d200f",
+  "--dark-muted": "#fafafa14",
+  "--light-muted-foreground": "#1b1b1ba6",
+  "--dark-muted-foreground": "#ffffff80",
+  "--light-accent": "#191d200d",
+  "--dark-accent": "#fafafa0d",
+  "--light-accent-foreground": "#1b1b1b",
+  "--dark-accent-foreground": "#fffffff2",
+  "--light-destructive": "#b4375614",
+  "--dark-destructive": "#ff779214",
+  "--light-destructive-foreground": "#b43756f2",
+  "--dark-destructive-foreground": "#ff7792f2",
+  "--light-success": "#00706629",
+  "--dark-success": "#39a69914",
+  "--light-success-foreground": "#007066f2",
+  "--dark-success-foreground": "#39a699f2",
+  "--light-warning": "#9e3c0014",
+  "--dark-warning": "#ffb13d14",
+  "--light-warning-foreground": "#9e3c00f2",
+  "--dark-warning-foreground": "#ffb13df2",
+  "--light-info": "#0b53d414",
+  "--dark-info": "#5792ff14",
+  "--light-info-foreground": "#0b53d4f2",
+  "--dark-info-foreground": "#5792fff2",
+  "--light-border": "#191d2033",
+  "--dark-border": "#ffffff12",
+  "--light-input": "#191d200f",
+  "--dark-input": "#fafafa1a",
+  "--light-ring": "#5792ff",
+  "--dark-ring": "#5792ff",
+  "--light-chart-1": "#3e71f6",
+  "--dark-chart-1": "#3e71f6",
+  "--light-chart-2": "#299e87",
+  "--dark-chart-2": "#6fd0b9",
+  "--light-chart-3": "#bb8700",
+  "--dark-chart-3": "#e4b03c",
+  "--light-chart-4": "#9973cc",
+  "--dark-chart-4": "#b898ee",
+  "--light-chart-5": "#d57a5d",
+  "--dark-chart-5": "#e08d73",
+  "--light-chart-6": "#279cd4",
+  "--dark-chart-6": "#62bef2",
+  "--light-chart-7": "#959734",
+  "--dark-chart-7": "#dde08b",
+  "--light-chart-8": "#c568a7",
+  "--dark-chart-8": "#dc87bf",
+  "--light-chart-9": "#267d80",
+  "--dark-chart-9": "#56a2a0",
+  "--light-chart-10": "#6c90de",
+  "--dark-chart-10": "#88aaf1",
+  "--light-chart-other": "#687385",
+  "--dark-chart-other": "#8a93a5",
+  "--light-series-0": "#3e71f6",
+  "--dark-series-0": "#3e71f6",
+  "--light-series-1": "#299e87",
+  "--dark-series-1": "#6fd0b9",
+  "--light-series-2": "#bb8700",
+  "--dark-series-2": "#e4b03c",
+  "--light-series-3": "#9973cc",
+  "--dark-series-3": "#b898ee"
+ },
+ "extractedVia": "CDP getComputedStyle in the deepsurge profile, 1440x900, 2026-09-29"
+}

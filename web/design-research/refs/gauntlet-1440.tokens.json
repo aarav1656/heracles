@@ -1,0 +1,82 @@
+{
+ "title": "Gauntlet App",
+ "h1": null,
+ "h2": null,
+ "h3": null,
+ "body": {
+  "text": "Overview\nVaults\nPortfolio\nDocs\nGive feedback\nConnect Wallet\n",
+  "font": "Inter, sans-serif",
+  "size": "16px",
+  "weight": "400",
+  "tracking": "normal",
+  "leading": "24px",
+  "color": "rgb(200, 199, 217)",
+  "bg": "rgb(35, 34, 48)",
+  "radius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(200, 199, 217)",
+  "transform": "none",
+  "features": "normal"
+ },
+ "p": null,
+ "a": {
+  "text": "Overview",
+  "font": "\"PP Telegraf\", sans-serif",
+  "size": "16px",
+  "weight": "500",
+  "tracking": "2%",
+  "leading": "24px",
+  "color": "rgb(141, 153, 247)",
+  "bg": "rgba(0, 0, 0, 0)",
+  "radius": "4px",
+  "padding": "6px 8px",
+  "border": "0px none rgb(141, 153, 247)",
+  "transform": "none",
+  "features": "normal"
+ },
+ "button": {
+  "text": "Overview",
+  "font": "\"PP Telegraf\", sans-serif",
+  "size": "16px",
+  "weight": "500",
+  "tracking": "2%",
+  "leading": "24px",
+  "color": "rgb(141, 153, 247)",
+  "bg": "rgba(0, 0, 0, 0)",
+  "radius": "4px",
+  "padding": "6px 8px",
+  "border": "0px none rgb(141, 153, 247)",
+  "transform": "none",
+  "features": "normal"
+ },
+ "input": {
+  "text": "All Vaults",
+  "font": "Sohne, sans-serif",
+  "size": "16px",
+  "weight": "400",
+  "tracking": "normal",
+  "leading": "24px",
+  "color": "rgb(255, 255, 255)",
+  "bg": "rgba(0, 0, 0, 0)",
+  "radius": "0px",
+  "padding": "0px",
+  "border": "0px none rgb(255, 255, 255)",
+  "transform": "none",
+  "features": "normal"
+ },
+ "loadedFonts": [
+  "PP Telegraf",
+  "Sohne",
+  "Sohne Mono",
+  "Inter"
+ ],
+ "htmlBg": "rgba(0, 0, 0, 0)",
+ "textLen": 6748,
+ "height": 4993,
+ "url": "https://app.gauntlet.xyz/vaults",
+ "viewport": [
+  1440,
+  900
+ ],
+ "lumaStddev": 29.8
+}
