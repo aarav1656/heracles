@@ -83,8 +83,8 @@ interface AggregatorV3Interface {
 /// into the treaty, then each vault pulls its own share back out through the existing
 /// `receivePremium(address(this), amount)`, using a max allowance this contract grants every vault
 /// once, at construction. This contract's balance of every book asset is zero after every external
-/// call (T5); as a side effect it also closes the L2 security review's L1/F5 finding (a permit
-/// resetting a buyer's standing premium allowance), since buyers now approve this contract and
+/// call (T5). It also means a writer's permit can never reset a buyer's standing premium
+/// allowance (L1/F5 in docs/security/capacity-review.md), since buyers now approve this contract and
 /// writers approve their vault, so no spender carries both allowances.
 contract Treaty is ReentrancyGuard {
     using SafeERC20 for IERC20;
