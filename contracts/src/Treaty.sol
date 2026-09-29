@@ -184,7 +184,7 @@ contract Treaty is ReentrancyGuard {
     error AlreadyFixed();
     error NothingToClaim();
     error SequencerDown();
-    // Item 6: cancel is a backstop for a genuinely stale/dead feed, not a way to skip a layer that
+    // Cancel is a backstop for a genuinely stale/dead feed, not a way to skip a layer that
     // could still be fixed right now.
     error StillFixable();
     // H1: `setReference`/`voidReference` are mutually exclusive terminal proofs for one market;
@@ -483,7 +483,7 @@ contract Treaty is ReentrancyGuard {
     /// premium is refunded here rather than kept by writers for a layer that never resolved
     /// (SECURITY-REVIEW.md M3): writers only earn the premium for a layer that actually settles.
     ///
-    /// Item 6: cancel is a backstop for a genuinely dead layer, not a shortcut around a layer that
+    /// Cancel is a backstop for a genuinely dead layer, not a shortcut around a layer that
     /// could still be fixed. `_anyMarketFixable` below reverts `StillFixable` if any unfixed
     /// market already has a Monday round sitting there waiting to be consumed by `fix` -- at that
     /// point the correct call is `fix`, not `cancel`.

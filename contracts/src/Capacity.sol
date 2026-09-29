@@ -77,7 +77,7 @@ contract Capacity is ERC4626 {
     uint40[] public cutoffs;
     uint256 public cutoffCursor;
 
-    // Judging doc B.4 / slither events-maths: every onlyTreaty money-path function used to emit
+    // Slither events-maths: every onlyTreaty money-path function used to emit
     // nothing, so an indexer could not rebuild `locked`/`owed`/`pendingPremium` from logs alone
     // and had to replay storage reads instead. One event per function, mirroring its own
     // parameters exactly.
