@@ -101,7 +101,7 @@ contract RobinhoodWeekendForkTest is Test, TreatyFixture {
         int256[] memory e = new int256[](1);
         e[0] = exposure;
         vm.prank(buyer);
-        id = t.bind(0, e, retention, limit);
+        id = t.bind(0, e, retention, limit, type(uint256).max);
     }
 
     function _layerState(Treaty t, uint256 id) internal view returns (Treaty.State s) {

@@ -99,7 +99,7 @@ contract TreatyTest is Test, TreatyFixture {
 
     function test_bindLocksCapacityAndPullsPremium() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
 
         assertEq(_layerBuyer(id), buyer);
         assertEq(_layerRetention(id), RETENTION);
@@ -116,20 +116,20 @@ contract TreatyTest is Test, TreatyFixture {
         vm.warp(CUTOFF); // exactly at cutoff: no longer strictly before it
         vm.prank(buyer);
         vm.expectRevert(Treaty.BadTiming.selector);
-        treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
     }
 
     function test_bindRevertsOnZeroExposure() public {
         int256[] memory zero = new int256[](1);
         vm.prank(buyer);
         vm.expectRevert(Treaty.BadParams.selector);
-        treaty.bind(0, zero, RETENTION, LIMIT);
+        treaty.bind(0, zero, RETENTION, LIMIT, type(uint256).max);
     }
 
     function test_bindRevertsOnZeroLimit() public {
         vm.prank(buyer);
         vm.expectRevert(Treaty.BadParams.selector);
-        treaty.bind(0, _exposure(), RETENTION, 0);
+        treaty.bind(0, _exposure(), RETENTION, 0, type(uint256).max);
     }
 
     /// a round whose `updatedAt` predates Friday's close (`REF_TIME`) is too old to serve
@@ -141,7 +141,7 @@ contract TreatyTest is Test, TreatyFixture {
         // as the round in effect at close.
         feed.set(1, FRIDAY_PRICE, T0 - 1 hours);
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         vm.warp(REF_TIME + 1);
         vm.expectRevert(Treaty.BadRound.selector);
         treaty.setReference(id, 0, 1);
@@ -149,7 +149,7 @@ contract TreatyTest is Test, TreatyFixture {
 
     function test_setReferenceRevertsBeforeFridayClose() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         // still at T0 (Monday of that same week), well before Friday's close.
         vm.expectRevert(Treaty.BadTiming.selector);
         treaty.setReference(id, 0, 1);
@@ -157,7 +157,7 @@ contract TreatyTest is Test, TreatyFixture {
 
     function _bindReferenceAndFix() internal returns (uint256 id) {
         vm.prank(buyer);
-        id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
 
         // round 2: the first round at/after Friday's close (REF_TIME); round 1 (set in setUp,
         // Friday 18:30 UTC) is its required strictly-earlier predecessor.
@@ -174,7 +174,7 @@ contract TreatyTest is Test, TreatyFixture {
 
     function test_fixBeforeExpiryReverts() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         feed.set(2, FRIDAY_PRICE, REF_TIME);
         vm.warp(REF_TIME + 1);
         treaty.setReference(id, 0, 2);
@@ -187,7 +187,7 @@ contract TreatyTest is Test, TreatyFixture {
 
     function test_fixRevertsIfReferenceNotSet() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         feed.set(2, MONDAY_PRICE, uint256(EXPIRY) + 10);
         vm.warp(uint256(EXPIRY) + 20);
         vm.expectRevert(Treaty.ReferenceNotSet.selector);
@@ -241,7 +241,7 @@ contract TreatyTest is Test, TreatyFixture {
         // relative to Friday's close and therefore voidable.
         feed.set(1, FRIDAY_PRICE, T0 - 1 hours);
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         uint256 premium = _layerPremium(id);
         uint256 buyerBefore = usdg.balanceOf(buyer);
         vm.warp(uint256(EXPIRY) + 7 days + 1);
@@ -256,7 +256,7 @@ contract TreatyTest is Test, TreatyFixture {
 
     function test_cancelBeforeGraceReverts() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         vm.warp(uint256(EXPIRY) + 1);
         vm.expectRevert(Treaty.BadTiming.selector);
         treaty.cancel(id);
@@ -269,7 +269,7 @@ contract TreatyTest is Test, TreatyFixture {
     /// first-loss vault, whose own lock/free-capacity accounting is the mechanism under test.
     function test_writerCannotWithdrawLockedCapacity() public {
         vm.prank(buyer);
-        treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         uint256 totalBefore = firstLoss.totalAssets();
         uint256 freeCap = totalBefore - firstLoss.locked();
         uint256 maxRedeemable = firstLoss.maxRedeem(writer);

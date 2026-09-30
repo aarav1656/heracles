@@ -56,7 +56,7 @@ contract TreatyReReviewTest is Test, TreatyFixture {
         int256[] memory e = new int256[](1);
         e[0] = int256(exp);
         vm.prank(buyer);
-        id = treaty.bind(0, e, 0, 60_000e6);
+        id = treaty.bind(0, e, 0, 60_000e6, type(uint256).max);
     }
 
     /// P3: on a live 24h-heartbeat feed, by `expiry + GRACE` the feed has printed about three

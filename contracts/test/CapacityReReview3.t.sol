@@ -93,7 +93,7 @@ contract ReReview3Findings is Test, TreatyFixture {
         // floor does. 5_000 is the smallest limit clearing the junior slice's own floor.
         vm.warp(MON0 + 1 hours + 1);
         vm.prank(griefer);
-        uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, 5_000); // feed still fresh: first bind succeeds
+        uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, 5_000, type(uint256).max); // feed still fresh: first bind succeeds
         (,,,,, Treaty.State st,,,,,) = layerBasics(treaty, id);
         assertEq(uint8(st), uint8(Treaty.State.Bound), "sanity: bind succeeds while the feed is fresh");
 
@@ -103,7 +103,7 @@ contract ReReview3Findings is Test, TreatyFixture {
         vm.warp(MON0 + 7 days + 1 hours + 1);
         vm.prank(griefer);
         vm.expectRevert(Treaty.BadRound.selector);
-        treaty.bind(0, _one(1e6), 1_000_000e6, 5_000);
+        treaty.bind(0, _one(1e6), 1_000_000e6, 5_000, type(uint256).max);
     }
 
     /// LOW F2. `_settle` does `exposure[i] * gapBps` in checked int256. The Pricer only ever
@@ -121,7 +121,7 @@ contract ReReview3Findings is Test, TreatyFixture {
         uint256 retention = uint256(e) * 1474 / 10000 + 1; // above every Pricer scenario loss
         vm.prank(griefer);
         vm.expectRevert(Treaty.BadParams.selector);
-        treaty.bind(0, _one(e), retention, 200);
+        treaty.bind(0, _one(e), retention, 200, type(uint256).max);
     }
 
     /// MEDIUM F3. Between bind and cutoff the gate is open and deposits price at face value with
@@ -139,7 +139,7 @@ contract ReReview3Findings is Test, TreatyFixture {
         // feed, so bind() would revert BadRound without this fresh round 0.
         feed.set(0, 100e8, MON0 + 1 hours - 1);
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _one(-2_000_000e6), 0, 100_000e6); // matches writer's original single-vault deposit
+        uint256 id = treaty.bind(0, _one(-2_000_000e6), 0, 100_000e6, type(uint256).max); // matches writer's original single-vault deposit
         // premiumJunior (13th field) is what the first-loss vault alone earns from this layer; the
         // compat layerBasics() helper drops it (single-tranche tests never needed it), so read the
         // full 17-field struct directly here instead.

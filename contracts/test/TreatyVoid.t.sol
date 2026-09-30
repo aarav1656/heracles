@@ -53,7 +53,7 @@ contract TreatyVoidTest is Test, TreatyFixture {
         for (uint256 i; i < n; i++) e[i] = 1_000_000e6;
         vm.warp(CLOSE - 1 hours);
         vm.prank(buyer);
-        id = t.bind(0, e, 0, 60_000e6);
+        id = t.bind(0, e, 0, 60_000e6, type(uint256).max);
     }
 
     /// V1: on-time crossing, ITM layer. No round in the phase can be voided (fuzz the round id and

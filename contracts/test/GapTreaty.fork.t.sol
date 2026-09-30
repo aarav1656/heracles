@@ -148,7 +148,7 @@ contract GapTreatyForkTest is Test, TreatyFixture {
         senior.deposit(1_000_000e6, writer);
 
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, exposure, 10_000e6, 50_000e6);
+        uint256 id = treaty.bind(0, exposure, 10_000e6, 50_000e6, type(uint256).max);
 
         (address l_buyer,,,,,,,,, uint256 premium,) = layerBasics(treaty, id);
         assertEq(l_buyer, buyer);

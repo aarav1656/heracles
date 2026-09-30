@@ -96,7 +96,7 @@ contract TrancheTest is Test, TreatyFixture {
     /// then carries the layer to settlement against `mondayPrice` and asserts T1.
     function _bindCheckT2AndSettle(int256 mondayPrice) internal returns (uint256 id) {
         vm.prank(buyer);
-        id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
 
         (,,,, uint256 premiumJunior, uint256 premiumSenior,,,) = _layer(id);
         (uint256 quotedJunior,,) = pricer.quote(_exposure(), feeds, RETENTION, JUNIOR_LIMIT);
@@ -166,7 +166,7 @@ contract TrancheTest is Test, TreatyFixture {
     function test_bindRevertsWhenJuniorLimitIsZero() public {
         vm.prank(buyer);
         vm.expectRevert(Treaty.BadParams.selector);
-        treaty.bind(0, _exposure(), RETENTION, 3);
+        treaty.bind(0, _exposure(), RETENTION, 3, type(uint256).max);
     }
 
     /// A retention far above the table's worst possible weekend gap zeroes every scenario's
@@ -178,7 +178,7 @@ contract TrancheTest is Test, TreatyFixture {
     function test_bindRevertsWhenJuniorPremiumIsZero() public {
         vm.prank(buyer);
         vm.expectRevert(Treaty.BadParams.selector);
-        treaty.bind(0, _exposure(), 1e12, 4000);
+        treaty.bind(0, _exposure(), 1e12, 4000, type(uint256).max);
     }
 
     /// H2's floor (`minRateOnLineBps` of the whole limit) is never re-applied to the first-loss
@@ -191,7 +191,7 @@ contract TrancheTest is Test, TreatyFixture {
         tinyExposure[0] = 1_000e6;
 
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, tinyExposure, 0, LIMIT);
+        uint256 id = treaty.bind(0, tinyExposure, 0, LIMIT, type(uint256).max);
 
         (uint256 quotedTotal,,) = pricer.quote(tinyExposure, feeds, 0, LIMIT);
         (uint256 quotedJunior,,) = pricer.quote(tinyExposure, feeds, 0, JUNIOR_LIMIT);

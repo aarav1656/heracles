@@ -99,7 +99,7 @@ contract AttackReviewTest is Test, TreatyFixture {
         returns (uint256 id)
     {
         vm.prank(who);
-        id = treaty.bind(0, exposure, retention, limit);
+        id = treaty.bind(0, exposure, retention, limit, type(uint256).max);
         // setReference now waits for `fridayCloseOf` (FRI_CLOSE), not Saturday midnight;
         // round 1 (set in setUp, FRI_1900 - 10 minutes) is its required strictly-earlier
         // predecessor, round 2 is the first fresh round at/after FRI_CLOSE.
@@ -119,7 +119,7 @@ contract AttackReviewTest is Test, TreatyFixture {
         assertEq(usdg.balanceOf(attacker), 0);
         vm.prank(attacker);
         vm.expectRevert(Treaty.BadParams.selector);
-        treaty.bind(0, _one(0), 0, free);
+        treaty.bind(0, _one(0), 0, free, type(uint256).max);
     }
 
     /// H1a (fixed): expiry is never caller-chosen, it is always exactly the following Monday
@@ -127,7 +127,7 @@ contract AttackReviewTest is Test, TreatyFixture {
     /// cover.
     function test_H1a_expiryIsAlwaysNextMonday() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6);
+        uint256 id = treaty.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
         assertEq(_expiry(id), MONDAY, "H1a: expiry must be exactly the following Monday 13:30 UTC");
     }
 
@@ -137,7 +137,7 @@ contract AttackReviewTest is Test, TreatyFixture {
         vm.warp(FRI_CLOSE + 22 hours); // Sat 18:00 UTC
         vm.prank(buyer);
         vm.expectRevert(Treaty.BadTiming.selector);
-        treaty.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6);
+        treaty.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
     }
 
     /// H2 (fixed): a retention above the worst historical scenario loss can no longer quote a
@@ -189,7 +189,7 @@ contract AttackReviewTest is Test, TreatyFixture {
         uint256 shares = firstLoss.deposit(1_000_000e6, attacker);
         vm.stopPrank();
         vm.prank(buyer);
-        treaty.bind(0, _one(-2_000_000e6), 20_000e6, 60_000e6);
+        treaty.bind(0, _one(-2_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
         // M1 in substance still holds: the premium stays excluded from totalAssets() (pending
         // until the layer settles), so even priced, the JIT depositor's shares are worth at most
         // what they put in.
@@ -216,7 +216,7 @@ contract AttackReviewTest is Test, TreatyFixture {
     /// M2 (fixed), part 1: setReference still rejects a round older than REF_WINDOW (24h).
     function test_M2_staleReferenceRoundReverts() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6);
+        uint256 id = treaty.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
         // v3 rule 5: the round in effect at close must itself be within MAX_ROUND_AGE (26h) of
         // FRI_CLOSE. 27h before close is unambiguously stale under the new rule (the old 25h
         // offset was calibrated against the pre-v3 boundary and now falls inside the 26h window).
@@ -248,18 +248,18 @@ contract AttackReviewTest is Test, TreatyFixture {
         seq.setDown();
         vm.prank(buyer);
         vm.expectRevert(Treaty.SequencerDown.selector);
-        guarded.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6);
+        guarded.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
 
         // Back up, but still inside the grace period: still blocked.
         seq.setUp(block.timestamp);
         vm.prank(buyer);
         vm.expectRevert(Treaty.SequencerDown.selector);
-        guarded.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6);
+        guarded.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
 
         // Past the grace period: bind succeeds.
         vm.warp(block.timestamp + 1 hours + 1);
         vm.prank(buyer);
-        guarded.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6);
+        guarded.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
     }
 
     /// M3 (fixed): a Chainlink phase change after expiry still makes every settling round
@@ -267,7 +267,7 @@ contract AttackReviewTest is Test, TreatyFixture {
     /// leaving writers holding an owed payout they never have to pay.
     function test_M3_phaseChangeCancelRefundsBuyerPremium() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _one(1_000_000e6), 0, 100_000e6);
+        uint256 id = treaty.bind(0, _one(1_000_000e6), 0, 100_000e6, type(uint256).max);
         uint256 premium = _premium(id);
         feed.set(2, 100e8, FRI_CLOSE);
         vm.warp(FRI_CLOSE + 1);

@@ -131,7 +131,7 @@ contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
         int256[] memory exposure = new int256[](1);
         exposure[0] = int256(EXPOSURE);
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT, type(uint256).max);
         assertEq(firstLoss.locked() + senior.locked(), LIMIT);
 
         (address l_buyer,,, uint8 referencedCount,,,,,, uint256 premium,) = layerBasics(treaty, id);

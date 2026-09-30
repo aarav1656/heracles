@@ -93,7 +93,7 @@ contract CapacityC1Test is Test, TreatyFixture {
         usdg.approve(address(firstLoss), type(uint256).max);
         usdg.approve(address(senior), type(uint256).max);
         usdg.approve(address(treaty), type(uint256).max);
-        uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, free); // payout always 0, premium = floor
+        uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, free, type(uint256).max); // payout always 0, premium = floor
         uint256 shares;
         // checked against the first-loss vault; the senior vault gets the same guard in
         // Tranche.t.sol/Books.t.sol.
@@ -121,7 +121,7 @@ contract CapacityC1Test is Test, TreatyFixture {
         usdg.approve(address(firstLoss), type(uint256).max);
         usdg.approve(address(senior), type(uint256).max);
         usdg.approve(address(treaty), type(uint256).max);
-        treaty.bind(0, _one(1e6), 1_000_000e6, 100_000e6); // half the pool locked, cannot pay
+        treaty.bind(0, _one(1e6), 1_000_000e6, 100_000e6, type(uint256).max); // half the pool locked, cannot pay
         vm.stopPrank();
         // checked against the first-loss vault; the senior vault gets the same guard in
         // Tranche.t.sol/Books.t.sol.
@@ -142,6 +142,6 @@ contract CapacityC1Test is Test, TreatyFixture {
         address griefer = makeAddr("griefer");
         vm.prank(griefer);
         vm.expectRevert(Treaty.BadParams.selector);
-        treaty.bind(0, _one(1e6), 1_000_000e6, 199);
+        treaty.bind(0, _one(1e6), 1_000_000e6, 199, type(uint256).max);
     }
 }

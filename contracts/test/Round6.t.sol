@@ -127,7 +127,7 @@ contract Round6Test is Test, TreatyFixture {
         e[0] = 1_000_000e6;
         vm.warp(BIND_AT);
         vm.prank(buyer);
-        id = t.bind(0, e, 20_000e6, 60_000e6);
+        id = t.bind(0, e, 20_000e6, 60_000e6, type(uint256).max);
     }
 
     function _state(uint256 id) internal view returns (Treaty.State s) {
@@ -362,7 +362,7 @@ contract Round6Test is Test, TreatyFixture {
         e[0] = 2_000_000e6;
         vm.warp(BIND_AT);
         vm.prank(buyer);
-        uint256 id = t.bind(0, e, retention, limit);
+        uint256 id = t.bind(0, e, retention, limit, type(uint256).max);
         assertEq(usdg.balanceOf(address(t)), 0, "T5 after bind");
 
         (,,,,,,,,,, uint256 J, uint256 prem, uint256 pJ, uint256 pS,,,) = t.layers(id);

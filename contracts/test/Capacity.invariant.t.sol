@@ -153,7 +153,7 @@ contract Handler is Test {
         uint256 balBefore = _bookBalance(book);
         bool live = firstLoss[book].locked() != 0 || senior[book].locked() != 0;
         vm.prank(buyers[bi % 3]);
-        try treaty.bind(book, e, retention, limit) {
+        try treaty.bind(book, e, retention, limit, type(uint256).max) {
             nBind++;
             if (book == 0) nBook0++;
             else nBook1++;

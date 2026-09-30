@@ -69,7 +69,7 @@ contract ReReview4 is Test, TreatyFixture {
         if (state == 1) return;
         uint256 limit = bound(limitFrac, 200, w);
         vm.prank(buyer);
-        try treaty.bind(0, _one(-int256(limit) * 20), 0, limit) returns (uint256 id) {
+        try treaty.bind(0, _one(-int256(limit) * 20), 0, limit, type(uint256).max) returns (uint256 id) {
             if (state == 2) return;
             // round 1 is the pre-close predecessor, round 2 is the actual Friday-close
             // reference round (setReference must consume round 2, not round 1).
@@ -182,7 +182,7 @@ contract ReReview4 is Test, TreatyFixture {
         // now (decision 3, liveness guard rule 1); `feed` has no round yet at this point.
         feed.set(0, 100e8, block.timestamp - 1);
         vm.prank(buyer);
-        uint256 id = t.bind(0, _one(-2_000_000e6), 0, 1_000_000e6);
+        uint256 id = t.bind(0, _one(-2_000_000e6), 0, 1_000_000e6, type(uint256).max);
         (uint256 cutoff,) = t.weekWindow(MON0);
         uint256 refTime = t.fridayCloseOf(cutoff);
         feed.set(1, 100e8, MON0 + 4 days + 19 hours);

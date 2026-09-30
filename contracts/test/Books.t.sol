@@ -175,7 +175,7 @@ contract BooksTest is Test, TreatyFixture {
         ) = _book1Snapshot();
 
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         _assertBook1Unchanged(
             flTotalAssets,
             flLocked,
@@ -249,7 +249,7 @@ contract BooksTest is Test, TreatyFixture {
     /// the whole premium/payout passes through to the vaults in the same transaction.
     function test_T5_treatyBalanceZeroAfterBindAndSettle() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         assertEq(usdg.balanceOf(address(treaty)), 0, "T5: Treaty's USDG balance must be zero after bind");
         assertEq(usdc.balanceOf(address(treaty)), 0, "T5: Treaty's USDC balance must be zero after bind");
 
@@ -274,7 +274,7 @@ contract BooksTest is Test, TreatyFixture {
     function test_T5_treatyBalanceZeroAfterCancel() public {
         feed.set(1, FRIDAY_PRICE, T0 - 1 hours); // stale by the time of voidReference below
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         assertEq(usdg.balanceOf(address(treaty)), 0, "T5: Treaty's USDG balance must be zero after bind");
 
         vm.warp(uint256(EXPIRY) + 7 days + 1);

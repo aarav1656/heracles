@@ -76,7 +76,7 @@ contract GuardMutationTest is Test, TreatyFixture {
 
     function _bindReferenceAndFix() internal returns (uint256 id) {
         vm.prank(buyer);
-        id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         // round 2: first round at/after Friday's close (REF_TIME); round 1 (setUp, Friday 18:30
         // UTC) is its required strictly-earlier predecessor.
         feed.set(2, FRIDAY_PRICE, REF_TIME);
@@ -100,7 +100,7 @@ contract GuardMutationTest is Test, TreatyFixture {
     // coverage of the new rule.
     function test_setReference_NotFirstRound_guard() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         // round 2 is genuinely in effect at close; round 3 postdates close outright and must
         // never become the reference no matter how far forward time is walked.
         feed.set(2, FRIDAY_PRICE, REF_TIME);
@@ -149,7 +149,7 @@ contract GuardMutationTest is Test, TreatyFixture {
         feed2.set(1, FRIDAY_PRICE, CUTOFF - 1 hours);
 
         vm.prank(buyer);
-        uint256 id = t2.bind(0, exp, RETENTION, LIMIT);
+        uint256 id = t2.bind(0, exp, RETENTION, LIMIT, type(uint256).max);
 
         feed.set(2, FRIDAY_PRICE, REF_TIME);
         feed2.set(2, FRIDAY_PRICE, REF_TIME);
@@ -225,7 +225,7 @@ contract GuardMutationTest is Test, TreatyFixture {
     function test_setReference_WrongState_guard() public {
         feed.set(1, FRIDAY_PRICE, T0 - 1 hours);
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         vm.warp(uint256(EXPIRY) + 7 days + 1);
         treaty.voidReference(id, 0, 1);
         treaty.cancel(id);
@@ -236,7 +236,7 @@ contract GuardMutationTest is Test, TreatyFixture {
     function test_fix_WrongState_guard() public {
         feed.set(1, FRIDAY_PRICE, T0 - 1 hours);
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         vm.warp(uint256(EXPIRY) + 7 days + 1);
         treaty.voidReference(id, 0, 1);
         treaty.cancel(id);
@@ -247,7 +247,7 @@ contract GuardMutationTest is Test, TreatyFixture {
     function test_cancel_WrongState_guard() public {
         feed.set(1, FRIDAY_PRICE, T0 - 1 hours);
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         vm.warp(uint256(EXPIRY) + 7 days + 1);
         treaty.voidReference(id, 0, 1);
         treaty.cancel(id);
@@ -257,7 +257,7 @@ contract GuardMutationTest is Test, TreatyFixture {
 
     function test_claimTo_WrongState_guard() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         vm.expectRevert(Treaty.WrongState.selector);
         treaty.claimTo(id, buyer);
     }

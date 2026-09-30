@@ -96,7 +96,7 @@ contract ReferenceRuleTest is Test, TreatyFixture {
         vm.prank(buyer);
         int256[] memory exposure = new int256[](1);
         exposure[0] = 1_000_000e6;
-        uint256 id = treaty.bind(0, exposure, 0, 60_000e6);
+        uint256 id = treaty.bind(0, exposure, 0, 60_000e6, type(uint256).max);
 
         vm.warp(friClose + 1);
         treaty.setReference(id, 0, 2);
@@ -129,7 +129,7 @@ contract ReferenceRuleTest is Test, TreatyFixture {
         vm.prank(buyer);
         int256[] memory exposure = new int256[](1);
         exposure[0] = 1_000_000e6;
-        uint256 id = treaty.bind(0, exposure, 0, 60_000e6);
+        uint256 id = treaty.bind(0, exposure, 0, 60_000e6, type(uint256).max);
 
         feed.set(2, 771e8, close - 1 hours); // supersedes round 1 before close too
         vm.warp(close + 1 hours);

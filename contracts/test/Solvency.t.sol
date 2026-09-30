@@ -95,14 +95,14 @@ contract SolvencyTest is Test, TreatyFixture {
             if (limit > free) {
                 vm.expectRevert(Capacity.CapacityExceeded.selector);
                 vm.prank(buyers[l]);
-                treaty.bind(0, exposure, retention, limit);
+                treaty.bind(0, exposure, retention, limit, type(uint256).max);
                 limits[l] = 0;
                 ids[l] = type(uint256).max;
                 continue;
             }
 
             vm.prank(buyers[l]);
-            ids[l] = treaty.bind(0, exposure, retention, limit);
+            ids[l] = treaty.bind(0, exposure, retention, limit, type(uint256).max);
             limits[l] = limit;
             totalLimit += limit;
             assertLe(firstLoss.locked() + senior.locked(), usdg.balanceOf(address(firstLoss)) + usdg.balanceOf(address(senior)));

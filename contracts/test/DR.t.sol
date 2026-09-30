@@ -79,7 +79,7 @@ contract DRTest is Test, TreatyFixture {
         int256[] memory e = new int256[](1);
         e[0] = 1_000_000e6;
         vm.prank(buyer);
-        uint256 id = t.bind(0, e, 0, 60_000e6);
+        uint256 id = t.bind(0, e, 0, 60_000e6, type(uint256).max);
 
         vm.warp(EXPIRY + 1 hours);
         // The only round in effect at close is >100h stale relative to `CLOSE`, far past the
@@ -122,7 +122,7 @@ contract DRTest is Test, TreatyFixture {
         e[0] = 1_000_000e6;
         e[1] = 1_000_000e6;
         vm.prank(buyer);
-        uint256 id = t.bind(0, e, 0, 60_000e6);
+        uint256 id = t.bind(0, e, 0, 60_000e6, type(uint256).max);
 
         // A keeps printing through the week; its round in effect at close is fresh.
         feed.set(P1 | 2, 771e8, CLOSE - 5 minutes);
@@ -160,7 +160,7 @@ contract DRTest is Test, TreatyFixture {
         int256[] memory e = new int256[](1);
         e[0] = 1_000_000e6;
         vm.prank(buyer);
-        uint256 id = t.bind(0, e, 0, 60_000e6);
+        uint256 id = t.bind(0, e, 0, 60_000e6, type(uint256).max);
         // The round in effect at close is P1|1 itself: fresh, at-or-before close, latest in
         // phase.
         vm.warp(CLOSE + 1 hours);
@@ -191,7 +191,7 @@ contract DRTest is Test, TreatyFixture {
         int256[] memory e = new int256[](1);
         e[0] = 1_000_000e6;
         vm.prank(buyer);
-        uint256 id = t.bind(0, e, 0, 60_000e6);
+        uint256 id = t.bind(0, e, 0, 60_000e6, type(uint256).max);
 
         // The round in effect at close, `age` before `CLOSE`.
         feed.set(P1 | 2, 771e8, CLOSE - age);

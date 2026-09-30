@@ -113,7 +113,7 @@ contract CapacityReReviewTest is Test, TreatyFixture {
             // with BadParams: the junior sub-quote's own capital charge floors to 0 well before
             // the whole layer's H2 floor does, and the tranche split requires both slices'
             // premium nonzero. 5_000 is the smallest limit clearing the junior slice's own floor.
-            uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, 5_000);
+            uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, 5_000, type(uint256).max);
             bindGas = g - gasleft();
             (,,,,,,,,, uint256 premium,) = layerBasics(treaty, id);
             assertEq(premium, 25, "min nonzero premium clearing both tranches' floors is 25 base units");
@@ -160,14 +160,14 @@ contract CapacityReReviewTest is Test, TreatyFixture {
         vm.prank(buyer);
         usdg.approve(address(treaty), type(uint256).max);
         vm.prank(buyer);
-        uint256 a = treaty.bind(0, _one(-500_000e6), 20_000e6, 10_000e6);
+        uint256 a = treaty.bind(0, _one(-500_000e6), 20_000e6, 10_000e6, type(uint256).max);
         // Round 1 (set in setUp, w=0) is the pre-close predecessor; round 2 is the actual
         // Friday-close reference round.
         vm.warp(MON0 + 5 days + 1);
         treaty.setReference(a, 0, 2);
         vm.warp(MON0 + 7 days + 9 hours); // Monday 09:00, next week's roll
         vm.prank(buyer);
-        treaty.bind(0, _one(-500_000e6), 20_000e6, 10_000e6);
+        treaty.bind(0, _one(-500_000e6), 20_000e6, 10_000e6, type(uint256).max);
         (, uint256 expiryA) = treaty.weekWindow(MON0);
         vm.warp(expiryA + 1);
         treaty.fix(a, 0, 3);

@@ -120,7 +120,7 @@ contract TreatyPrecisionTest is Test, TreatyFixture {
         vm.prank(buyer);
         int256[] memory exposure = new int256[](1);
         exposure[0] = EXPOSURE;
-        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT, type(uint256).max);
 
         // round 2: first round at/after Friday's close (REF_TIME); round 1 (setUp, Friday
         // CUTOFF - 1 hours) is its required strictly-earlier predecessor.

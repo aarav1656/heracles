@@ -193,7 +193,7 @@ contract AdvHandler is Test {
             if (nz >= 2) nStacked++;
         }
         vm.prank(buyers[bi % 3]);
-        try treaty.bind(book, e, retention, limit) {
+        try treaty.bind(book, e, retention, limit, type(uint256).max) {
             nBind++;
             if (block.timestamp == c - 1) nBindAtCutoffMinus1++;
             if (block.timestamp >= c) vBindAfterCutoff++;
@@ -202,7 +202,7 @@ contract AdvHandler is Test {
         if (atEdge && block.timestamp == c - 1) {
             vm.warp(c);
             vm.prank(buyers[bi % 3]);
-            try treaty.bind(book, e, retention, limit) {
+            try treaty.bind(book, e, retention, limit, type(uint256).max) {
                 vBindAfterCutoff++;
             } catch {
                 nBindAtCutoffRejected++;

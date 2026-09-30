@@ -53,7 +53,7 @@ contract LivenessTest is Test, TreatyFixture {
         int256[] memory e = new int256[](n);
         for (uint256 i; i < n; i++) e[i] = 1_000_000e6;
         vm.prank(buyer);
-        id = t.bind(0, e, 0, 60_000e6);
+        id = t.bind(0, e, 0, 60_000e6, type(uint256).max);
     }
 
     function _layerState(Treaty t, uint256 id) internal view returns (Treaty.State s) {
@@ -71,7 +71,7 @@ contract LivenessTest is Test, TreatyFixture {
         int256[] memory e = new int256[](1);
         e[0] = 1_000_000e6;
         vm.expectRevert(Treaty.BadRound.selector);
-        t.bind(0, e, 0, 60_000e6);
+        t.bind(0, e, 0, 60_000e6, type(uint256).max);
     }
 
     /// Same check, written as `updatedAt + MAX_ROUND_AGE >= block.timestamp` (addition), must not

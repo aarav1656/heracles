@@ -110,7 +110,7 @@ contract GapTreatyForkLifecycleTest is Test, TreatyFixture {
         vm.prank(buyer);
         int256[] memory exposure = new int256[](1);
         exposure[0] = EXPOSURE;
-        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT, type(uint256).max);
         uint256 premium = _layerPremium(id);
         assertGt(premium, 0);
         assertEq(firstLoss.locked() + senior.locked(), LIMIT);
@@ -158,7 +158,7 @@ contract GapTreatyForkLifecycleTest is Test, TreatyFixture {
         vm.prank(buyer);
         int256[] memory exposure = new int256[](1);
         exposure[0] = EXPOSURE;
-        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT, type(uint256).max);
         uint256 premium = _layerPremium(id);
         uint256 buyerBefore = USDG.balanceOf(buyer);
 

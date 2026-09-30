@@ -88,9 +88,9 @@ contract AttackTest is Test, TreatyFixture {
     /// pay more than is locked.
     function test_cannotDrainAcrossLayers() public {
         vm.prank(alice);
-        uint256 idA = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 idA = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         vm.prank(bob);
-        uint256 idB = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 idB = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         assertEq(firstLoss.locked() + senior.locked(), 2 * LIMIT); // pool fully committed, zero free capacity
 
         feed.set(2, FRIDAY_PRICE, REF_TIME);
@@ -120,7 +120,7 @@ contract AttackTest is Test, TreatyFixture {
     /// Attack: a stale round (updatedAt far in the past) presented as the Monday fix.
     function test_staleRoundRejected() public {
         vm.prank(alice);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         feed.set(2, FRIDAY_PRICE, REF_TIME);
         vm.warp(REF_TIME + 1);
         treaty.setReference(id, 0, 2);
@@ -136,7 +136,7 @@ contract AttackTest is Test, TreatyFixture {
     /// the feed's current phase.
     function test_phaseChangeRejected() public {
         vm.prank(alice);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         feed.set(2, FRIDAY_PRICE, REF_TIME);
         vm.warp(REF_TIME + 1);
         treaty.setReference(id, 0, 2);
@@ -155,7 +155,7 @@ contract AttackTest is Test, TreatyFixture {
     /// exists. Must revert unconditionally, regardless of what round is supplied.
     function test_earlyFixRejected() public {
         vm.prank(alice);
-        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         feed.set(2, FRIDAY_PRICE, REF_TIME);
         vm.warp(REF_TIME + 1);
         treaty.setReference(id, 0, 2);
@@ -173,7 +173,7 @@ contract AttackTest is Test, TreatyFixture {
         int256[] memory hugeExposure = new int256[](1);
         hugeExposure[0] = 100_000_000e6; // far beyond what any premium was priced for
         vm.prank(alice);
-        uint256 id = treaty.bind(0, hugeExposure, RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, hugeExposure, RETENTION, LIMIT, type(uint256).max);
         feed.set(2, FRIDAY_PRICE, REF_TIME);
         vm.warp(REF_TIME + 1);
         treaty.setReference(id, 0, 2);
