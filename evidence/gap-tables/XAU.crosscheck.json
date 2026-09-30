@@ -1,0 +1,129 @@
+{
+  "table": "evidence/gap-tables/XAU.json",
+  "yahoo_symbol": "GC=F",
+  "n_checked": 20,
+  "n_requested": 20,
+  "max_abs_diff_bps": 29.29,
+  "checks": [
+    {
+      "friday": "2025-12-12",
+      "dukascopy_gap_bps": 59.77,
+      "yahoo_gap_bps": 70.9,
+      "abs_diff_bps": 11.13
+    },
+    {
+      "friday": "2026-06-26",
+      "dukascopy_gap_bps": -82.77,
+      "yahoo_gap_bps": -83.69,
+      "abs_diff_bps": 0.92
+    },
+    {
+      "friday": "2026-05-29",
+      "dukascopy_gap_bps": -176.79,
+      "yahoo_gap_bps": -155.56,
+      "abs_diff_bps": 21.23
+    },
+    {
+      "friday": "2025-03-14",
+      "dukascopy_gap_bps": 11.03,
+      "yahoo_gap_bps": 10.86,
+      "abs_diff_bps": 0.17
+    },
+    {
+      "friday": "2024-12-20",
+      "dukascopy_gap_bps": -18.3,
+      "yahoo_gap_bps": -47.29,
+      "abs_diff_bps": 28.99
+    },
+    {
+      "friday": "2026-04-17",
+      "dukascopy_gap_bps": -61.78,
+      "yahoo_gap_bps": -91.07,
+      "abs_diff_bps": 29.29
+    },
+    {
+      "friday": "2024-11-15",
+      "dukascopy_gap_bps": 164.67,
+      "yahoo_gap_bps": 170.06,
+      "abs_diff_bps": 5.39
+    },
+    {
+      "friday": "2025-03-21",
+      "dukascopy_gap_bps": 14.77,
+      "yahoo_gap_bps": 6.94,
+      "abs_diff_bps": 7.83
+    },
+    {
+      "friday": "2026-07-24",
+      "dukascopy_gap_bps": 54.96,
+      "yahoo_gap_bps": 61.52,
+      "abs_diff_bps": 6.56
+    },
+    {
+      "friday": "2024-10-25",
+      "dukascopy_gap_bps": -12.04,
+      "yahoo_gap_bps": -19.96,
+      "abs_diff_bps": 7.92
+    },
+    {
+      "friday": "2026-05-01",
+      "dukascopy_gap_bps": -107.58,
+      "yahoo_gap_bps": -98.96,
+      "abs_diff_bps": 8.62
+    },
+    {
+      "friday": "2025-08-08",
+      "dukascopy_gap_bps": -140.09,
+      "yahoo_gap_bps": -126.13,
+      "abs_diff_bps": 13.96
+    },
+    {
+      "friday": "2025-06-06",
+      "dukascopy_gap_bps": 4.59,
+      "yahoo_gap_bps": 18.74,
+      "abs_diff_bps": 14.15
+    },
+    {
+      "friday": "2025-02-21",
+      "dukascopy_gap_bps": 26.89,
+      "yahoo_gap_bps": 50.03,
+      "abs_diff_bps": 23.14
+    },
+    {
+      "friday": "2026-07-31",
+      "dukascopy_gap_bps": -40.96,
+      "yahoo_gap_bps": -30.43,
+      "abs_diff_bps": 10.53
+    },
+    {
+      "friday": "2025-11-14",
+      "dukascopy_gap_bps": -50.5,
+      "yahoo_gap_bps": -41.09,
+      "abs_diff_bps": 9.41
+    },
+    {
+      "friday": "2025-10-10",
+      "dukascopy_gap_bps": 199.7,
+      "yahoo_gap_bps": 195.01,
+      "abs_diff_bps": 4.69
+    },
+    {
+      "friday": "2025-07-18",
+      "dukascopy_gap_bps": 115.51,
+      "yahoo_gap_bps": 131.04,
+      "abs_diff_bps": 15.53
+    },
+    {
+      "friday": "2026-03-06",
+      "dukascopy_gap_bps": -114.01,
+      "yahoo_gap_bps": -133.69,
+      "abs_diff_bps": 19.68
+    },
+    {
+      "friday": "2025-07-11",
+      "dukascopy_gap_bps": -2.95,
+      "yahoo_gap_bps": -32.18,
+      "abs_diff_bps": 29.23
+    }
+  ]
+}

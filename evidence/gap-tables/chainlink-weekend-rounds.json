@@ -1,0 +1,150 @@
+{
+  "EUR/USD": {
+    "address": "0xA14d53bC1F1c0F31B4aA3BD109344E5009051a84",
+    "phase": 2,
+    "targets": {
+      "fri_close_2026-09-25_16:00ET": {
+        "target_ts": 1790366400,
+        "last_before_or_at": {
+          "roundId": 36893488147419107428,
+          "answer": 113988500,
+          "startedAt": 1790364127,
+          "updatedAt": 1790364140,
+          "answeredInRound": 36893488147419107428
+        },
+        "first_after": {
+          "roundId": 36893488147419107429,
+          "answer": 113943000,
+          "startedAt": 1790367729,
+          "updatedAt": 1790367742,
+          "answeredInRound": 36893488147419107429
+        }
+      },
+      "mon_open_2026-09-28_09:30ET": {
+        "target_ts": 1790602200,
+        "last_before_or_at": {
+          "roundId": 36893488147419107494,
+          "answer": 113684000,
+          "startedAt": 1790600459,
+          "updatedAt": 1790600471,
+          "answeredInRound": 36893488147419107494
+        },
+        "first_after": {
+          "roundId": 36893488147419107495,
+          "answer": 113633000,
+          "startedAt": 1790604060,
+          "updatedAt": 1790604073,
+          "answeredInRound": 36893488147419107495
+        }
+      },
+      "fri_close_2026-09-18_16:00ET": {
+        "target_ts": 1789761600,
+        "last_before_or_at": {
+          "roundId": 36893488147419107248,
+          "answer": 114889000,
+          "startedAt": 1789759469,
+          "updatedAt": 1789759481,
+          "answeredInRound": 36893488147419107248
+        },
+        "first_after": {
+          "roundId": 36893488147419107249,
+          "answer": 114884000,
+          "startedAt": 1789763071,
+          "updatedAt": 1789763083,
+          "answeredInRound": 36893488147419107249
+        }
+      },
+      "mon_open_2026-09-21_09:30ET": {
+        "target_ts": 1789997400,
+        "last_before_or_at": {
+          "roundId": 36893488147419107314,
+          "answer": 114811000,
+          "startedAt": 1789997230,
+          "updatedAt": 1789997242,
+          "answeredInRound": 36893488147419107314
+        },
+        "first_after": {
+          "roundId": 36893488147419107315,
+          "answer": 114692000,
+          "startedAt": 1789999421,
+          "updatedAt": 1789999433,
+          "answeredInRound": 36893488147419107315
+        }
+      }
+    }
+  },
+  "XAU/USD": {
+    "address": "0x1F954Dc24a49708C26E0C1777f16750B5C6d5a2c",
+    "phase": 2,
+    "targets": {
+      "fri_close_2026-09-25_16:00ET": {
+        "target_ts": 1790366400,
+        "last_before_or_at": {
+          "roundId": 36893488147419105447,
+          "answer": 428006000000,
+          "startedAt": 1790348177,
+          "updatedAt": 1790348189,
+          "answeredInRound": 36893488147419105447
+        },
+        "first_after": {
+          "roundId": 36893488147419105448,
+          "answer": 428586990350,
+          "startedAt": 1790434591,
+          "updatedAt": 1790434603,
+          "answeredInRound": 36893488147419105448
+        }
+      },
+      "mon_open_2026-09-28_09:30ET": {
+        "target_ts": 1790602200,
+        "last_before_or_at": {
+          "roundId": 36893488147419105455,
+          "answer": 415205500000,
+          "startedAt": 1790583597,
+          "updatedAt": 1790583609,
+          "answeredInRound": 36893488147419105455
+        },
+        "first_after": {
+          "roundId": 36893488147419105456,
+          "answer": 412749500000,
+          "startedAt": 1790606437,
+          "updatedAt": 1790606450,
+          "answeredInRound": 36893488147419105456
+        }
+      },
+      "fri_close_2026-09-18_16:00ET": {
+        "target_ts": 1789761600,
+        "last_before_or_at": {
+          "roundId": 36893488147419105417,
+          "answer": 438586000000,
+          "startedAt": 1789751016,
+          "updatedAt": 1789751028,
+          "answeredInRound": 36893488147419105417
+        },
+        "first_after": {
+          "roundId": 36893488147419105418,
+          "answer": 437812494200,
+          "startedAt": 1789837429,
+          "updatedAt": 1789837442,
+          "answeredInRound": 36893488147419105418
+        }
+      },
+      "mon_open_2026-09-21_09:30ET": {
+        "target_ts": 1789997400,
+        "last_before_or_at": {
+          "roundId": 36893488147419105420,
+          "answer": 435601499999,
+          "startedAt": 1789966726,
+          "updatedAt": 1789966739,
+          "answeredInRound": 36893488147419105420
+        },
+        "first_after": {
+          "roundId": 36893488147419105421,
+          "answer": 433080000000,
+          "startedAt": 1789999429,
+          "updatedAt": 1789999441,
+          "answeredInRound": 36893488147419105421
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "block": 510265853,
+  "out": "evidence/gap-tables/chainlink-weekend-rounds.json",
+  "targets": [
+    ["fri_close_2026-09-25_16:00ET", 1790366400],
+    ["mon_open_2026-09-28_09:30ET", 1790602200],
+    ["fri_close_2026-09-18_16:00ET", 1789761600],
+    ["mon_open_2026-09-21_09:30ET", 1789997400]
+  ],
+  "feeds": [
+    {"name": "EUR/USD", "address": "0xA14d53bC1F1c0F31B4aA3BD109344E5009051a84", "phase": 2, "lo": 1, "hi": 4307},
+    {"name": "XAU/USD", "address": "0x1F954Dc24a49708C26E0C1777f16750B5C6d5a2c", "phase": 2, "lo": 1, "hi": 2228}
+  ]
+}

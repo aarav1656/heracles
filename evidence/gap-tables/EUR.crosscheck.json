@@ -1,0 +1,129 @@
+{
+  "table": "evidence/gap-tables/EUR.json",
+  "yahoo_symbol": "EURUSD=X",
+  "n_checked": 20,
+  "n_requested": 20,
+  "max_abs_diff_bps": 11.3,
+  "checks": [
+    {
+      "friday": "2026-07-10",
+      "dukascopy_gap_bps": 7.71,
+      "yahoo_gap_bps": 6.29,
+      "abs_diff_bps": 1.42
+    },
+    {
+      "friday": "2025-04-04",
+      "dukascopy_gap_bps": 21.29,
+      "yahoo_gap_bps": 13.72,
+      "abs_diff_bps": 7.57
+    },
+    {
+      "friday": "2026-02-27",
+      "dukascopy_gap_bps": -94.2,
+      "yahoo_gap_bps": -93.66,
+      "abs_diff_bps": 0.54
+    },
+    {
+      "friday": "2025-08-01",
+      "dukascopy_gap_bps": 14.78,
+      "yahoo_gap_bps": 6.37,
+      "abs_diff_bps": 8.41
+    },
+    {
+      "friday": "2026-07-31",
+      "dukascopy_gap_bps": 0.09,
+      "yahoo_gap_bps": -4.03,
+      "abs_diff_bps": 4.12
+    },
+    {
+      "friday": "2025-06-06",
+      "dukascopy_gap_bps": -0.35,
+      "yahoo_gap_bps": 4.56,
+      "abs_diff_bps": 4.91
+    },
+    {
+      "friday": "2026-08-28",
+      "dukascopy_gap_bps": 11.91,
+      "yahoo_gap_bps": 6.96,
+      "abs_diff_bps": 4.95
+    },
+    {
+      "friday": "2025-01-31",
+      "dukascopy_gap_bps": -108.93,
+      "yahoo_gap_bps": -115.38,
+      "abs_diff_bps": 6.45
+    },
+    {
+      "friday": "2025-06-13",
+      "dukascopy_gap_bps": 39.57,
+      "yahoo_gap_bps": 40.02,
+      "abs_diff_bps": 0.45
+    },
+    {
+      "friday": "2026-01-23",
+      "dukascopy_gap_bps": 39.0,
+      "yahoo_gap_bps": 39.18,
+      "abs_diff_bps": 0.18
+    },
+    {
+      "friday": "2026-09-04",
+      "dukascopy_gap_bps": 8.87,
+      "yahoo_gap_bps": 11.63,
+      "abs_diff_bps": 2.76
+    },
+    {
+      "friday": "2026-05-15",
+      "dukascopy_gap_bps": 24.44,
+      "yahoo_gap_bps": 27.39,
+      "abs_diff_bps": 2.95
+    },
+    {
+      "friday": "2026-05-29",
+      "dukascopy_gap_bps": -31.81,
+      "yahoo_gap_bps": -30.79,
+      "abs_diff_bps": 1.02
+    },
+    {
+      "friday": "2025-02-28",
+      "dukascopy_gap_bps": 106.03,
+      "yahoo_gap_bps": 103.29,
+      "abs_diff_bps": 2.74
+    },
+    {
+      "friday": "2025-11-07",
+      "dukascopy_gap_bps": 1.21,
+      "yahoo_gap_bps": 1.16,
+      "abs_diff_bps": 0.05
+    },
+    {
+      "friday": "2024-12-27",
+      "dukascopy_gap_bps": -23.98,
+      "yahoo_gap_bps": -28.07,
+      "abs_diff_bps": 4.09
+    },
+    {
+      "friday": "2025-03-07",
+      "dukascopy_gap_bps": -2.3,
+      "yahoo_gap_bps": -7.05,
+      "abs_diff_bps": 4.75
+    },
+    {
+      "friday": "2026-01-02",
+      "dukascopy_gap_bps": -33.28,
+      "yahoo_gap_bps": -31.55,
+      "abs_diff_bps": 1.73
+    },
+    {
+      "friday": "2026-03-20",
+      "dukascopy_gap_bps": 25.26,
+      "yahoo_gap_bps": 36.56,
+      "abs_diff_bps": 11.3
+    },
+    {
+      "friday": "2025-02-07",
+      "dukascopy_gap_bps": -20.91,
+      "yahoo_gap_bps": -11.87,
+      "abs_diff_bps": 9.04
+    }
+  ]
+}
