@@ -55,7 +55,7 @@ contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
     uint80 constant ROUND_MON_PRE = (uint80(2) << 64) | 361;
     uint80 constant ROUND_MON_FIX = (uint80(2) << 64) | 362;
 
-    uint256 constant FRIDAY_CUTOFF = 1_790_364_600; // Fri 2026-09-25 19:30 UTC (bind deadline)
+    uint256 constant FRIDAY_CUTOFF = 1_790_364_600; // Fri 2026-09-25 19:30 UTC (the anchor; bind closes a day earlier, H-1)
     uint256 constant FRIDAY_CLOSE = 1_790_366_400; // Fri 2026-09-25 20:00 UTC EDT
     uint256 constant MONDAY_EXPIRY = 1_790_602_200; // Mon 2026-09-28 13:30 UTC EDT
     // setReference/fix both revert BadRound if `updatedAt > block.timestamp` (a round from "the
@@ -126,7 +126,7 @@ contract GapTreatyRealWeekendForkTest is Test, TreatyFixture {
     }
 
     function test_realWeekend_bindReferenceFixAndClaim() public {
-        vm.warp(FRIDAY_CUTOFF - 1 hours);
+        vm.warp(FRIDAY_CUTOFF - 1 days - 1 hours); // Thu 18:30 UTC, before the Thursday 19:30 bind deadline (H-1)
 
         int256[] memory exposure = new int256[](1);
         exposure[0] = int256(EXPOSURE);

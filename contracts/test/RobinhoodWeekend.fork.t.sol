@@ -97,7 +97,7 @@ contract RobinhoodWeekendForkTest is Test, TreatyFixture {
     }
 
     function _bind(Treaty t, int256 exposure, uint256 retention, uint256 limit) internal returns (uint256 id) {
-        vm.warp(FRI_CUTOFF - 1 hours); // strictly before this week's real bind cutoff
+        vm.warp(FRI_CUTOFF - 1 days - 1 hours); // Thu 18:30 UTC, strictly before this week's real bind deadline (Thursday 19:30 UTC, H-1)
         int256[] memory e = new int256[](1);
         e[0] = exposure;
         vm.prank(buyer);

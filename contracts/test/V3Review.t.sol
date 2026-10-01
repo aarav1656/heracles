@@ -208,10 +208,13 @@ contract V3ReviewTest is Test, TreatyFixture {
     }
 
     /// Exclusivity fuzz over the new boundary. The round in effect at close is printed `age`
-    /// before the close. Exactly one of setReference / voidReference must succeed for it, the loser
+    /// before the close, `age` within two hours of the 24.5h that the deadline sits before it. Exactly one of setReference / voidReference must succeed for it, the loser
     /// must stay shut afterwards, and the side is decided by `updatedAt > bind deadline`.
     function testFuzz_H1_exactlyOneOfSetOrVoidAtBindDeadline(uint256 ageSeed, bool voidFirst) public {
-        uint256 age = bound(ageSeed, 1, 50 hours); // 50h keeps the round fresh enough to bind against
+        // +-2h around the deadline (the round is 24.5h old at the close when printed exactly at it),
+        // which also straddles rule 5's 26h line. A wide 1s..50h range almost never lands in this
+        // 1.5h band: with the check deleted it stayed green over 256 runs.
+        uint256 age = bound(ageSeed, CLOSE - BIND_DEADLINE - 2 hours, CLOSE - BIND_DEADLINE + 2 hours);
         _deployMock();
         uint256 updatedAt = CLOSE - age;
         feed.set(1, 770e8, updatedAt);
