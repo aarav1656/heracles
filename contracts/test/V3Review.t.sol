@@ -608,6 +608,26 @@ contract V3ReviewTest is Test, TreatyFixture {
         assertEq(uint8(s), uint8(Treaty.State.Settled), "the layer still settles on its valid round");
     }
 
+    /// `voidFix` mirrors `fix`'s round rules: a bad round from before expiry, or from a superseded
+    /// Chainlink phase, is not the round `fix` would take and proves nothing.
+    function test_V2_badRoundBeforeExpiryOrInOldPhaseCannotVoid() public {
+        uint256 id = _bindReferenced();
+        feed.set(3, 0, EXPIRY - 1 hours); // bad, but printed before expiry
+        feed.set(4, 760e8, EXPIRY + 10 minutes); // the real first round, valid
+        vm.warp(EXPIRY + 3 days);
+        (bool ok, bytes memory ret) = _voidFix(id, 0, 3);
+        assertFalse(ok);
+        assertEq(_sel(ret), Treaty.BadRound.selector, "before expiry");
+
+        uint80 p1 = uint80(1) << 64;
+        feed.set(5, 0, EXPIRY + 20 minutes); // old phase: bad, predecessor (4) is after expiry
+        feed.set(p1 | 1, 761e8, EXPIRY + 30 minutes); // the feed moved to phase 1
+        (ok, ret) = _voidFix(id, 0, 5);
+        assertFalse(ok);
+        assertEq(_sel(ret), Treaty.BadRound.selector, "superseded phase");
+        assertFalse(t.fixVoid(id, 0));
+    }
+
     /// Exclusivity fuzz over the Monday answer, same edges as the Friday one. Exactly one of fix /
     /// voidFix succeeds for the first post-expiry round and the loser can never succeed after.
     function testFuzz_V2_exactlyOneOfFixOrVoidFixByAnswer(int256 raw, uint8 edge, bool voidFirst) public {

@@ -741,8 +741,8 @@ contract Treaty is ReentrancyGuard {
     }
 
     /// Permissionless proof that a market's Monday fix can never succeed: `roundId` passes every
-    /// check `fix` makes on its round (current phase, `updatedAt` at or after `expiry` and not in
-    /// the future, predecessor strictly before `expiry`, i.e. the one round `fix` could ever take)
+    /// check `fix` makes on its round (current phase, `updatedAt` at or after `expiry`,
+    /// predecessor strictly before `expiry`, i.e. the one round `fix` could ever take)
     /// except that its answer is `<= 0` or above `uint64.max`, which `fix` rejects with `BadRound`.
     /// Round data is immutable, so no later round can stand in (`NotFirstRound`) and the layer can
     /// never settle; `_anyMarketFixable` then stops counting this market and `cancel` refunds the
@@ -758,7 +758,7 @@ contract Treaty is ReentrancyGuard {
         AggregatorV3Interface feed = markets[marketIdx];
         _latestInPhase(feed, roundId);
         (, int256 answer,, uint256 updatedAt,) = feed.getRoundData(roundId);
-        if (updatedAt < L.expiry || updatedAt > block.timestamp) revert BadRound();
+        if (updatedAt < L.expiry) revert BadRound();
         (,,, uint256 prevUpdatedAt,) = feed.getRoundData(roundId - 1);
         if (prevUpdatedAt == 0 || prevUpdatedAt >= L.expiry) revert NotFirstRound();
         if (answer > 0 && uint256(answer) <= type(uint64).max) revert StillFixable();

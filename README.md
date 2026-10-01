@@ -294,10 +294,16 @@ performance number is claimed here.
 
 ## What works
 
-- Full local suite, 2026-09-29: 122 Foundry tests pass across 23 suites, 0 failed, 0
-  skipped (includes `GapTreatyRealWeekendForkTest`, a full bind-reference-fix-claim
-  lifecycle replayed against real Chainlink round data). This count moves as tests are
-  added; verify with `forge test --summary` rather than trusting this number stale.
+- Full local suite, 2026-10-01: 165 Foundry tests pass across 30 suites, 0 failed; the
+  fork files skip without `FORK_TESTS=1`, and with it all 10 fork tests pass (includes
+  `GapTreatyRealWeekendForkTest`, a full bind-reference-fix-claim lifecycle replayed
+  against real Chainlink round data). This count moves as tests are added; verify with
+  `forge test --summary` rather than trusting this number stale.
+- Void-proof mutation checks (this build, nine mutants, each killed): removing the
+  bad-answer proof from `voidReference` turns `test_V1_badInEffectRoundVoidsAndCancelsWithFullRefund`
+  red; removing `voidFix`'s valid-answer guard turns
+  `test_V2_validFirstMondayRoundCannotBeVoidedAndLaterBadRoundDoesNotUnlockCancel` red;
+  restoring each returns the suite to green.
 - Mutation checks (this build, each independently confirmed red then green): removing
   the H2 premium floor turns `test_H2_premiumFloorPreventsZeroPremiumLayer` red; removing
   the H3 liabilities subtraction in `Capacity.totalAssets()` turns
