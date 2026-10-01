@@ -17,28 +17,41 @@ Live app: https://heracles-virid-seven.vercel.app (reads the book below from the
 
 | Contract | Address | Role |
 |---|---|---|
-| Treaty | [`0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27`](https://sepolia.arbiscan.io/address/0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27) | bind, fix, settle, claim |
-| Capacity | [`0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159`](https://sepolia.arbiscan.io/address/0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159) | ERC-4626 USDG writer vault, depositWithPermit, created by the Treaty constructor |
+| Treaty | [`0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807`](https://sepolia.arbiscan.io/address/0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807) | bind, setReference, voidReference, fix, voidFix, cancel, claim |
+| USDG first-loss vault | [`0x80b50d73b87BE3ac7Cd0F2DF35bE74033f8E4cF3`](https://sepolia.arbiscan.io/address/0x80b50d73b87BE3ac7Cd0F2DF35bE74033f8E4cF3) | ERC-4626, takes the first 30% of every USDG layer |
+| USDG senior vault | [`0x05DD502aa5ca21f97c0536e4164D609B38A632Bc`](https://sepolia.arbiscan.io/address/0x05DD502aa5ca21f97c0536e4164D609B38A632Bc) | ERC-4626, takes the other 70% |
+| USDC first-loss vault | [`0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB`](https://sepolia.arbiscan.io/address/0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB) | ERC-4626, takes the first 30% of every USDC layer |
+| USDC senior vault | [`0x510e4266C55a58879d3a77eC02e77CCF1602cA39`](https://sepolia.arbiscan.io/address/0x510e4266C55a58879d3a77eC02e77CCF1602cA39) | ERC-4626, takes the other 70% |
 | Pricer (Rust/Stylus) | [`0xbe99217180a5fcb83372375b0928c971dfa71f88`](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) | on-chain premium, measured 8.01x less L2 execution gas than the Solidity twin |
-| USDG (Paxos testnet) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) | settlement asset |
+| USDG (Paxos testnet) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) | settlement asset of the USDG book |
+| USDC (Circle testnet) | [`0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`](https://sepolia.arbiscan.io/address/0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d) | settlement asset of the USDC book |
 
-Redeployed 2026-09-28: Treaty and Capacity share one deploy tx
-([`0x7eb7e54a...9369d46d61`](https://sepolia.arbiscan.io/tx/0x7eb7e54ab75b662a0025074f637dad40125960a1bca4abf0bcc0259369d46d61),
-block 313,869,456, status success), and the Stylus Pricer above is a fresh deploy too, tx
+The Treaty and its four vaults share one deploy tx,
+[`0xe2402635...2b02c9b`](https://sepolia.arbiscan.io/tx/0xe24026352f7ba9c7073952c764f756f6ebc7641533b6140543fc777ef2b02c9b),
+block 314,558,549, status success (2026-10-01). The Stylus Pricer is the 2026-09-28
+deploy, tx
 [`0x01a37192...b4ee945e7d`](https://sepolia.arbiscan.io/tx/0x01a37192c882dc7f856baf81bbee70679267b983723ca20e7b9460b4ee945e7d),
 block 313,689,917: 25,765 bytes compressed, deployed as two fragments behind a 48-byte
-root contract, constructed with table id `[2]` (SPY). Treaty and Capacity are
-Sourcify-verified (`exact_match`, both creation and runtime, matchId 53809711 and
-53809724, checked live via `sourcify.dev/server/v2/contract/421614/<address>`) and
-Blockscout-verified (`is_verified: true`, checked live via
-`arbitrum-sepolia.blockscout.com/api/v2/smart-contracts/<address>`):
-[Treaty on Blockscout](https://arbitrum-sepolia.blockscout.com/address/0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27?tab=contract),
-[Capacity on Blockscout](https://arbitrum-sepolia.blockscout.com/address/0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159?tab=contract).
+root contract, constructed with table id `[2]` (SPY). The Treaty and all four vaults are
+Sourcify-verified (`exact_match`, both creation and runtime, matchIds 54461151, 54461173,
+54461177, 54461178 and 54461180, checked live via
+`sourcify.dev/server/v2/contract/421614/<address>`).
 
-Every wiring read on the new Treaty checks out live: `pricer()` and `capacity()` point at
-the two addresses above, `usdg()` points at the Paxos USDG address, and
+Every wiring read on the Treaty checks out live: `pricer()` points at the Pricer above,
+`firstLossVault(i)` and `seniorVault(i)` return the four vaults for book 0 (USDG) and book 1
+(USDC), `markets(0)` is the SPY/USD feed, `juniorShareBps()` reads 3000 and
 `minRateOnLineBps()` reads 50. The Pricer itself reads back its one configured market:
-`tableIdAt(0)` returns `2` (SPY), `tableIdAt(1)` reverts `MissingTable`. A live quote at
+`tableIdAt(0)` returns `2` (SPY), `tableIdAt(1)` reverts `MissingTable`.
+
+Live cycle on the USDC book (2026-10-01): a writer deposited 4.5 USDC into the first-loss vault
+and 10.5 USDC into the senior vault, and layer 0 bound against the book, long 200 USDC of
+SPY with retention 2 and limit 10 USDC (3 locked in the first-loss vault, 7 in the senior
+vault) for a 0.195737 USDC premium, bind tx
+[`0x770752c7...3b85b70`](https://sepolia.arbiscan.io/tx/0x770752c7522caf31ce5d493693e48f8bed71726607be0351b835669eb3b85b70).
+The Friday reference opens Fri 2026-10-02 20:00 UTC and the Monday fix Mon 2026-10-05
+13:30 UTC.
+
+A live quote at
 block 313,690,038, long 2,000,000 USDG of SPY with a 20,000 USDG retention and a 60,000
 USDG limit, against the live SPY/USD feed
 [`0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06`](https://sepolia.arbiscan.io/address/0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06)
@@ -343,7 +356,7 @@ performance number is claimed here.
   writers' capital is released. Every such layer has a proof that reaches that state: a
   dead feed ages out, an unusable reference round is voided by `voidReference`, an unusable
   first Monday round by `voidFix`.
-- Treaty and Capacity are source-verified on Sourcify (exact match, creation and runtime).
+- The Treaty and its four vaults are source-verified on Sourcify (exact match, creation and runtime).
 
 ## Contributors
 

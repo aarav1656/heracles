@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useConnection } from 'wagmi';
 import { formatUnits } from 'viem';
-import { CAPACITY_ADDRESS, capacityAbi } from '../abi';
-import { useBook } from '../hooks/useBook';
+import { BOOKS, capacityAbi } from '../abi';
+import { useBook, type VaultView } from '../hooks/useBook';
 import { useTx } from '../hooks/useTx';
 import { useDepositWithPermit } from '../hooks/useDepositWithPermit';
 import { useOnChain } from '../components/Wallet';
@@ -15,6 +15,8 @@ import { CapacityStrip } from './Overview';
 import { useReferenceQuote } from '../hooks/useReferenceQuote';
 import { RECORDED, REFERENCE, TABLES, backtest, fmtDay } from '../lib/gaps';
 
+type Tranche = 'firstLoss' | 'senior';
+
 export function Write() {
   useEffect(() => { document.title = 'Heracles: back the cover, earn the premium'; }, []);
   const conn = useConnection();
@@ -23,11 +25,18 @@ export function Write() {
   const permitTx = useDepositWithPermit();
   const exitTx = useTx();
 
+  const [bookIdx, setBookIdx] = useState(0);
+  const [tranche, setTranche] = useState<Tranche>('firstLoss');
+  const cfg = BOOKS[bookIdx];
+  const sym = cfg.symbol;
+  const vaultAddr = tranche === 'firstLoss' ? cfg.firstLoss : cfg.senior;
+  const bv = book.data?.value.books[bookIdx];
+  const vault: VaultView | undefined = bv ? (tranche === 'firstLoss' ? bv.firstLossVault : bv.seniorVault) : undefined;
+  const juniorPct = book.data ? Number(book.data.value.juniorShareBps) / 100 : 30;
+
   const [amount, setAmount] = useState('');
   const [exitAmount, setExitAmount] = useState('');
   const [exitError, setExitError] = useState<string>();
-
-  const cap = book.data?.value.capacity;
 
   let parsed: bigint | undefined;
   try {
@@ -48,7 +57,7 @@ export function Write() {
 
   const deposit = () => {
     if (!me.address || parsed === undefined) return;
-    void permitTx.run(parsed, me.address, me.address);
+    void permitTx.run({ book: cfg, vault: vaultAddr }, parsed, me.address, me.address);
   };
 
   const withdraw = () => {
@@ -60,17 +69,21 @@ export function Write() {
         return;
       }
       setExitError(undefined);
-      void exitTx.run({ address: CAPACITY_ADDRESS, abi: capacityAbi, functionName: 'withdraw', args: [v, me.address, me.address], account: me.address });
+      void exitTx.run({ address: vaultAddr, abi: capacityAbi, functionName: 'withdraw', args: [v, me.address, me.address], account: me.address });
     } catch (e) {
       setExitError(e instanceof Error ? e.message : String(e));
     }
   };
 
+  const trancheWords = tranche === 'firstLoss'
+    ? `First loss: pays the first ${juniorPct}% of every layer, so it earns the premium its own slice is priced at.`
+    : `Senior: pays the rest of every layer, so it earns the remainder of the premium.`;
+
   return (
     <>
       <header className="argument row">
         <h1 className="title">Back the cover, earn the premium</h1>
-        <p className="lede">Deposit USDG into the pool that pays out. Each cover bought pays the pool its price; when a Monday gap reaches a cover's band, the pool pays it.</p>
+        <p className="lede">Deposit USDG or USDC into the vault that pays out. Each cover bought pays its vault the price of its slice; when a Monday gap reaches a cover's band, the vaults pay it.</p>
       </header>
 
       <div className="desk">
@@ -83,46 +96,59 @@ export function Write() {
         </section>
 
         <aside className="ticket" aria-label="Deposit and withdraw">
-          <h2 className="label">Deposit USDG</h2>
+          <h2 className="label">Deposit {sym}</h2>
+          <div className="markets" role="tablist" aria-label="Book">
+            {BOOKS.map((b) => (
+              <button key={b.symbol} role="tab" type="button" aria-selected={b.index === bookIdx} onClick={() => setBookIdx(b.index)}>
+                {b.symbol}
+              </button>
+            ))}
+          </div>
+          <div className="markets" role="tablist" aria-label="Vault">
+            <button role="tab" type="button" aria-selected={tranche === 'firstLoss'} onClick={() => setTranche('firstLoss')}>First loss</button>
+            <button role="tab" type="button" aria-selected={tranche === 'senior'} onClick={() => setTranche('senior')}>Senior</button>
+          </div>
+          <p className="hint">{trancheWords}</p>
           <div className="form">
             <div className="field">
-              <label htmlFor="dep">Amount, USDG</label>
+              <label htmlFor="dep">Amount, {sym}</label>
               <input id="dep" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
               <span className={`hint${amountError ? ' bad' : ''}`}>
-                {amountError ?? (cap ? `Your balance is ${fmtUsdg(cap.myUsdg)} USDG.` : 'Reading your USDG balance from the chain.')}
+                {amountError ?? (bv ? `Your balance is ${fmtUsdg(bv.myAsset)} ${sym}.` : `Reading your ${sym} balance from the chain.`)}
               </span>
-              {cap && cap.myUsdg > 0n && (
+              {bv && bv.myAsset > 0n && (
                 <div className="fills">
                   {[25, 50, 75].map((pct) => (
-                    <button key={pct} type="button" onClick={() => setAmount(formatUnits((cap.myUsdg * BigInt(pct)) / 100n, 6))}>
+                    <button key={pct} type="button" onClick={() => setAmount(formatUnits((bv.myAsset * BigInt(pct)) / 100n, 6))}>
                       {pct}%
                     </button>
                   ))}
-                  <button type="button" onClick={() => setAmount(formatUnits(cap.myUsdg, 6))}>Max</button>
+                  <button type="button" onClick={() => setAmount(formatUnits(bv.myAsset, 6))}>Max</button>
                 </div>
               )}
             </div>
           </div>
           {!me.ready && <p className="note">{me.reason}</p>}
+          {vault?.gateActive && <p className="note" role="status">Deposits and withdrawals in this vault are closed until this weekend's covers settle.</p>}
           <div className="acts">
-            <button className="btn" disabled={!me.ready || permitTx.busy || !!amountError || !parsed} onClick={deposit}>
-              Deposit USDG
+            <button className="btn" disabled={!me.ready || permitTx.busy || !!amountError || !parsed || vault?.gateActive} onClick={deposit}>
+              Deposit {sym}
             </button>
           </div>
           <TxNote status={permitTx.status} hash={permitTx.hash} error={permitTx.error} />
 
-          <h2 className="label sub">Withdraw free USDG</h2>
+          <h2 className="label sub">Withdraw free {sym}</h2>
           <div className="form">
             <div className="field">
-              <label htmlFor="exit">Amount, USDG</label>
+              <label htmlFor="exit">Amount, {sym}</label>
               <input id="exit" inputMode="decimal" value={exitAmount} onChange={(e) => setExitAmount(e.target.value)} placeholder="0.00" />
               <span className={`hint${exitError ? ' bad' : ''}`}>
-                {exitError ?? (cap ? `At most ${fmtUsdg(cap.free)} USDG is free. Your redeemable max is ${fmtUsdg(cap.maxRedeem)} USDG.` : 'Reading the free balance from the chain.')}
+                {exitError ?? (vault ? `At most ${fmtUsdg(vault.free)} ${sym} is free. Your redeemable max is ${fmtUsdg(vault.maxRedeem)} shares.` : 'Reading the free balance from the chain.')}
               </span>
-              {cap && cap.free > 0n && (
+              {vault && vault.free > 0n && (
                 <div className="fills">
-                  <button type="button" onClick={() => setExitAmount(formatUnits(cap.free, 6))}>Free</button>
-                  <button type="button" onClick={() => setExitAmount(formatUnits(cap.maxRedeem, 6))}>Max</button>
+                  <button type="button" onClick={() => setExitAmount(formatUnits(vault.free, 6))}>Free</button>
+                  <button type="button" onClick={() => setExitAmount(formatUnits(vault.maxRedeem, 6))}>Max</button>
                 </div>
               )}
             </div>
@@ -137,22 +163,31 @@ export function Write() {
       </div>
 
       <section className="doc pool" aria-labelledby="pool-h">
-        <h2 id="pool-h" className="section">The pool</h2>
+        <h2 id="pool-h" className="section">The {sym} book</h2>
         {book.isLoading ? (
-          <p className="note">Reading the pool at the latest block.</p>
+          <p className="note">Reading the book at the latest block.</p>
         ) : book.error ? (
           <p className="err" role="alert"><b>{explainError(book.error).name}</b> {explainError(book.error).words}</p>
-        ) : cap && cap.balance === 0n && cap.myShares === 0n ? (
-          <p className="prose">
-            Empty: no writer has deposited on this deployment yet, so nothing is locked and no
-            premium is pending. The first deposit sets the share price one to one.
-          </p>
-        ) : cap ? (
+        ) : bv ? (
           <>
-            <CapacityStrip locked={cap.locked} owed={cap.liabilities} free={cap.free} balance={cap.balance} pending={cap.pendingPremium} />
+            {([['First loss', bv.firstLossVault], ['Senior', bv.seniorVault]] as const).map(([name, v]) => (
+              <div key={name}>
+                <h3 className="label sub">{name}</h3>
+                {v.balance === 0n && v.myShares === 0n ? (
+                  <p className="prose">Empty: no writer has deposited in this vault yet, so nothing is locked and no premium is pending. The first deposit sets the share price one to one.</p>
+                ) : (
+                  <>
+                    <CapacityStrip symbol={sym} locked={v.locked} owed={v.owed} free={v.free} balance={v.balance} pending={v.pendingPremium} />
+                    <div className="rows figs">
+                      <div className="row"><span className="k">Your shares</span><span className="v">{fmtUsdg(v.myShares)}</span></div>
+                      <div className="row"><span className="k">Gate</span><span className="v">{v.gateActive ? 'closed until the covers settle' : 'open'}</span></div>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
             <div className="rows figs">
-              <div className="row"><span className="k">Your shares</span><span className="v">{fmtUsdg(cap.myShares)} gtUSDG</span></div>
-              <div className="row"><span className="k">Your USDG</span><span className="v">{fmtUsdg(cap.myUsdg)} USDG</span></div>
+              <div className="row"><span className="k">Your {sym}</span><span className="v">{fmtUsdg(bv.myAsset)} {sym}</span></div>
             </div>
           </>
         ) : null}

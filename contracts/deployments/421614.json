@@ -112,10 +112,6 @@
   },
   "sourceOfTruth": "Read live on 2026-10-01 against https://sepolia-rollup.arbitrum.io/rpc: Treaty.pricer() = Pricer, Treaty.minRateOnLineBps() = 50, Treaty.livenessFeed(), Treaty.juniorShareBps() = 3000, Treaty.markets(0) = SPY feed, Treaty.firstLossVault(i)/seniorVault(i) for i in 0,1; Sourcify v2 API for the five verifications.",
   "rpc": "https://sepolia-rollup.arbitrum.io/rpc",
-  "usdg": {
-    "address": "0xFFC95faa3d63Cde504a05B567C600B78C0b41892",
-    "decimals": 6
-  },
   "liveCycle": {
     "note": "Layer 0 on the USDC book, bound 2026-10-01 07:08 UTC by the owner (writer and buyer). Writer deposits 4.5 USDC first-loss and 10.5 USDC senior (30/70). Layer: long 200 USDC SPY, retention 2, limit 10 USDC (3 first-loss, 7 senior), premium 0.195737 USDC (0.128999 first-loss, 0.066738 senior). setReference opens Fri 2026-10-02 20:00 UTC, fix opens Mon 2026-10-05 13:30 UTC.",
     "txs": {
@@ -127,5 +123,32 @@
       "bind": "0x770752c7522caf31ce5d493693e48f8bed71726607be0351b835669eb3b85b70"
     },
     "bindBlock": 314559779
-  }
+  },
+  "books": [
+    {
+      "index": 0,
+      "symbol": "USDG",
+      "asset": "0xFFC95faa3d63Cde504a05B567C600B78C0b41892",
+      "decimals": 6,
+      "permit": {
+        "name": "Global Dollar",
+        "version": "1"
+      },
+      "firstLoss": "0x80b50d73b87BE3ac7Cd0F2DF35bE74033f8E4cF3",
+      "senior": "0x05DD502aa5ca21f97c0536e4164D609B38A632Bc"
+    },
+    {
+      "index": 1,
+      "symbol": "USDC",
+      "asset": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+      "decimals": 6,
+      "permit": {
+        "name": "USD Coin",
+        "version": "2"
+      },
+      "permitNote": "DOMAIN_SEPARATOR() read live on 2026-10-01 equals the hash of (USD Coin, 2, 421614, asset)",
+      "firstLoss": "0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB",
+      "senior": "0x510e4266C55a58879d3a77eC02e77CCF1602cA39"
+    }
+  ]
 }

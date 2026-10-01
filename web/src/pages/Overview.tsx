@@ -4,7 +4,7 @@ import { useConnection, usePublicClient } from 'wagmi';
 import type { PublicClient } from 'viem';
 import { PRICER_ADDRESS } from '../abi';
 import { explorer } from '../chain';
-import { useBook, type BookSnapshot, type Layer } from '../hooks/useBook';
+import { useBook, bookTotals, type BookSnapshot, type Layer } from '../hooks/useBook';
 import { useNow } from '../hooks/useNow';
 import { useReferenceQuote } from '../hooks/useReferenceQuote';
 import { useWeekWindow } from '../hooks/useWeekWindow';
@@ -136,12 +136,22 @@ export function Overview() {
             <>
               <div className="rows figs">
                 <div className="row"><span className="k">Covers bought</span><span className="v">{book.layers.length}</span></div>
-                <div className="row"><span className="k">USDG backing cover</span><span className="v"><Money v={toUsd(book.capacity.balance)} /> USDG</span></div>
-                <div className="row"><span className="k">Free for new cover</span><span className="v"><Money v={toUsd(book.capacity.free)} /> USDG</span></div>
               </div>
-              {book.capacity.balance === 0n && book.layers.length === 0 && (
+              {book.books.map((b) => {
+                const t = bookTotals(b);
+                return (
+                  <div key={b.symbol}>
+                    <h3 className="label sub">{b.symbol} book</h3>
+                    <div className="rows figs">
+                      <div className="row"><span className="k">{b.symbol} backing cover</span><span className="v"><Money v={toUsd(t.balance)} /> {b.symbol}</span></div>
+                      <div className="row"><span className="k">Free for new cover</span><span className="v"><Money v={toUsd(t.free)} /> {b.symbol}</span></div>
+                    </div>
+                  </div>
+                );
+              })}
+              {book.books.every((b) => bookTotals(b).balance === 0n) && book.layers.length === 0 && (
                 <p className="note">
-                  No cover has been bought on this deployment yet and no writer has deposited USDG, so new cover cannot be
+                  No cover has been bought on this deployment yet and no writer has deposited, so new cover cannot be
                   bought until one does. <Link to="/write">Be the first writer</Link>.
                 </p>
               )}
@@ -221,6 +231,7 @@ function SpyQuote({ quote, bt }: { quote: QuoteQ; bt: ReturnType<typeof backtest
 function LayerRow({ layer, book, now }: { layer: Layer; book: BookSnapshot; now: number }) {
   const [open, setOpen] = useState(false);
   const stateName = LAYER_STATES[layer.state];
+  const unit = book.books[layer.book]?.symbol ?? '';
   const exp = layer.exposure[0] ?? 0n;
   const dir = exp < 0n ? 'short' : 'long';
   const fixing = layer.state === 1 ? (now >= layer.expiry ? 'fixing open' : fmtCountdown(layer.expiry - now)) : '-';
@@ -229,9 +240,9 @@ function LayerRow({ layer, book, now }: { layer: Layer; book: BookSnapshot; now:
     <div className="ledger-row" role="row">
       <div className="ledger-grid">
         <span role="cell" data-k="Market">SPY</span>
-        <span role="cell" data-k="Exposure">{fmtUsdg(exp < 0n ? -exp : exp)} {dir}</span>
-        <span role="cell" data-k="Retention / limit">{fmtUsdg(layer.retention)} / {fmtUsdg(layer.limit)}</span>
-        <span role="cell" data-k="Premium">{fmtUsdg(layer.premium)}</span>
+        <span role="cell" data-k="Exposure">{fmtUsdg(exp < 0n ? -exp : exp)} {unit} {dir}</span>
+        <span role="cell" data-k="Retention / limit">{fmtUsdg(layer.retention)} / {fmtUsdg(layer.limit)} {unit}</span>
+        <span role="cell" data-k="Premium">{fmtUsdg(layer.premium)} {unit}</span>
         <span role="cell" data-k="Fixing">{fixing}</span>
         <span role="cell" data-k="State" className="state">
           {stateName}
@@ -248,10 +259,11 @@ function LayerRow({ layer, book, now }: { layer: Layer; book: BookSnapshot; now:
             limit={layer.limit}
             premium={layer.premium}
             payout={layer.payout}
+            unit={unit}
             tag={stateName}
             state={layer.state === 2 ? 'settled' : layer.state === 3 ? 'cancelled' : 'bound'}
           />
-          {layer.state === 1 ? <SettleItem layer={layer} book={book} now={now} /> : <ClaimRow layer={layer} />}
+          {layer.state === 1 ? <SettleItem layer={layer} book={book} now={now} /> : <ClaimRow layer={layer} unit={unit} />}
         </div>
       )}
     </div>
@@ -262,15 +274,15 @@ function LayerRow({ layer, book, now }: { layer: Layer; book: BookSnapshot; now:
  * The pool split into what it has promised and what it has not. Both sides are direct contract
  * reads: limits locked, payouts owed but unclaimed (still reserved inside locked until claim), and free.
  */
-export function CapacityStrip({ locked, owed, free, balance, pending }: { locked: bigint; owed: bigint; free: bigint; balance: bigint; pending: bigint }) {
+export function CapacityStrip({ symbol, locked, owed, free, balance, pending }: { symbol: string; locked: bigint; owed: bigint; free: bigint; balance: bigint; pending: bigint }) {
   const l = Number(locked);
-  const o = Math.min(Number(owed), l);
+  const o = Number(owed);
   const f = Number(free);
-  const total = l + f || 1;
-  const owedPart = o > 0 ? (o / total) * 100 : 0;
-  const lockedPart = l > 0 ? (l / total) * 100 - owedPart : 0;
-  const freePart = f > 0 ? (f / total) * 100 : 0;
-  const summary = `${fmtUsdg(owed)} USDG of the ${fmtUsdg(locked)} USDG locked is owed but unclaimed; ${fmtUsdg(free)} USDG is free.`;
+  const total = l + f + o || 1;
+  const owedPart = (o / total) * 100;
+  const lockedPart = (l / total) * 100;
+  const freePart = (f / total) * 100;
+  const summary = `${fmtUsdg(locked)} ${symbol} is locked under bound limits, ${fmtUsdg(owed)} ${symbol} is owed but unclaimed, ${fmtUsdg(free)} ${symbol} is free.`;
 
   return (
     <div className="strip">
@@ -280,11 +292,11 @@ export function CapacityStrip({ locked, owed, free, balance, pending }: { locked
         {freePart > 0 && <i className="free" style={{ width: `${freePart.toFixed(2)}%` }} />}
       </div>
       <div className="rows figs">
-        <div className="row"><span className="k"><i className="sw free" />Free</span><span className="v">{fmtUsdg(free)} USDG</span></div>
-        <div className="row"><span className="k"><i className="sw locked" />Locked under bound limits</span><span className="v">{fmtUsdg(locked)} USDG</span></div>
-        <div className="row"><span className="k"><i className="sw owed" />Owed, unclaimed</span><span className="v">{fmtUsdg(owed)} USDG</span></div>
-        <div className="row"><span className="k">Pending premium</span><span className="v">{fmtUsdg(pending)} USDG</span></div>
-        <div className="row"><span className="k">Pool balance</span><span className="v">{fmtUsdg(balance)} USDG</span></div>
+        <div className="row"><span className="k"><i className="sw free" />Free</span><span className="v">{fmtUsdg(free)} {symbol}</span></div>
+        <div className="row"><span className="k"><i className="sw locked" />Locked under bound limits</span><span className="v">{fmtUsdg(locked)} {symbol}</span></div>
+        <div className="row"><span className="k"><i className="sw owed" />Owed, unclaimed</span><span className="v">{fmtUsdg(owed)} {symbol}</span></div>
+        <div className="row"><span className="k">Pending premium</span><span className="v">{fmtUsdg(pending)} {symbol}</span></div>
+        <div className="row"><span className="k">Vault balance</span><span className="v">{fmtUsdg(balance)} {symbol}</span></div>
       </div>
     </div>
   );

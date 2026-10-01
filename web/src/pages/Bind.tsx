@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePublicClient } from 'wagmi';
 import type { PublicClient } from 'viem';
-import { FEED_ADDRESSES, PRICER_ADDRESS, TREATY_ADDRESS, USDG_ADDRESS, bindAbi, erc20Abi } from '../abi';
+import { BOOKS, FEED_ADDRESSES, PRICER_ADDRESS, TREATY_ADDRESS, erc20Abi, treatyAbi } from '../abi';
 import { explorer } from '../chain';
 import { useBook, quoteLive } from '../hooks/useBook';
 import { useNow } from '../hooks/useNow';
@@ -21,7 +21,7 @@ import { fmtClock, fmtCountdown, fmtUsdg, parseExposure, parseUsdg, short } from
 import { explainError } from '../lib/revert';
 import { useConnection } from 'wagmi';
 
-type Quote = { premium: bigint; el: bigint; tvar: bigint; block: bigint };
+type Quote = { premium: bigint; premiumJunior: bigint; el: bigint; tvar: bigint; block: bigint };
 export function Bind() {
   useEffect(() => { document.title = 'Heracles: price cover for your vault'; }, []);
   const conn = useConnection();
@@ -33,6 +33,9 @@ export function Bind() {
   const now = useNow();
   const win = useWeekWindow(client, now);
 
+  const [bookIdx, setBookIdx] = useState(0);
+  const cfg = BOOKS[bookIdx];
+  const sym = cfg.symbol;
   const [exposures, setExposures] = useState<string[]>(() => FEED_ADDRESSES.map(() => '2,000,000'));
   const [retention, setRetention] = useState('20,000');
   const [limit, setLimit] = useState('60,000');
@@ -54,11 +57,13 @@ export function Bind() {
       const lim = parseUsdg(limit.replace(/,/g, ''));
       if (exp.every((e) => e === 0n)) return { error: 'At least one exposure must be non-zero. A zero-exposure bind reverts with BadParams.' };
       if (lim === 0n) return { error: 'The limit must be above zero. A zero limit binds nothing.' };
-      return { exp, ret, lim };
+      const jun = (lim * (book.data?.value.juniorShareBps ?? 3000n)) / 10000n;
+      if (jun === 0n || lim - jun === 0n) return { error: 'The limit is too small to split into a first-loss and a senior slice.' };
+      return { exp, ret, lim, jun };
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
     }
-  }, [exposures, retention, limit]);
+  }, [exposures, retention, limit, book.data?.value.juniorShareBps]);
 
   useEffect(() => {
     setFormError(parsed.error);
@@ -73,9 +78,12 @@ export function Bind() {
     setQuoting(true);
     const t = setTimeout(async () => {
       try {
-        const [premium, el, tvar] = await quoteLive(client, parsed.exp!, parsed.ret!, parsed.lim!) as unknown as [bigint, bigint, bigint];
+        const [total, junior] = await Promise.all([
+          quoteLive(client, parsed.exp!, parsed.ret!, parsed.lim!) as unknown as Promise<[bigint, bigint, bigint]>,
+          quoteLive(client, parsed.exp!, parsed.ret!, parsed.jun!) as unknown as Promise<[bigint, bigint, bigint]>,
+        ]);
         const block = await client.getBlockNumber();
-        setQuote({ premium, el, tvar, block });
+        setQuote({ premium: total[0], premiumJunior: junior[0], el: total[1], tvar: total[2], block });
         setQuoteError(undefined);
       } catch (e) {
         setQuote(undefined);
@@ -94,25 +102,29 @@ export function Bind() {
   const floorApplies = quoted !== undefined && floor !== undefined && quoted < floor;
   const floorPct = (Number(minRateBps) / 100).toFixed(1);
 
-  const allowance = book.data?.value.capacity.myAllowance ?? 0n;
+  const bv = book.data?.value.books[bookIdx];
+  const allowance = bv?.myAllowance ?? 0n;
   const needsApprove = effective !== undefined ? allowance < effective && effective > 0n : false;
 
   const approve = () =>
     me.address && effective !== undefined
-      ? approveTx.run({ address: USDG_ADDRESS, abi: erc20Abi, functionName: 'approve', args: [TREATY_ADDRESS, effective], account: me.address })
+      ? approveTx.run({ address: cfg.asset, abi: erc20Abi, functionName: 'approve', args: [TREATY_ADDRESS, effective], account: me.address })
       : undefined;
 
   const bind = () => {
     if (!me.address || !parsed.exp || parsed.ret === undefined || parsed.lim === undefined || effective === undefined) return;
     tx.run({
-      // Book 0; the premium shown is the ceiling, so a round landing before the tx cannot raise the charge.
-      address: TREATY_ADDRESS, abi: bindAbi, functionName: 'bind',
-      args: [0n, parsed.exp, parsed.ret, parsed.lim, effective],
+      // The premium shown is the ceiling, so a round landing before the tx cannot raise the charge.
+      address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'bind',
+      args: [BigInt(bookIdx), parsed.exp, parsed.ret, parsed.lim, effective],
       account: me.address,
     });
   };
 
-  const short_ = book.data && parsed.lim !== undefined && parsed.lim > book.data.value.capacity.free ? book.data.value.capacity.free : undefined;
+  const shortBy = bv && parsed.lim !== undefined && parsed.jun !== undefined
+    ? (parsed.jun > bv.firstLossVault.free ? { vault: 'first-loss', need: parsed.jun, have: bv.firstLossVault.free }
+      : parsed.lim - parsed.jun > bv.seniorVault.free ? { vault: 'senior', need: parsed.lim - parsed.jun, have: bv.seniorVault.free } : undefined)
+    : undefined;
   const terms = useMemo(
     () => (parsed.exp && parsed.ret !== undefined && parsed.lim !== undefined
       ? { exposure: Number(parsed.exp[0] ?? 0n) / 1e6, retention: Number(parsed.ret) / 1e6, limit: Number(parsed.lim) / 1e6 }
@@ -146,10 +158,17 @@ export function Bind() {
 
         <aside className="ticket" aria-labelledby="terms-h">
           <h2 id="terms-h" className="label"><i className="sw layer" />Your cover</h2>
+          <div className="markets" role="tablist" aria-label="Book">
+            {BOOKS.map((b) => (
+              <button key={b.symbol} role="tab" type="button" aria-selected={b.index === bookIdx} onClick={() => setBookIdx(b.index)}>
+                {b.symbol}
+              </button>
+            ))}
+          </div>
           <div className="form">
             {FEED_ADDRESSES.map((f, i) => (
               <div className="field" key={f}>
-                <label htmlFor={`exp-${i}`}>Vault's net SPY position, USDG</label>
+                <label htmlFor={`exp-${i}`}>Vault's net SPY position, {sym}</label>
                 <input
                   id={`exp-${i}`}
                   inputMode="decimal"
@@ -169,7 +188,7 @@ export function Bind() {
                 <input id="lim" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} />
               </div>
             </div>
-            <p className="hint">Both in USDG, on the loss worked out from the feed: the Monday gap times the declared position.</p>
+            <p className="hint">Both in {sym}, on the loss worked out from the feed: the Monday gap times the declared position.</p>
             {formError && <p className="err" role="alert"><b>Check</b> {formError}</p>}
           </div>
 
@@ -180,11 +199,13 @@ export function Bind() {
               <p className="err" role="alert"><b>Quote</b> {quoteError}</p>
             ) : quote && effective !== undefined && floor !== undefined ? (
               <>
-                <p className="terms">This cover costs <b><Money v={Number(effective) / 1e6} /> USDG</b> for one weekend.</p>
+                <p className="terms">This cover costs <b><Money v={Number(effective) / 1e6} /> {sym}</b> for one weekend.</p>
                 <div className="rows figs">
                   <div className="row"><span className="k" title="Expected loss">Average payout a weekend</span><span className="v"><Money v={Number(quote.el) / 1e6} /></span></div>
                   <div className="row"><span className="k" title="TVaR95: the mean payout over the worst 25 of 504 weekends">Average in the worst 5% of weekends</span><span className="v"><Money v={Number(quote.tvar) / 1e6} /></span></div>
                   {bt && <div className="row"><span className="k">Weekends it would have paid on</span><span className="v">{bt.paid} of 504</span></div>}
+                  <div className="row"><span className="k" title="The first-loss vault takes the first 30% of the limit and earns the premium its own slice is priced at">First-loss vault earns</span><span className="v">{fmtUsdg(quote.premiumJunior > effective ? effective : quote.premiumJunior)} {sym}</span></div>
+                  <div className="row"><span className="k" title="The senior vault takes the rest of the limit and earns the remainder, including any lift from the minimum price">Senior vault earns</span><span className="v">{fmtUsdg(effective - (quote.premiumJunior > effective ? effective : quote.premiumJunior))} {sym}</span></div>
                 </div>
               </>
             ) : (
@@ -202,25 +223,25 @@ export function Bind() {
               {!me.address && <Wallet />}
               {me.ready && effective !== undefined && effective > 0n && (
                 <div className="rows figs">
-                  <div className="row"><span className="k">Premium due</span><span className="v">{fmtUsdg(effective)} USDG</span></div>
-                  <div className="row"><span className="k">Your allowance</span><span className="v">{fmtUsdg(allowance)} USDG</span></div>
+                  <div className="row"><span className="k">Premium due</span><span className="v">{fmtUsdg(effective)} {sym}</span></div>
+                  <div className="row"><span className="k">Your allowance</span><span className="v">{fmtUsdg(allowance)} {sym}</span></div>
                 </div>
               )}
               <div className="acts">
                 {me.ready && needsApprove && (
                   <button className="btn line" disabled={!me.ready || approveTx.busy} onClick={approve}>
-                    Approve {effective !== undefined ? fmtUsdg(effective) : ''} USDG for the price
+                    Approve {effective !== undefined ? fmtUsdg(effective) : ''} {sym} for the price
                   </button>
                 )}
-                <button className="btn" disabled={!me.ready || tx.busy || !!formError || effective === undefined || needsApprove || short_ !== undefined} onClick={bind}>
-                  {short_ !== undefined ? 'Not enough USDG backing yet' : 'Buy this cover for the coming weekend'}
+                <button className="btn" disabled={!me.ready || tx.busy || !!formError || effective === undefined || needsApprove || !!shortBy} onClick={bind}>
+                  {shortBy ? `Not enough ${sym} backing yet` : 'Buy this cover for the coming weekend'}
                 </button>
               </div>
               {!me.ready && <p className="note">{me.reason}</p>}
-              {short_ !== undefined ? (
+              {shortBy ? (
                 <p className="note" role="status">
-                  This cover needs {usd2(parsed.lim!)} USDG of free backing from writers; the pool has {usd2(short_)} at
-                  block {book.data!.block.toLocaleString('en-US')}. <Link to="/write">Back cover with USDG</Link>.
+                  This cover needs {usd2(shortBy.need)} {sym} of free backing in the {shortBy.vault} vault; it has {usd2(shortBy.have)} at
+                  block {book.data!.block.toLocaleString('en-US')}. <Link to="/write">Back cover with {sym}</Link>.
                 </p>
               ) : null}
               <TxNote status={approveTx.status} hash={approveTx.hash} error={approveTx.error} />

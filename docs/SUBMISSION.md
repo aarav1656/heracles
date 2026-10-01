@@ -66,11 +66,17 @@ https://heracles-virid-seven.vercel.app
 
 | Contract | Address |
 |---|---|
-| Treaty | [0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27](https://sepolia.arbiscan.io/address/0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27) (Sourcify exact match) |
-| Capacity | [0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159](https://sepolia.arbiscan.io/address/0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159) (Sourcify exact match) |
+| Treaty | [0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807](https://sepolia.arbiscan.io/address/0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807) (Sourcify exact match) |
+| USDG first-loss vault | [0x80b50d73b87BE3ac7Cd0F2DF35bE74033f8E4cF3](https://sepolia.arbiscan.io/address/0x80b50d73b87BE3ac7Cd0F2DF35bE74033f8E4cF3) (Sourcify exact match) |
+| USDG senior vault | [0x05DD502aa5ca21f97c0536e4164D609B38A632Bc](https://sepolia.arbiscan.io/address/0x05DD502aa5ca21f97c0536e4164D609B38A632Bc) (Sourcify exact match) |
+| USDC first-loss vault | [0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB](https://sepolia.arbiscan.io/address/0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB) (Sourcify exact match) |
+| USDC senior vault | [0x510e4266C55a58879d3a77eC02e77CCF1602cA39](https://sepolia.arbiscan.io/address/0x510e4266C55a58879d3a77eC02e77CCF1602cA39) (Sourcify exact match) |
 | Pricer (Rust/Stylus) | [0xbe99217180a5fcb83372375b0928c971dfa71f88](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) |
 | USDG (Paxos testnet) | [0xFFC95faa3d63Cde504a05B567C600B78C0b41892](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) |
+| USDC (Circle testnet) | [0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d](https://sepolia.arbiscan.io/address/0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d) |
 
-Deploy transactions: Treaty and Capacity [0x7eb7e54a...9369d46d61](https://sepolia.arbiscan.io/tx/0x7eb7e54ab75b662a0025074f637dad40125960a1bca4abf0bcc0259369d46d61), Pricer [0x01a37192...b4ee945e7d](https://sepolia.arbiscan.io/tx/0x01a37192c882dc7f856baf81bbee70679267b983723ca20e7b9460b4ee945e7d).
+Deploy transactions: Treaty and the four vaults [0xe2402635...2b02c9b](https://sepolia.arbiscan.io/tx/0xe24026352f7ba9c7073952c764f756f6ebc7641533b6140543fc777ef2b02c9b), Pricer [0x01a37192...b4ee945e7d](https://sepolia.arbiscan.io/tx/0x01a37192c882dc7f856baf81bbee70679267b983723ca20e7b9460b4ee945e7d).
+
+Live layer on the USDC book: bound 2026-10-01, long 200 USDC of SPY, retention 2, limit 10 USDC, premium 0.195737 USDC, bind tx [0x770752c7...3b85b70](https://sepolia.arbiscan.io/tx/0x770752c7522caf31ce5d493693e48f8bed71726607be0351b835669eb3b85b70). Friday reference opens 2026-10-02 20:00 UTC, Monday fix 2026-10-05 13:30 UTC.
 
 A live quote from the deployed Stylus pricer at block 313,690,038, long 2,000,000 USDG of SPY with a 20,000 USDG retention and a 60,000 USDG limit: premium 1,676.722158 USDG. The same call on the Solidity twin at block 313,704,736 returned identical numbers and used 8.01x more L2 execution gas.

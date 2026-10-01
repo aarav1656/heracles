@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
-import { CAPACITY_ADDRESS, PRICER_ADDRESS, TREATY_ADDRESS, USDG_ADDRESS } from './abi';
+import { BOOKS, PRICER_ADDRESS, TREATY_ADDRESS } from './abi';
 import { explorer, wagmiConfig } from './chain';
 import { Wallet } from './components/Wallet';
 import { Overview } from './pages/Overview';
@@ -36,12 +36,14 @@ export function App() {
           </main>
           <footer className="wrap">
             <div className="foot">
-            <p>Heracles: parametric cover for the weekend gap, for the LP vaults of stock perp exchanges. Arbitrum Sepolia, USDG.</p>
+            <p>Heracles: parametric cover for the weekend gap, for the LP vaults of stock perp exchanges. Arbitrum Sepolia, USDG and USDC books.</p>
             <p>
               Treaty <a href={explorer.address(TREATY_ADDRESS)} target="_blank" rel="noreferrer">{short(TREATY_ADDRESS)}</a>
-              {' · '}capacity <a href={explorer.address(CAPACITY_ADDRESS)} target="_blank" rel="noreferrer">{short(CAPACITY_ADDRESS)}</a>
               {' · '}pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>
-              {' · '}USDG <a href={explorer.address(USDG_ADDRESS)} target="_blank" rel="noreferrer">{short(USDG_ADDRESS)}</a>
+              {' · '}{BOOKS[0].symbol} first loss <a href={explorer.address(BOOKS[0].firstLoss)} target="_blank" rel="noreferrer">{short(BOOKS[0].firstLoss)}</a>
+              {' · '}{BOOKS[0].symbol} senior <a href={explorer.address(BOOKS[0].senior)} target="_blank" rel="noreferrer">{short(BOOKS[0].senior)}</a>
+              {' · '}{BOOKS[1].symbol} first loss <a href={explorer.address(BOOKS[1].firstLoss)} target="_blank" rel="noreferrer">{short(BOOKS[1].firstLoss)}</a>
+              {' · '}{BOOKS[1].symbol} senior <a href={explorer.address(BOOKS[1].senior)} target="_blank" rel="noreferrer">{short(BOOKS[1].senior)}</a>
             </p>
             </div>
           </footer>

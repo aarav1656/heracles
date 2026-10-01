@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { usePublicClient, useSignTypedData, useWriteContract } from 'wagmi';
 import { hexToSignature, type Abi, type Address, type Hash, type PublicClient } from 'viem';
-import { CAPACITY_ADDRESS, USDG_ADDRESS, capacityAbi, depositWithPermitAbi, erc20Abi } from '../abi';
+import { capacityAbi, erc20Abi, type BookConfig } from '../abi';
 import { arbitrumSepolia } from '../chain';
 import { explainError, explainReceipt, type Explained } from '../lib/revert';
 import type { TxStatus } from './useTx';
@@ -27,10 +27,12 @@ const PERMIT_LIFETIME_SECONDS = 20n * 60n;
  * depositWithPermit`, always consumes whatever permit it is handed, so there is nothing left to
  * relay either way; this hook's job is to avoid making the caller sign one when it isn't needed).
  *
- * USDG's EIP-712 domain here (name "Global Dollar", version "1") was confirmed by recomputing the
- * domain separator and matching it byte for byte against the live `DOMAIN_SEPARATOR()` on
- * Arbitrum Sepolia for USDG_ADDRESS; re-check both if USDG_ADDRESS ever changes.
+ * The EIP-712 domain comes from the book (`permit` in contracts/deployments/421614.json): USDG is
+ * ("Global Dollar", "1") and USDC is ("USD Coin", "2"), each confirmed by recomputing the domain
+ * separator and matching it byte for byte against the live `DOMAIN_SEPARATOR()` on Arbitrum Sepolia.
  */
+export type DepositTarget = { book: BookConfig; vault: `0x${string}` };
+
 export function useDepositWithPermit() {
   const client = usePublicClient() as PublicClient;
   const { signTypedDataAsync } = useSignTypedData();
@@ -39,37 +41,36 @@ export function useDepositWithPermit() {
   const [hash, setHash] = useState<Hash>();
   const [error, setError] = useState<Explained>();
 
-  const run = useCallback(async (assets: bigint, owner: Address, receiver: Address): Promise<boolean> => {
+  const run = useCallback(async ({ book, vault }: DepositTarget, assets: bigint, owner: Address, receiver: Address): Promise<boolean> => {
     setError(undefined);
     setHash(undefined);
     try {
       setStatus('simulating');
       const allowance = await client.readContract({
-        address: USDG_ADDRESS, abi: erc20Abi, functionName: 'allowance', args: [owner, CAPACITY_ADDRESS],
+        address: book.asset, abi: erc20Abi, functionName: 'allowance', args: [owner, vault],
       });
 
       let h: Hash;
       let revertAbi: Abi = capacityAbi;
       if (allowance >= assets) {
         const { request } = await client.simulateContract({
-          address: CAPACITY_ADDRESS, abi: capacityAbi, functionName: 'deposit', args: [assets, receiver], account: owner, chain: arbitrumSepolia,
+          address: vault, abi: capacityAbi, functionName: 'deposit', args: [assets, receiver], account: owner, chain: arbitrumSepolia,
         });
         setStatus('wallet');
         h = await writeContractAsync(request as Parameters<typeof writeContractAsync>[0]);
       } else {
-        const nonce = await client.readContract({ address: USDG_ADDRESS, abi: erc20Abi, functionName: 'nonces', args: [owner] });
+        const nonce = await client.readContract({ address: book.asset, abi: erc20Abi, functionName: 'nonces', args: [owner] });
         const deadline = BigInt(Math.floor(Date.now() / 1000)) + PERMIT_LIFETIME_SECONDS;
         setStatus('wallet');
         const signature = await signTypedDataAsync({
-          domain: { name: 'Global Dollar', version: '1', chainId: arbitrumSepolia.id, verifyingContract: USDG_ADDRESS },
+          domain: { name: book.permit.name, version: book.permit.version, chainId: arbitrumSepolia.id, verifyingContract: book.asset },
           types: PERMIT_TYPES,
           primaryType: 'Permit',
-          message: { owner, spender: CAPACITY_ADDRESS, value: assets, nonce, deadline },
+          message: { owner, spender: vault, value: assets, nonce, deadline },
         });
         const { r, s, v } = hexToSignature(signature);
-        revertAbi = depositWithPermitAbi;
         const { request } = await client.simulateContract({
-          address: CAPACITY_ADDRESS, abi: depositWithPermitAbi, functionName: 'depositWithPermit',
+          address: vault, abi: capacityAbi, functionName: 'depositWithPermit',
           args: [assets, receiver, deadline, Number(v), r, s], account: owner, chain: arbitrumSepolia,
         });
         h = await writeContractAsync(request as Parameters<typeof writeContractAsync>[0]);
