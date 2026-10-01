@@ -17,7 +17,7 @@ import {TreatyFixture} from "./utils/TreatyFixture.sol";
 /// (expiry is always the following Monday 13:30 UTC) and/or that the old attack call now reverts.
 contract AttackReviewTest is Test, TreatyFixture {
     uint256 constant FRI_CLOSE = 1_790_366_400; // Fri 2026-09-25 20:00 UTC
-    uint256 constant FRI_1900 = FRI_CLOSE - 1 hours; // bind time, before the 19:30 cutoff
+    uint256 constant THU_1900 = FRI_CLOSE - 1 days - 1 hours; // bind time, before the Thursday 19:30 bind deadline (independent v3 review H-1)
     uint256 constant CUTOFF = FRI_CLOSE - 30 minutes; // Fri 19:30 UTC
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes; // Sat 00:00 UTC
     uint40 constant MONDAY = uint40(FRI_CLOSE + 2 days + 17 hours + 30 minutes); // Mon 13:30 UTC
@@ -38,7 +38,7 @@ contract AttackReviewTest is Test, TreatyFixture {
         usdg = new MockUSDG();
         pricer = new Pricer(oneTableId());
         feed = new MockFeed();
-        feed.set(1, 100e8, FRI_1900 - 10 minutes); // Friday reference round
+        feed.set(1, 100e8, THU_1900 - 10 minutes); // round printed before bind; not the reference
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
         treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
@@ -51,7 +51,7 @@ contract AttackReviewTest is Test, TreatyFixture {
         // Premium is pulled by Treaty itself, never a vault, so the buyer approves the Treaty
         // contract, not either vault.
         usdg.approve(address(treaty), type(uint256).max);
-        vm.warp(FRI_1900);
+        vm.warp(THU_1900);
     }
 
     function _deposit(address who, uint256 amt) internal {
@@ -101,7 +101,7 @@ contract AttackReviewTest is Test, TreatyFixture {
         vm.prank(who);
         id = treaty.bind(0, exposure, retention, limit, type(uint256).max);
         // setReference now waits for `fridayCloseOf` (FRI_CLOSE), not Saturday midnight;
-        // round 1 (set in setUp, FRI_1900 - 10 minutes) is its required strictly-earlier
+        // round 1 (set in setUp, THU_1900 - 10 minutes) is its required strictly-earlier
         // predecessor, round 2 is the first fresh round at/after FRI_CLOSE.
         feed.set(2, 100e8, FRI_CLOSE);
         vm.warp(FRI_CLOSE + 1);
@@ -131,8 +131,9 @@ contract AttackReviewTest is Test, TreatyFixture {
         assertEq(_expiry(id), MONDAY, "H1a: expiry must be exactly the following Monday 13:30 UTC");
     }
 
-    /// H1b (fixed): bind strictly after Friday 19:30 UTC now reverts outright (BadTiming), so a
-    /// bind can no longer be timed to weekend news that is already public.
+    /// H1b (fixed): bind strictly after the weekend's bind deadline now reverts outright
+    /// (BadTiming), so a bind can no longer be timed to weekend news that is already public. The
+    /// deadline is Thursday 19:30 UTC (H-1), so Friday 19:00 UTC is already too late too.
     function test_H1b_bindAfterFridayCloseReverts() public {
         vm.warp(FRI_CLOSE + 22 hours); // Sat 18:00 UTC
         vm.prank(buyer);
@@ -178,7 +179,7 @@ contract AttackReviewTest is Test, TreatyFixture {
     /// none of it.
     ///
     /// the re-review's H1 fix: the epoch gate now keys on the layer's own cutoff, not on aggregate
-    /// `locked != 0`. `bind` happens 30 minutes before CUTOFF here, so the gate is not yet active
+    /// `locked != 0`. `bind` happens a day and 30 minutes before CUTOFF here (Thursday 19:00 UTC), so the gate is not yet active
     /// and a redeem is allowed (capped at free capacity), but that redeem still cannot skim any
     /// part of the pending premium (proven below); once the layer's own cutoff actually arrives,
     /// the gate closes outright, so the JIT-around-settle path stays closed the same as before.
@@ -244,7 +245,7 @@ contract AttackReviewTest is Test, TreatyFixture {
         usdg.approve(address(guarded), type(uint256).max);
         _deposit2(gFirstLoss, gSenior, writerA, 200_000e6);
 
-        vm.warp(CUTOFF - 3 hours); // leave room for the grace-period warp below, still pre-cutoff
+        vm.warp(CUTOFF - 1 days - 3 hours); // leave room for the grace-period warp below, still before the Thursday bind deadline
         seq.setDown();
         vm.prank(buyer);
         vm.expectRevert(Treaty.SequencerDown.selector);

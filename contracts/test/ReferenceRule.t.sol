@@ -83,7 +83,7 @@ contract ReferenceRuleTest is Test, TreatyFixture {
     /// contract can close without a data source Chainlink's feed does not expose; the test exists
     /// so the behaviour is proven and visible, not silently assumed away.
     function test_holidayHeartbeat_laborDay2026RepublishesFridayClose() public {
-        uint256 friPredecessor = 1_788_548_400; // 2026-09-04 19:00 UTC, before the 19:30 cutoff
+        uint256 friPredecessor = 1_788_548_400 - 1 days; // 2026-09-03 (Thursday) 19:00 UTC, before the Thursday 19:30 bind deadline
         uint256 friClose = 1_788_552_000; // 2026-09-04 20:00 UTC, Friday's official close (EDT)
         uint256 mondayExpiry = 1_788_787_800; // 2026-09-07 13:30 UTC, Labor Day's 9:30am ET open
         uint256 mondayHeartbeat = 1_788_792_660; // 2026-09-07 14:51:00 UTC, the republish heartbeat
@@ -92,7 +92,7 @@ contract ReferenceRuleTest is Test, TreatyFixture {
         feed.set(1, fridayClosePrice - 1e8, friPredecessor); // pre-close predecessor round
         feed.set(2, fridayClosePrice, friClose); // Friday's real official close: 770.09
 
-        vm.warp(friPredecessor + 5 minutes); // before the Friday 19:30 UTC bind cutoff
+        vm.warp(friPredecessor + 5 minutes); // before the Thursday 19:30 UTC bind deadline (H-1)
         vm.prank(buyer);
         int256[] memory exposure = new int256[](1);
         exposure[0] = 1_000_000e6;
@@ -124,21 +124,22 @@ contract ReferenceRuleTest is Test, TreatyFixture {
         uint256 fri = 1_790_294_400; // Friday 2026-09-25 00:00 UTC
         uint256 close = fri + 20 hours; // EDT official close
 
-        feed.set(1, 770e8, close - 3 hours); // exists at close, but about to be superseded
-        vm.warp(close - 4 hours);
+        feed.set(1, 769e8, close - 1 days - 5 hours); // printed before bind: keeps the feed fresh, never the reference
+        vm.warp(close - 1 days - 4 hours); // Thursday 16:00 UTC, before the Thursday 19:30 bind deadline (H-1)
         vm.prank(buyer);
         int256[] memory exposure = new int256[](1);
         exposure[0] = 1_000_000e6;
         uint256 id = treaty.bind(0, exposure, 0, 60_000e6, type(uint256).max);
 
-        feed.set(2, 771e8, close - 1 hours); // supersedes round 1 before close too
+        feed.set(2, 770e8, close - 3 hours); // exists at close, but about to be superseded
+        feed.set(3, 771e8, close - 1 hours); // supersedes round 2 before close too
         vm.warp(close + 1 hours);
 
         vm.expectRevert(Treaty.BadRound.selector);
-        treaty.setReference(id, 0, 1); // round 1 existed at close, but round 2 already superseded it
+        treaty.setReference(id, 0, 2); // round 2 existed at close, but round 3 already superseded it
 
-        treaty.setReference(id, 0, 2); // the round genuinely in effect at close still works
+        treaty.setReference(id, 0, 3); // the round genuinely in effect at close still works
         assertTrue(treaty.referenceSet(id, 0));
-        assertEq(treaty.fridayPrice(id, 0), 771e8, "reference must be round 2's price, not round 1's");
+        assertEq(treaty.fridayPrice(id, 0), 771e8, "reference must be round 3's price, not round 2's");
     }
 }

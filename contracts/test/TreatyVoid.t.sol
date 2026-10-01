@@ -51,7 +51,7 @@ contract TreatyVoidTest is Test, TreatyFixture {
     function _bind(Treaty t, uint256 n) internal returns (uint256 id) {
         int256[] memory e = new int256[](n);
         for (uint256 i; i < n; i++) e[i] = 1_000_000e6;
-        vm.warp(CLOSE - 1 hours);
+        vm.warp(CLOSE - 1 days - 1 hours); // Thursday 19:00 UTC, before the Thursday 19:30 bind deadline (H-1)
         vm.prank(buyer);
         id = t.bind(0, e, 0, 60_000e6, type(uint256).max);
     }

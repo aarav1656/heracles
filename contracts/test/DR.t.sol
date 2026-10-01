@@ -35,6 +35,7 @@ contract DRTest is Test, TreatyFixture {
     uint256 constant CLOSE = FRI + 20 hours;
     uint256 constant MON = FRI + 3 days;
     uint256 constant EXPIRY = MON + 13 hours + 30 minutes;
+    uint256 constant BIND_DEADLINE = FRI + 19 hours + 30 minutes - 1 days; // Thu 19:30 UTC (H-1)
     uint80 constant P1 = uint80(uint256(1) << 64); // real proxies sit in phase >= 1
 
     // Book 0's first-loss vault: DR1/DR2/DR3 all test the gate-lock/unlock liveness property,
@@ -155,16 +156,18 @@ contract DRTest is Test, TreatyFixture {
     /// succeeds. Guards against the H1/H2 change breaking the already-fixed P3 behaviour.
     function test_DR3_p3PhaseOneIdsAndPhaseChange() public {
         (Treaty t,) = _deploy(1);
-        feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
-        vm.warp(CLOSE - 1 hours);
+        uint256 bindAt = CLOSE - 1 days - 1 hours; // Thursday 19:00 UTC, before the bind deadline (H-1)
+        feed.set(P1 | 1, 770e8, bindAt - 1 hours); // fresh at bind, but known at bind: never the reference
+        vm.warp(bindAt);
         int256[] memory e = new int256[](1);
         e[0] = 1_000_000e6;
         vm.prank(buyer);
         uint256 id = t.bind(0, e, 0, 60_000e6, type(uint256).max);
-        // The round in effect at close is P1|1 itself: fresh, at-or-before close, latest in
-        // phase.
+        // The round in effect at close is P1|2: printed after the bind deadline, fresh, at-or-before
+        // close, latest in phase.
+        feed.set(P1 | 2, 771e8, CLOSE - 3 hours);
         vm.warp(CLOSE + 1 hours);
-        t.setReference(id, 0, P1 | 1);
+        t.setReference(id, 0, P1 | 2);
         feed.set(P1 | 3, 775e8, EXPIRY + 5 minutes);
         feed.set(P1 | 4, 776e8, EXPIRY + 1 days);
         feed.set(P1 | 5, 777e8, EXPIRY + 2 days);
@@ -177,7 +180,7 @@ contract DRTest is Test, TreatyFixture {
     }
 
     /// Liveness property (H1/H2): whatever the age of the round in effect at Friday's close,
-    /// fresh, right at the 26h bound, or arbitrarily stale, a permissionless call sequence from
+    /// fresh, known at bind, right at the 26h bound, or arbitrarily stale, a permissionless call sequence from
     /// `Bound` always reaches a terminal state (`Settled` or `Cancelled`); it never gets stuck.
     /// Fuzzes that age from 1 second to 60 days.
     function testFuzz_liveness_referenceTimingAlwaysReachesTerminalState(uint256 ageSeed) public {
@@ -196,9 +199,9 @@ contract DRTest is Test, TreatyFixture {
         // The round in effect at close, `age` before `CLOSE`.
         feed.set(P1 | 2, 771e8, CLOSE - age);
 
-        if (age <= 26 hours) {
-            // Under the bound: setReference must succeed, and the layer must be fixable to
-            // Settled once Monday's round is in.
+        if (age < CLOSE - BIND_DEADLINE) {
+            // Fresh and printed after the layer's own bind deadline: setReference must succeed,
+            // and the layer must be fixable to Settled once Monday's round is in.
             vm.warp(CLOSE + 1 hours);
             t.setReference(id, 0, P1 | 2);
             uint256 fixAt = EXPIRY + 5 minutes;
@@ -208,12 +211,12 @@ contract DRTest is Test, TreatyFixture {
             (,,,,, Treaty.State st,,,,,) = layerBasics(t, id);
             assertEq(uint8(st), uint8(Treaty.State.Settled), "on-time round must settle");
         } else {
-            // Over the bound: setReference must revert, voidReference must succeed, and cancel
-            // must succeed once expiry + GRACE has passed. The stale round is always dated
-            // before `CLOSE`, so it can never itself push the terminal state later than
-            // `EXPIRY + GRACE`.
+            // Stale (older than 26h) or known at bind (at or before Thursday 19:30 UTC, the H-1
+            // bind deadline): setReference must revert, voidReference must succeed, and cancel
+            // must succeed once expiry + GRACE has passed. The round is always dated before
+            // `CLOSE`, so it can never itself push the terminal state later than `EXPIRY + GRACE`.
             vm.warp(CLOSE + 1 hours);
-            vm.expectRevert(Treaty.BadRound.selector);
+            vm.expectRevert(age > 26 hours ? Treaty.BadRound.selector : Treaty.ReferenceKnownAtBind.selector);
             t.setReference(id, 0, P1 | 2);
             t.voidReference(id, 0, P1 | 2);
             vm.warp(EXPIRY + 3 days);

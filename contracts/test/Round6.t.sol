@@ -185,7 +185,9 @@ contract Round6Test is Test, TreatyFixture {
     // ------------------------------------------------------------------------------------------
     // L6-2. No time-bounded exit used to leave an unfixable layer Bound forever with both gates
     // shut once a stopped liveness feed or a reverting market feed made `StillFixable` unresolvable.
-    // `CANCEL_BACKSTOP` (30 days past expiry) now lifts both checks unconditionally.
+    // `CANCEL_BACKSTOP` (30 days past expiry) lifts the liveness-feed check only; the independent
+    // v3 review's L-1 made the `_anyMarketFixable` check unconditional, and `_isMarketDead` reads
+    // every market feed through try/catch so a reverting feed counts as dead instead of blocking.
     // ------------------------------------------------------------------------------------------
 
     function _stuckSetup(address feed_, uint256 livenessLastPrint) internal returns (uint256 id) {
@@ -222,18 +224,22 @@ contract Round6Test is Test, TreatyFixture {
         uint256 id = _stuckSetup(address(bf), EXPIRY + 40 days);
         bf.breakIt(); // proxy decommissioned after the reference was set
         vm.warp(EXPIRY + 365 days);
-        t.cancel(id); // past CANCEL_BACKSTOP, _anyMarketFixable is skipped, the reverting feed is never read
+        t.cancel(id); // past CANCEL_BACKSTOP the liveness check is skipped; the reverting feed reads as dead (try/catch), so nothing is fixable
         assertEq(uint256(_state(id)), uint256(Treaty.State.Cancelled));
         assertGt(sr.maxRedeem(writer), 0, "book reopens a year after expiry even with a reverting market feed");
     }
 
     // ------------------------------------------------------------------------------------------
     // L6-3. A fresh in-effect round with an out-of-range answer can be neither referenced nor
-    // voided, so the layer could never settle. Covered by the same 30-day backstop as L6-2: once
-    // it passes, `cancel` no longer needs a resolved reference either.
+    // voided, so the layer can never settle. Round 6 said the 30-day backstop covered it. The
+    // independent v3 review's L-1 made the `_anyMarketFixable` check unconditional (a layer that
+    // fix could still settle must never cancel for a full refund), which removes that cover:
+    // these two tests now PIN the residual, accepted in docs/security/capacity-review.md
+    // (Independent v3 review, resolution). They go red the day a third void proof or a Monday
+    // bad-answer detector lands, and must then be flipped to assert the cancel.
     // ------------------------------------------------------------------------------------------
 
-    function test_L6_3_backstopUnsticksUnvoidableBadAnswerRound() public {
+    function test_L6_3_residual_badAnswerInEffectRoundStaysBoundPastBackstop() public {
         MockUSDG usdg = new MockUSDG();
         live = new MockFeed();
         _deploy(address(usdg), address(new MockFeed()), address(live));
@@ -255,15 +261,16 @@ contract Round6Test is Test, TreatyFixture {
         vm.expectRevert(Treaty.BadRound.selector);
         t.voidReference(id, 0, 1); // rule 4
 
-        t.cancel(id); // past CANCEL_BACKSTOP: cancel no longer needs a resolved reference
-        assertEq(uint256(_state(id)), uint256(Treaty.State.Cancelled));
-        assertGt(fl.maxRedeem(writer), 0, "book reopens once the backstop passes even though the reference never resolved");
+        vm.expectRevert(Treaty.StillFixable.selector); // L-1: the fixable check is unconditional
+        t.cancel(id);
+        assertEq(uint256(_state(id)), uint256(Treaty.State.Bound), "accepted residual: layer stays Bound");
+        assertEq(fl.maxRedeem(writer), 0, "accepted residual: first-loss gate stays shut");
     }
 
     /// Same class on the Monday side (unchanged from v2): the first round after expiry carries an
     /// out-of-range answer, a good round follows it, so `fix` rejects both and `_isMarketDead`
     /// (which only reads the latest round) calls the market live.
-    function test_L6_3b_backstopUnsticksUnfixableFirstMondayRound() public {
+    function test_L6_3b_residual_badFirstMondayRoundStaysBoundPastBackstop() public {
         MockUSDG usdg = new MockUSDG();
         live = new MockFeed();
         _deploy(address(usdg), address(new MockFeed()), address(live));
@@ -282,9 +289,10 @@ contract Round6Test is Test, TreatyFixture {
         t.fix(id, 0, 3);
         vm.expectRevert(Treaty.NotFirstRound.selector);
         t.fix(id, 0, 4);
-        t.cancel(id); // past CANCEL_BACKSTOP
-        assertEq(uint256(_state(id)), uint256(Treaty.State.Cancelled));
-        assertGt(fl.maxRedeem(writer), 0, "book reopens once the backstop passes even though fix never succeeded");
+        vm.expectRevert(Treaty.StillFixable.selector); // L-1: the fixable check is unconditional
+        t.cancel(id);
+        assertEq(uint256(_state(id)), uint256(Treaty.State.Bound), "accepted residual: layer stays Bound");
+        assertEq(fl.maxRedeem(writer), 0, "accepted residual: first-loss gate stays shut");
     }
 
     // ------------------------------------------------------------------------------------------

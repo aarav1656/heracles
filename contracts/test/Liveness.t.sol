@@ -22,6 +22,7 @@ contract LivenessTest is Test, TreatyFixture {
     uint256 constant FRI = 1_790_294_400; // Fri 2026-09-25 00:00 UTC
     uint256 constant CLOSE = FRI + 20 hours; // DST close
     uint256 constant EXPIRY = FRI + 3 days + 13 hours + 30 minutes;
+    uint256 constant BIND_AT = FRI - 5 hours; // Thu 19:00 UTC, before the Thursday 19:30 bind deadline (H-1)
     uint80 constant P1 = uint80(uint256(1) << 64);
     uint80 constant P2 = uint80(uint256(2) << 64);
 
@@ -64,7 +65,7 @@ contract LivenessTest is Test, TreatyFixture {
     /// `block.timestamp`, or bind must reject a layer priced off a feed that is already dead.
     function test_bind_revertsOnStaleFeed() public {
         (Treaty t,,) = _deploy(1, address(0));
-        uint256 bindTime = FRI + 10 hours;
+        uint256 bindTime = BIND_AT;
         feed.set(1, 770e8, bindTime - 26 hours - 1 seconds); // 26h + 1s old at bind time
         vm.warp(bindTime);
         vm.prank(buyer);
@@ -81,7 +82,7 @@ contract LivenessTest is Test, TreatyFixture {
     /// panic here instead of evaluating the freshness condition normally.
     function test_bind_warpSafe() public {
         (Treaty t,,) = _deploy(1, address(0));
-        uint256 bindTime = FRI + 10 hours;
+        uint256 bindTime = BIND_AT;
         feed.set(1, 770e8, bindTime + 5 hours); // round's own timestamp is ahead of block.timestamp
         vm.warp(bindTime);
         uint256 id = _bind(t, 1);
@@ -93,7 +94,7 @@ contract LivenessTest is Test, TreatyFixture {
     function test_void_stale() public {
         (Treaty t,,) = _deploy(1, address(0));
         feed.set(P1 | 1, 770e8, CLOSE - 27 hours); // in effect at close, but stale by 1h
-        vm.warp(CLOSE - 1 hours);
+        vm.warp(BIND_AT);
         uint256 id = _bind(t, 1);
         vm.warp(CLOSE + 1 hours);
         vm.expectRevert(Treaty.BadRound.selector); // rule 5: too stale to be a reference
@@ -107,10 +108,11 @@ contract LivenessTest is Test, TreatyFixture {
     /// own first round already prints after close, proving the crossing happened too late.
     function test_void_phase() public {
         (Treaty t,,) = _deploy(1, address(0));
-        feed.set(P1 | 1, 770e8, CLOSE - 3 hours); // would have been in effect at close...
-        vm.warp(CLOSE - 1 hours);
+        feed.set(P1 | 1, 770e8, BIND_AT - 1 hours); // printed before bind
+        vm.warp(BIND_AT);
         uint256 id = _bind(t, 1);
-        feed.set(P1 | 2, 771e8, CLOSE + 1 hours); // ...but the phase already crossed
+        feed.set(P1 | 2, 770e8, CLOSE - 3 hours); // would have been in effect at close...
+        feed.set(P1 | 3, 771e8, CLOSE + 1 hours); // ...but the phase already crossed
         feed.set(P2 | 1, 771e8, CLOSE + 2 hours); // phase 2's own first round prints after close
         vm.warp(CLOSE + 3 hours);
         t.voidReference(id, 0, P2 | 1);
@@ -123,7 +125,7 @@ contract LivenessTest is Test, TreatyFixture {
     function testFuzz_setAndVoidExclusive(bool voidFirst, uint80 laterRoundId) public {
         (Treaty t,,) = _deploy(1, address(0));
         feed.set(P1 | 1, 770e8, CLOSE - 27 hours); // in effect at close, stale: valid for voidReference
-        vm.warp(CLOSE - 1 hours);
+        vm.warp(BIND_AT);
         uint256 id = _bind(t, 1);
         vm.warp(CLOSE + 1 hours);
 
@@ -148,11 +150,12 @@ contract LivenessTest is Test, TreatyFixture {
     function test_cancel_revertsWhileChainNotProvenLive() public {
         MockFeed liveness = new MockFeed();
         (Treaty t,,) = _deploy(1, address(liveness));
-        feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
-        vm.warp(CLOSE - 1 hours);
+        feed.set(P1 | 1, 770e8, BIND_AT - 1 hours); // printed before bind
+        vm.warp(BIND_AT);
         uint256 id = _bind(t, 1);
+        feed.set(P1 | 2, 770e8, CLOSE - 3 hours); // in effect at close, printed after the bind deadline
         vm.warp(CLOSE + 1 hours);
-        t.setReference(id, 0, P1 | 1);
+        t.setReference(id, 0, P1 | 2);
         liveness.set(1, 1, EXPIRY - 1 hours); // last liveness checkpoint is before expiry
 
         vm.warp(EXPIRY + 3 days + 1); // past GRACE; equity feed has nothing after EXPIRY at all
@@ -173,14 +176,15 @@ contract LivenessTest is Test, TreatyFixture {
     function test_cancel_G3AnalogueOnRHCSettings() public {
         MockFeed liveness = new MockFeed();
         (Treaty t, Capacity firstLoss, Capacity senior) = _deploy(1, address(liveness));
-        feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
-        vm.warp(CLOSE - 1 hours);
+        feed.set(P1 | 1, 770e8, BIND_AT - 1 hours); // printed before bind
+        vm.warp(BIND_AT);
         uint256 id = _bind(t, 1);
+        feed.set(P1 | 2, 770e8, CLOSE - 3 hours); // in effect at close, printed after the bind deadline
         uint256 premium;
         (,,,,,,,,, premium,) = layerBasics(t, id);
         uint256 buyerBefore = usdg.balanceOf(buyer);
         vm.warp(CLOSE + 1 hours);
-        t.setReference(id, 0, P1 | 1);
+        t.setReference(id, 0, P1 | 2);
         liveness.set(1, 1, EXPIRY - 1 hours); // liveness stalls right before expiry, same shape as G3
 
         vm.warp(EXPIRY + 3 days + 1); // GRACE elapsed, chain "looks" halted: no proof of life yet

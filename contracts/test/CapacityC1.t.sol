@@ -19,7 +19,7 @@ import {TreatyFixture} from "./utils/TreatyFixture.sol";
 /// deposits/withdrawals while any layer is live.
 contract CapacityC1Test is Test, TreatyFixture {
     uint256 constant FRI_CLOSE = 1_790_366_400;
-    uint256 constant FRI_1900 = FRI_CLOSE - 1 hours;
+    uint256 constant THU_1900 = FRI_CLOSE - 1 days - 1 hours; // before the Thursday 19:30 bind deadline (H-1)
     uint256 constant CUTOFF = FRI_CLOSE - 30 minutes;
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
     uint40 constant MONDAY = uint40(FRI_CLOSE + 2 days + 17 hours + 30 minutes);
@@ -37,7 +37,7 @@ contract CapacityC1Test is Test, TreatyFixture {
     function setUp() public {
         usdg = new MockUSDG();
         feed = new MockFeed();
-        feed.set(1, 100e8, FRI_1900 - 10 minutes);
+        feed.set(1, 100e8, THU_1900 - 10 minutes);
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
         treaty = deployTreaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
@@ -45,7 +45,7 @@ contract CapacityC1Test is Test, TreatyFixture {
         senior = Capacity(treaty.seniorVault(0));
         _deposit(writer, 100_000e6);
         _deposit(writerB, 100_000e6);
-        vm.warp(FRI_1900);
+        vm.warp(THU_1900);
     }
 
     function _deposit(address who, uint256 amt) internal {
@@ -65,7 +65,7 @@ contract CapacityC1Test is Test, TreatyFixture {
 
     function _settleNoLoss(uint256 id) internal {
         // setReference now waits for `fridayCloseOf` (FRI_CLOSE), not Saturday midnight;
-        // round 1 (set in setUp, FRI_1900 - 10 minutes) is its required strictly-earlier
+        // round 1 (set in setUp, THU_1900 - 10 minutes) is its required strictly-earlier
         // predecessor, round 2 is the first fresh round at/after FRI_CLOSE.
         feed.set(2, 100e8, FRI_CLOSE);
         vm.warp(FRI_CLOSE + 1);
