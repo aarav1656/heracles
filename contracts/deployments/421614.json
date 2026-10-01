@@ -115,5 +115,17 @@
   "usdg": {
     "address": "0xFFC95faa3d63Cde504a05B567C600B78C0b41892",
     "decimals": 6
+  },
+  "liveCycle": {
+    "note": "Layer 0 on the USDC book, bound 2026-10-01 07:08 UTC by the owner (writer and buyer). Writer deposits 4.5 USDC first-loss and 10.5 USDC senior (30/70). Layer: long 200 USDC SPY, retention 2, limit 10 USDC (3 first-loss, 7 senior), premium 0.195737 USDC (0.128999 first-loss, 0.066738 senior). setReference opens Fri 2026-10-02 20:00 UTC, fix opens Mon 2026-10-05 13:30 UTC.",
+    "txs": {
+      "approveFirstLoss": "0x16ae5102dc5042b973f2977cc6bf3650aee07a0b7fe4d480085c152d03fb90b3",
+      "approveSenior": "0x1cc18720bd646d825bb759a9f74ee8714945cdf68b5390c563ad4d7bac09b44e",
+      "depositFirstLoss": "0xdaa7aacf4ba6e5a38f705c59c95be4d5def40c22b0576b155dad62fc6e680fb0",
+      "depositSenior": "0x5f23b41e810d828e2ad11b5e0abfb1b7d2111ce9a083856242bb6a5a21e2b4a2",
+      "approveTreaty": "0x16c405370228f3251c9e908a3d2ad6189e64b3b2a94ad2bcf81953f2e955df6b",
+      "bind": "0x770752c7522caf31ce5d493693e48f8bed71726607be0351b835669eb3b85b70"
+    },
+    "bindBlock": 314559779
   }
 }
