@@ -8,6 +8,8 @@ export const LAYER_STATES = ['None', 'Bound', 'Settled', 'Cancelled'] as const;
 // Mirrors Treaty.sol's internal constants (not exposed on-chain, so kept here in lockstep).
 export const REFERENCE_MAX_DELAY_SECONDS = 36 * 3600;
 export const GRACE_SECONDS = 3 * 86400;
+/** Binding closes this long before the Friday 19:30 UTC anchor: Thursday 19:30 UTC. */
+export const BIND_LEAD_SECONDS = 86400;
 
 /** Monday's fixing time, derived from the layer expiry the chain reports (13:30/14:30 UTC, DST-aware). */
 export function fixingWords(expiry: bigint): string {
@@ -69,11 +71,13 @@ export async function findFirstRoundAtOrAfter(
 
 export const ERROR_WORDS: Record<string, string> = {
   BadParams: 'A parameter fails the contract checks: exposure length must match the market count, every exposure and the limit must be above zero in the right places, or the recipient is the zero address.',
-  BadTiming: 'Too early or too late for this call on the layer clock. Binding needs now strictly before the Friday 19:30 UTC cutoff; setReference needs the Friday 4:00pm ET close to have passed; voidReference needs a first round more than 36h after that close; cancel needs expiry plus 3 days.',
+  BadTiming: 'Too early or too late for this call on the layer clock. Binding needs now strictly before the Thursday 19:30 UTC bind deadline; setReference needs the Friday 4:00pm ET close to have passed; voidReference needs a first round more than 36h after that close; cancel needs expiry plus 3 days.',
   BadRound: "That feed round is not acceptable: stale or ahead of now, non-positive, out of the 64-bit price range, more than 36h past Friday's close (setReference only), or from a superseded Chainlink phase.",
   NotFirstRound: "That round is not the first one at or after the boundary this call checks (Friday's close for setReference/voidReference, Monday's expiry for fix): its predecessor already sits at or after that boundary too. Use the round the panel found, or step one round back and retry.",
   EarlyFix: 'Fixing is not open yet. The layer can only be fixed after Monday 13:30/14:30 UTC expiry (DST-aware).',
   ReferenceNotSet: 'Every market needs its Friday reference set before any market can be fixed.',
+  PremiumTooHigh: 'The premium for these terms rose above the ceiling this bind carried (the premium you were shown). Review the new quote and bind again.',
+  ReferenceKnownAtBind: 'That round was already in effect when this layer bound, so it cannot be the reference. Use voidReference on it.',
   ReferenceIsVoid: "This market's Friday reference was already proven void; it can no longer be set or voided again.",
   WrongState: 'The layer is not in the state this call needs.',
   AlreadyFixed: 'This market is already fixed for this layer.',

@@ -78,7 +78,7 @@ export function useBook(account: Address | undefined) {
         { address: USDG_ADDRESS, abi: erc20Abi, functionName: 'balanceOf', args: [CAPACITY_ADDRESS] },
         { address: CAPACITY_ADDRESS, abi: capacityAbi, functionName: 'balanceOf', args: [me] },
         { address: USDG_ADDRESS, abi: erc20Abi, functionName: 'balanceOf', args: [me] },
-        { address: USDG_ADDRESS, abi: erc20Abi, functionName: 'allowance', args: [me, CAPACITY_ADDRESS] },
+        { address: USDG_ADDRESS, abi: erc20Abi, functionName: 'allowance', args: [me, TREATY_ADDRESS] },
         { address: CAPACITY_ADDRESS, abi: capacityAbi, functionName: 'maxRedeem', args: [me] },
       ],
     }) as unknown as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];

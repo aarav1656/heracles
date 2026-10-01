@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePublicClient } from 'wagmi';
 import type { PublicClient } from 'viem';
-import { CAPACITY_ADDRESS, FEED_ADDRESSES, PRICER_ADDRESS, TREATY_ADDRESS, USDG_ADDRESS, erc20Abi, treatyAbi } from '../abi';
+import { FEED_ADDRESSES, PRICER_ADDRESS, TREATY_ADDRESS, USDG_ADDRESS, bindAbi, erc20Abi } from '../abi';
 import { explorer } from '../chain';
 import { useBook, quoteLive } from '../hooks/useBook';
 import { useNow } from '../hooks/useNow';
@@ -41,11 +41,11 @@ export function Bind() {
   const [quoteError, setQuoteError] = useState<string>();
   const [quoting, setQuoting] = useState(false);
 
-  const closed = win !== undefined && now >= win.cutoff && now < win.expiry;
-  // Binding reopens when the next ISO week begins (Monday 00:00 UTC), not at `win.expiry`
-  // (Monday 13:30 UTC, the fixing time for layers bound in a prior week). Friday 19:30 UTC
-  // + 2 days 4.5 hours = the following Monday 00:00 UTC.
+  // Binding closes Thursday 19:30 UTC (`win.bindDeadline`) and reopens when the next ISO week
+  // begins (Monday 00:00 UTC), not at `win.expiry` (Monday 13:30 UTC, the fixing time for layers
+  // bound in a prior week). Friday 19:30 UTC + 2 days 4.5 hours = the following Monday 00:00 UTC.
   const reopensAt = win !== undefined ? reopenOf(win) : undefined;
+  const closed = win !== undefined && reopensAt !== undefined && now >= win.bindDeadline && now < reopensAt;
 
   const parsed = useMemo(() => {
     try {
@@ -99,14 +99,15 @@ export function Bind() {
 
   const approve = () =>
     me.address && effective !== undefined
-      ? approveTx.run({ address: USDG_ADDRESS, abi: erc20Abi, functionName: 'approve', args: [CAPACITY_ADDRESS, effective], account: me.address })
+      ? approveTx.run({ address: USDG_ADDRESS, abi: erc20Abi, functionName: 'approve', args: [TREATY_ADDRESS, effective], account: me.address })
       : undefined;
 
   const bind = () => {
-    if (!me.address || !parsed.exp || parsed.ret === undefined || parsed.lim === undefined) return;
+    if (!me.address || !parsed.exp || parsed.ret === undefined || parsed.lim === undefined || effective === undefined) return;
     tx.run({
-      address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'bind',
-      args: [parsed.exp, parsed.ret, parsed.lim],
+      // Book 0; the premium shown is the ceiling, so a round landing before the tx cannot raise the charge.
+      address: TREATY_ADDRESS, abi: bindAbi, functionName: 'bind',
+      args: [0n, parsed.exp, parsed.ret, parsed.lim, effective],
       account: me.address,
     });
   };
@@ -193,7 +194,7 @@ export function Bind() {
 
           {closed && win ? (
             <p className="err" role="status">
-              <b>Closed</b> Buying cover for this weekend closed at {fmtClock(win.cutoff)} UTC. Cover for
+              <b>Closed</b> Buying cover for this weekend closed at {fmtClock(win.bindDeadline)} UTC. Cover for
               next week opens Monday 00:00 UTC, in {fmtCountdown((reopensAt ?? win.expiry) - now)}.
             </p>
           ) : (
@@ -236,7 +237,7 @@ export function Bind() {
             </p>
           )}
           {win && !closed && (
-            <p className="src">Cover for this weekend can be bought until {fmtClock(win.cutoff)} UTC, in {fmtCountdown(win.cutoff - now)}.</p>
+            <p className="src">Cover for this weekend can be bought until {fmtClock(win.bindDeadline)} UTC, in {fmtCountdown(win.bindDeadline - now)}.</p>
           )}
           {book.data && <p className="src"><Stamp block={book.data.block} label="Book read at block" /></p>}
           <p className="note">

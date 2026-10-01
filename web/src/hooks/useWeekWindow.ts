@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { PublicClient } from 'viem';
 import { TREATY_ADDRESS, treatyAbi } from '../abi';
+import { BIND_LEAD_SECONDS } from '../lib/treaty';
 
-export type WeekWindow = { cutoff: number; expiry: number; ref: number };
+export type WeekWindow = { cutoff: number; bindDeadline: number; expiry: number; ref: number };
 
 /**
- * The week's take cutoff, Friday reference (`fridayCloseOf`), and Monday fixing, all read from
+ * The week's bind deadline, Friday reference (`fridayCloseOf`), and Monday fixing, all read from
  * the contract's own calendar so the DST-aware close/expiry math is never duplicated here.
  */
 export function useWeekWindow(client: PublicClient | undefined, now: number): WeekWindow | undefined {
@@ -19,7 +20,7 @@ export function useWeekWindow(client: PublicClient | undefined, now: number): We
         const [cutoff, expiry] = r as unknown as [bigint, bigint];
         const ref = await client.readContract({ address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'fridayCloseOf', args: [cutoff] });
         if (!live) return;
-        setWin({ cutoff: Number(cutoff), expiry: Number(expiry), ref: Number(ref as bigint) });
+        setWin({ cutoff: Number(cutoff), bindDeadline: Number(cutoff) - BIND_LEAD_SECONDS, expiry: Number(expiry), ref: Number(ref as bigint) });
       })
       .catch(() => { if (live) setWin(undefined); });
     return () => { live = false; };
