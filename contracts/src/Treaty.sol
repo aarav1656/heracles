@@ -720,6 +720,7 @@ contract Treaty is ReentrancyGuard {
         if (L.state != State.Bound) revert WrongState();
         if (marketIdx >= markets.length) revert BadParams();
         if (marketFixed[id][marketIdx]) revert AlreadyFixed();
+        if (fixVoid[id][marketIdx]) revert FixIsVoid(); // I-1: exclusive with `voidFix`
         if (L.referencedCount != markets.length) revert ReferenceNotSet();
         if (block.timestamp < L.expiry) revert EarlyFix();
         _requireSequencerUp();
@@ -754,6 +755,7 @@ contract Treaty is ReentrancyGuard {
         if (L.state != State.Bound) revert WrongState();
         if (marketIdx >= markets.length) revert BadParams();
         if (fixVoid[id][marketIdx]) revert FixIsVoid();
+        if (marketFixed[id][marketIdx]) revert AlreadyFixed(); // I-1: exclusive with `fix`
 
         AggregatorV3Interface feed = markets[marketIdx];
         _latestInPhase(feed, roundId);
@@ -853,6 +855,18 @@ contract Treaty is ReentrancyGuard {
             if (fixVoid[id][i]) return false; // fix can never complete this layer, same as a void reference
             if (!referenceSet[id][i]) {
                 if (referenceVoid[id][i]) return false;
+                // F-1: past the backstop, a market whose feed reverts, or whose latest round id is
+                // 0 (a proxy repointed to an aggregator that never printed), can be neither
+                // referenced nor voided: `setReference` and `voidReference` both revert on it.
+                // Nothing can be fixed on a feed that cannot be read, so it counts like a void
+                // reference. Before the backstop it stays fixable, since the feed may recover.
+                if (block.timestamp >= uint256(L.expiry) + CANCEL_BACKSTOP) {
+                    try markets[i].latestRoundData() returns (uint80 latestId, int256, uint256, uint256, uint80) {
+                        if (uint64(latestId) == 0) return false;
+                    } catch {
+                        return false;
+                    }
+                }
                 anyFixable = true;
                 continue;
             }

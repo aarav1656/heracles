@@ -7,7 +7,7 @@ import {Capacity} from "../src/Capacity.sol";
 import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
-import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
 import {TreatyFixture} from "./utils/TreatyFixture.sol";
 import {BreakableFeed} from "./Round6.t.sol";
 
@@ -306,6 +306,146 @@ contract V3ReviewTest is Test, TreatyFixture {
         (Treaty.State s,,) = _layer(id);
         assertEq(uint8(s), uint8(Treaty.State.Cancelled));
         assertGt(fl.maxRedeem(writer), 0, "gate reopened");
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // F-1 (final v3 review). L-1 made the `_anyMarketFixable` check unconditional, and its
+    // unreferenced branch counted the market fixable without reading the feed. A market proxy
+    // that reverts, or is repointed to an aggregator that never prints, between bind and
+    // `setReference` left setReference, voidReference and cancel all reverting forever.
+    // ------------------------------------------------------------------------------------------
+
+    function _bindOnBreakable(BreakableFeed bf) internal returns (uint256 id) {
+        live = new MockFeed();
+        _deploy(address(bf), address(live));
+        live.set(1, 1e8, EXPIRY + 40 days); // chain proven live: only the market feed can block cancel
+        bf.set(1, 770e8, THU_1900 - 1 hours);
+        vm.warp(THU_1900);
+        id = _bind();
+        bf.set(2, 771e8, FRI + 19 hours);
+    }
+
+    function _assertStuckBeforeBackstopThenFullRefund(uint256 id, uint256 buyerStart) internal {
+        vm.warp(EXPIRY + 3 days);
+        vm.expectRevert(Treaty.StillFixable.selector);
+        t.cancel(id); // before the backstop a feed that may recover still blocks cancel
+        vm.warp(EXPIRY + 365 days);
+        t.cancel(id);
+        (Treaty.State s,,) = _layer(id);
+        assertEq(uint8(s), uint8(Treaty.State.Cancelled), "terminal path reached");
+        vm.prank(buyer);
+        t.claim(id);
+        assertEq(usdg.balanceOf(buyer), buyerStart, "buyer refunded in full");
+        assertEq(usdg.balanceOf(address(fl)) + usdg.balanceOf(address(sr)), 1_000_000e6, "vaults hold the writer's deposits again");
+        assertEq(fl.locked() + sr.locked(), 0, "nothing locked");
+        assertEq(fl.pendingPremium() + sr.pendingPremium(), 0, "nothing pending");
+        assertEq(fl.owed() + sr.owed(), 0, "nothing owed");
+        assertGt(fl.maxRedeem(writer), 0, "first-loss gate reopened");
+        assertGt(sr.maxRedeem(writer), 0, "senior gate reopened");
+    }
+
+    function test_stuck_feedRevertsBeforeReference() public {
+        BreakableFeed bf = new BreakableFeed();
+        uint256 id = _bindOnBreakable(bf);
+        uint256 buyerStart = usdg.balanceOf(buyer) + _premiumOf(id);
+        bf.breakIt(); // proxy decommissioned after bind, before anyone set the reference
+        vm.warp(CLOSE + 1);
+        vm.expectRevert();
+        t.setReference(id, 0, 2);
+        vm.expectRevert();
+        t.voidReference(id, 0, 2);
+        _assertStuckBeforeBackstopThenFullRefund(id, buyerStart);
+    }
+
+    function test_stuck_feedRepointedToFreshAggregatorBeforeReference() public {
+        BreakableFeed bf = new BreakableFeed();
+        uint256 id = _bindOnBreakable(bf);
+        uint256 buyerStart = usdg.balanceOf(buyer) + _premiumOf(id);
+        bf.repointToFresh(); // latest round id 0: nothing to reference, nothing to void
+        vm.warp(CLOSE + 1);
+        vm.expectRevert(Treaty.BadRound.selector);
+        t.setReference(id, 0, 2);
+        vm.expectRevert(Treaty.BadRound.selector);
+        t.voidReference(id, 0, 2);
+        _assertStuckBeforeBackstopThenFullRefund(id, buyerStart);
+    }
+
+    /// The fix must not reopen L-1: a readable feed with history and no reference yet is still
+    /// fixable, so cancel stays refused a year after expiry.
+    function test_stuck_control_healthyUnreferencedFeedStillBlocksCancel() public {
+        BreakableFeed bf = new BreakableFeed();
+        uint256 id = _bindOnBreakable(bf);
+        vm.warp(EXPIRY + 365 days);
+        vm.expectRevert(Treaty.StillFixable.selector);
+        t.cancel(id);
+        t.setReference(id, 0, 2); // and it is genuinely referenceable
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // I-1. voidFix and fix check each other's flag. Reachable only across a Chainlink phase change
+    // to an aggregator that already has history.
+    // ------------------------------------------------------------------------------------------
+
+    uint80 constant P1 = uint80(1) << 64;
+
+    function test_I1_fixRefusedAfterVoidFix() public {
+        uint256 id = _bindReferenced();
+        feed.set(3, 0, EXPIRY + 10 minutes); // first Monday round of phase 0 is unusable
+        vm.warp(EXPIRY + 1 hours);
+        t.voidFix(id, 0, 3);
+        assertTrue(t.fixVoid(id, 0));
+        // proxy moves to phase 1, whose aggregator already has history straddling expiry
+        feed.set(P1 | 1, 770e8, EXPIRY - 1 hours);
+        feed.set(P1 | 2, 771e8, EXPIRY + 20 minutes);
+        vm.expectRevert(Treaty.FixIsVoid.selector);
+        t.fix(id, 0, P1 | 2);
+        (Treaty.State s,,) = _layer(id);
+        assertEq(uint8(s), uint8(Treaty.State.Bound), "a voided layer does not settle");
+    }
+
+    function test_I1_voidFixRefusedAfterFix() public {
+        MockFeed feed2 = new MockFeed();
+        live = new MockFeed();
+        feed = new MockFeed();
+        usdg = new MockUSDG();
+        address[] memory feeds = new address[](2);
+        feeds[0] = address(feed);
+        feeds[1] = address(feed2);
+        t = deployTreaty(address(usdg), address(new Pricer(nTableIds(2))), feeds, 50, address(0), address(live));
+        fl = Capacity(t.firstLossVault(0));
+        sr = Capacity(t.seniorVault(0));
+        usdg.mint(writer, 1_000_000e6);
+        vm.startPrank(writer);
+        usdg.approve(address(fl), type(uint256).max);
+        usdg.approve(address(sr), type(uint256).max);
+        fl.deposit(300_000e6, writer);
+        sr.deposit(700_000e6, writer);
+        vm.stopPrank();
+        usdg.mint(buyer, 1_000_000e6);
+        vm.prank(buyer);
+        usdg.approve(address(t), type(uint256).max);
+        live.set(1, 1e8, EXPIRY + 40 days);
+        feed.set(1, 770e8, THU_1900 - 1 hours);
+        feed2.set(1, 770e8, THU_1900 - 1 hours);
+        vm.warp(THU_1900);
+        int256[] memory x = new int256[](2);
+        x[0] = 500_000e6;
+        x[1] = 500_000e6;
+        vm.prank(buyer);
+        uint256 id = t.bind(0, x, 20_000e6, 60_000e6, type(uint256).max);
+        feed.set(2, 771e8, FRI + 19 hours);
+        feed2.set(2, 771e8, FRI + 19 hours);
+        vm.warp(CLOSE + 1);
+        t.setReference(id, 0, 2);
+        t.setReference(id, 1, 2);
+        feed.set(3, 772e8, EXPIRY + 10 minutes);
+        vm.warp(EXPIRY + 1 hours);
+        t.fix(id, 0, 3); // market 1 still unfixed: the layer stays Bound
+        feed.set(P1 | 1, 770e8, EXPIRY - 1 hours);
+        feed.set(P1 | 2, 0, EXPIRY + 20 minutes);
+        vm.expectRevert(Treaty.AlreadyFixed.selector);
+        t.voidFix(id, 0, P1 | 2);
+        assertFalse(t.fixVoid(id, 0), "a fixed market is never voided");
     }
 
     // ------------------------------------------------------------------------------------------

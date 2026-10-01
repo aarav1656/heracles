@@ -60,9 +60,15 @@ contract BreakableFeed {
     uint80 public latestId;
     uint8 public constant decimals = 8;
     bool public broken;
+    bool public fresh;
 
     function breakIt() external {
         broken = true;
+    }
+
+    /// The market proxy repointed to a brand new aggregator that has never printed a round.
+    function repointToFresh() external {
+        fresh = true;
     }
 
     function set(uint80 roundId, int256 answer, uint256 updatedAt) external {
@@ -72,12 +78,14 @@ contract BreakableFeed {
 
     function latestRoundData() external view returns (uint80, int256, uint256, uint256, uint80) {
         require(!broken, "decommissioned");
+        if (fresh) return (0, 0, 0, 0, 0);
         Round memory r = rounds[latestId];
         return (latestId, r.answer, r.updatedAt, r.updatedAt, latestId);
     }
 
     function getRoundData(uint80 roundId) external view returns (uint80, int256, uint256, uint256, uint80) {
         require(!broken, "decommissioned");
+        if (fresh) return (roundId, 0, 0, 0, roundId);
         Round memory r = rounds[roundId];
         return (roundId, r.answer, r.updatedAt, r.updatedAt, roundId);
     }

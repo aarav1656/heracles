@@ -245,7 +245,7 @@ Capacity permit-path review (deposit-while-live pricing, epoch/cutoff gate, JIT 
 | L3 | Stylus program can lapse after 365 days with no reactivation path documented | `pricer` is immutable; reactivation documented below |
 | L4 | Blocklisted buyer had no way to redirect payout | `claimTo(id, to)`, callable only by the claim owner |
 | v3 H-1 | A buyer could read the round that would be the Friday reference before choosing exposure's sign | Bind closes Thursday 19:30 UTC; `setReference` refuses and `voidReference` voids any round at or before that deadline |
-| v3 L-1 | A cancel after 30 days refunded a layer `fix` could still settle | `cancel` always checks that no market is fixable; a reverting feed reads as dead, so it cannot block the check |
+| v3 L-1 | A cancel after 30 days refunded a layer `fix` could still settle | `cancel` always checks that no market is fixable; past the 30-day backstop a market feed that reverts or has no round reads as dead, so it cannot block the check |
 | v3 L-2 | A round landing between quote and bind could raise the premium | `bind(..., maxPremium)` reverts `PremiumTooHigh` above the buyer's ceiling |
 | L6-3 | A feed round with an out-of-range answer left a layer neither fixable nor cancellable | `voidReference` (Friday side) and `voidFix` (Monday side) prove it, and `cancel` then refunds in full |
 
@@ -294,7 +294,7 @@ performance number is claimed here.
 
 ## What works
 
-- Full local suite, 2026-10-01: 165 Foundry tests pass across 30 suites, 0 failed; the
+- Full local suite, 2026-10-01: 170 Foundry tests pass across 30 suites, 0 failed; the
   fork files skip without `FORK_TESTS=1`, and with it all 10 fork tests pass (includes
   `GapTreatyRealWeekendForkTest`, a full bind-reference-fix-claim lifecycle replayed
   against real Chainlink round data). This count moves as tests are added; verify with
