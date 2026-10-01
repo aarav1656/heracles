@@ -18,7 +18,7 @@ Ostium's open interest already runs 1.16x its Arbitrum TVL. A single concentrate
 
 ## How it works
 
-A buyer calls `bind(exposure[], retention, limit)` with a signed notional per market. The bind window closes strictly before that ISO week's Friday 19:30 UTC cutoff, computed on chain from `block.timestamp`; the buyer never chooses the cutoff or the expiry, which is always the following Monday 13:30 UTC, and a zero exposure or zero limit reverts outright.
+A buyer calls `bind(book, exposure[], retention, limit, maxPremium)`: a book (one settlement asset and its pair of vaults), a signed notional per market, and a ceiling on the premium. The bind window closes strictly before that ISO week's Thursday 19:30 UTC, one day ahead of the Friday 19:30 UTC anchor and computed on chain from `block.timestamp`, so the round that will be in effect at Friday's close has not printed when a layer binds. The buyer never chooses the cutoff or the expiry, which is always the following Monday 9:30am New York open (13:30 UTC in summer, 14:30 UTC in winter); a zero exposure or zero limit reverts outright, and a premium above `maxPremium` reverts `PremiumTooHigh` instead of charging more than the buyer quoted.
 
 The Stylus `Pricer` runs each market's own 504-scenario weekend gap table, scaled by that feed's realised volatility with a floor of 1.0x (the scale can only push a quote up from the static historical table, never below it), and prices the layer at
 
@@ -28,7 +28,9 @@ premium = EL + 0.03 * (TVaR95 - EL) + 0.04 * limit * 7/365
 
 the expected loss across all 504 scenarios, plus 3% of the tail mass above it (the worst 5%, TVaR95), plus a capital charge of 4% annualised on the locked limit for the real seven-day lock. The quote floors at 50 basis points of the limit, so a zero premium can never bind. A Solidity twin computes the identical formula for a parity check; the deployed pricer runs the Rust version.
 
-Once bound, the reference price for each market is not the caller's spot. It is set via `setReference(id, marketIdx, roundId)`, which only accepts the first round at or after the Friday 4:00pm New York close, landing within 36h of it; a later first round lets anyone void that market, and the layer can then only be cancelled with the premium refunded. Writers deposit USDG into the ERC-4626 `Capacity` vault; a bind locks the limit out of free capacity and pulls the premium in the same transaction, but the premium sits in `pendingPremium`, excluded from share pricing, until the layer settles. `fix(id, marketIdx, roundId)` applies the same rule per market, the first round with `updatedAt >= expiry`, and once every market is fixed the layer settles: payout is the loss computed from the declared exposure and the feed's gap, above retention, clamped at the layer's own locked limit. Buyer and writer both pull their own claim rather than being pushed a payment, and `claimTo` lets the claim owner redirect payout to another address.
+Once bound, the reference price for each market is not the caller's spot. It is set via `setReference(id, marketIdx, roundId)`, which only accepts the round in effect at the Friday 4:00pm New York close, printed after the bind deadline and no more than 26 hours before the close. When that round can never serve as the reference (stale, in a superseded Chainlink phase, already visible at bind, or carrying an out-of-range answer), anyone proves it with `voidReference`, and an out-of-range first Monday round is proven the same way with `voidFix`; each proof is mutually exclusive with the call it replaces, and the layer then cancels with the premium refunded in full. A layer that `fix` can still settle with a valid round is never cancellable.
+
+Writers deposit USDG into one of a book's two ERC-4626 `Capacity` vaults: the first-loss vault takes the first slice of every layer's limit (`juniorShareBps`, fixed at deploy) and the senior vault takes the rest. A bind locks each slice out of its own vault's free capital. The buyer approves the Treaty, which pulls the premium in and hands each vault its share; the share sits in `pendingPremium`, excluded from share pricing, until the layer settles. `fix(id, marketIdx, roundId)` takes the first round with `updatedAt >= expiry` per market, and once every market is fixed the layer settles: payout is the loss computed from the declared exposure and the feed's gap, above retention, clamped at the layer's own locked limit, with the first-loss vault paying the first slice. Buyer and writer both pull their own claim rather than being pushed a payment, a cancelled layer's refund included, and `claimTo` lets the claim owner redirect it to another address.
 
 ## What is novel
 
@@ -38,7 +40,7 @@ Re Protocol, Nayms (rebranded OnRe), and Ensuro sell tokenized access to real, r
 
 ## Stack
 
-Contracts in Solidity (Foundry), with the pricing core ported to Rust and deployed as a Stylus program on Arbitrum. The writer side is an ERC-4626 vault (`Capacity`) taking Paxos USDG deposits, including gasless deposit via `depositWithPermit`. Both `bind` and the fixing path gate on Arbitrum's L2 Sequencer Uptime feed before trusting any oracle round. The web app is Vite and TypeScript, reading deployed addresses from `contracts/deployments/`.
+Contracts in Solidity (Foundry), with the pricing core ported to Rust and deployed as a Stylus program on Arbitrum. The writer side is an ERC-4626 vault (`Capacity`) taking Paxos USDG deposits, including gasless deposit via `depositWithPermit`. `bind`, `setReference`, `fix` and `cancel` gate on Arbitrum's L2 Sequencer Uptime feed before trusting any oracle round. The web app is Vite and TypeScript, reading deployed addresses from `contracts/deployments/`.
 
 ## Security evidence
 
