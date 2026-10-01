@@ -7,12 +7,13 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// C1+H1 (SECURITY-REVIEW.md): unit-tests `Treaty.weekWindow`'s integer weekday math (epoch day 0,
 /// 1970-01-01, was a Thursday) against Python-computed (`datetime`, UTC) expected values, across
 /// three separate weeks, a week containing a real-world DST transition (irrelevant to on-chain UTC
 /// math, exercised anyway to prove it), and a week spanning a year boundary.
-contract WeekWindowTest is Test {
+contract WeekWindowTest is Test, TreatyFixture {
     Treaty treaty;
 
     function setUp() public {
@@ -21,7 +22,7 @@ contract WeekWindowTest is Test {
         MockFeed feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(pricer), feeds, 50, address(0));
+        treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
     }
 
     /// `fridayCutoff`'s own time-of-day (19:30 UTC) is DST-independent by design, but `expiry`'s

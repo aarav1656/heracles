@@ -8,11 +8,12 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Attack surface: drain across layers, stale round, phase change, early fix, payout cap.
 /// Every test here is a check that can fail: each one is paired with the exploit it defeats,
 /// not just a happy path re-run.
-contract AttackTest is Test {
+contract AttackTest is Test, TreatyFixture {
     uint256 constant T0 = 1_790_000_000; // a Monday
     uint256 constant CUTOFF = 1_790_364_600; // that week's Fri 19:30 UTC
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
@@ -31,7 +32,8 @@ contract AttackTest is Test {
     MockFeed feed;
     Pricer pricer;
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
 
     address writer = makeAddr("writer");
     address alice = makeAddr("alice");
@@ -45,21 +47,28 @@ contract AttackTest is Test {
 
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(pricer), feeds, 50, address(0));
-        capacity = treaty.capacity();
+        treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
 
-        usdg.mint(writer, 200_000e6);
+        usdg.mint(writer, 400_000e6);
         vm.prank(writer);
-        usdg.approve(address(capacity), type(uint256).max);
+        usdg.approve(address(firstLoss), type(uint256).max);
         vm.prank(writer);
-        capacity.deposit(200_000e6, writer); // exactly two layers' worth of limit
+        firstLoss.deposit(200_000e6, writer); // exactly two layers' worth of limit
+        vm.prank(writer);
+        usdg.approve(address(senior), type(uint256).max);
+        vm.prank(writer);
+        senior.deposit(200_000e6, writer); // exactly two layers' worth of limit
 
         usdg.mint(alice, 1_000_000e6);
         vm.prank(alice);
-        usdg.approve(address(capacity), type(uint256).max);
+        // Premium is pulled by Treaty itself, never a vault, so the buyer approves the Treaty
+        // contract, not either vault.
+        usdg.approve(address(treaty), type(uint256).max);
         usdg.mint(bob, 1_000_000e6);
         vm.prank(bob);
-        usdg.approve(address(capacity), type(uint256).max);
+        usdg.approve(address(treaty), type(uint256).max);
 
         vm.warp(T0);
     }
@@ -70,7 +79,7 @@ contract AttackTest is Test {
     }
 
     function _payout(uint256 id) internal view returns (uint256 p) {
-        (,,,,,,,,,, p) = treaty.layers(id);
+        (,,,,,,,,,, p) = layerBasics(treaty, id);
     }
 
     /// Attack: bind two layers against the same pool, settle one for its full limit, then try to
@@ -79,10 +88,10 @@ contract AttackTest is Test {
     /// pay more than is locked.
     function test_cannotDrainAcrossLayers() public {
         vm.prank(alice);
-        uint256 idA = treaty.bind(_exposure(), RETENTION, LIMIT);
+        uint256 idA = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         vm.prank(bob);
-        uint256 idB = treaty.bind(_exposure(), RETENTION, LIMIT);
-        assertEq(capacity.locked(), 2 * LIMIT); // pool fully committed, zero free capacity
+        uint256 idB = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
+        assertEq(firstLoss.locked() + senior.locked(), 2 * LIMIT); // pool fully committed, zero free capacity
 
         feed.set(2, FRIDAY_PRICE, REF_TIME);
         vm.warp(REF_TIME + 1);
@@ -93,25 +102,25 @@ contract AttackTest is Test {
         vm.warp(uint256(EXPIRY) + 20);
         treaty.fix(idA, 0, 3); // settles A only; B is still Bound
 
-        uint256 poolBefore = usdg.balanceOf(address(capacity));
+        uint256 poolBefore = usdg.balanceOf(address(firstLoss)) + usdg.balanceOf(address(senior));
         vm.prank(alice);
         treaty.claim(idA);
         // Pool must still hold at least layer B's full locked limit: A's claim never touched it.
-        assertGe(usdg.balanceOf(address(capacity)), poolBefore - LIMIT);
-        assertGe(usdg.balanceOf(address(capacity)), LIMIT); // B's reservation is intact
+        assertGe(usdg.balanceOf(address(firstLoss)) + usdg.balanceOf(address(senior)), poolBefore - LIMIT);
+        assertGe(usdg.balanceOf(address(firstLoss)) + usdg.balanceOf(address(senior)), LIMIT); // B's reservation is intact
 
         // B still settles and claims in full against the same Monday round: the drain attempt
         // cost it nothing.
         treaty.fix(idB, 0, 3);
         vm.prank(bob);
         treaty.claim(idB);
-        assertEq(capacity.locked(), 0);
+        assertEq(firstLoss.locked() + senior.locked(), 0);
     }
 
     /// Attack: a stale round (updatedAt far in the past) presented as the Monday fix.
     function test_staleRoundRejected() public {
         vm.prank(alice);
-        uint256 id = treaty.bind(_exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         feed.set(2, FRIDAY_PRICE, REF_TIME);
         vm.warp(REF_TIME + 1);
         treaty.setReference(id, 0, 2);
@@ -127,7 +136,7 @@ contract AttackTest is Test {
     /// the feed's current phase.
     function test_phaseChangeRejected() public {
         vm.prank(alice);
-        uint256 id = treaty.bind(_exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         feed.set(2, FRIDAY_PRICE, REF_TIME);
         vm.warp(REF_TIME + 1);
         treaty.setReference(id, 0, 2);
@@ -146,7 +155,7 @@ contract AttackTest is Test {
     /// exists. Must revert unconditionally, regardless of what round is supplied.
     function test_earlyFixRejected() public {
         vm.prank(alice);
-        uint256 id = treaty.bind(_exposure(), RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, _exposure(), RETENTION, LIMIT, type(uint256).max);
         feed.set(2, FRIDAY_PRICE, REF_TIME);
         vm.warp(REF_TIME + 1);
         treaty.setReference(id, 0, 2);
@@ -164,7 +173,7 @@ contract AttackTest is Test {
         int256[] memory hugeExposure = new int256[](1);
         hugeExposure[0] = 100_000_000e6; // far beyond what any premium was priced for
         vm.prank(alice);
-        uint256 id = treaty.bind(hugeExposure, RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, hugeExposure, RETENTION, LIMIT, type(uint256).max);
         feed.set(2, FRIDAY_PRICE, REF_TIME);
         vm.warp(REF_TIME + 1);
         treaty.setReference(id, 0, 2);
@@ -172,6 +181,6 @@ contract AttackTest is Test {
         vm.warp(uint256(EXPIRY) + 20);
         treaty.fix(id, 0, 3);
         assertEq(_payout(id), LIMIT);
-        assertEq(usdg.balanceOf(address(capacity)) >= LIMIT, true);
+        assertEq(usdg.balanceOf(address(firstLoss)) + usdg.balanceOf(address(senior)) >= LIMIT, true);
     }
 }

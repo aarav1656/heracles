@@ -18,7 +18,7 @@ Ostium's open interest already runs 1.16x its Arbitrum TVL. A single concentrate
 
 ## How it works
 
-A buyer calls `bind(exposure[], retention, limit)` with a signed notional per market. The bind window closes strictly before that ISO week's Friday 19:30 UTC cutoff, computed on chain from `block.timestamp`; the buyer never chooses the cutoff or the expiry, which is always the following Monday 13:30 UTC, and a zero exposure or zero limit reverts outright.
+A buyer calls `bind(book, exposure[], retention, limit, maxPremium)`: a book (one settlement asset and its pair of vaults), a signed notional per market, and a ceiling on the premium. The bind window closes strictly before that ISO week's Thursday 19:30 UTC, one day ahead of the Friday 19:30 UTC anchor and computed on chain from `block.timestamp`, so the round that will be in effect at Friday's close has not printed when a layer binds. The buyer never chooses the cutoff or the expiry, which is always the following Monday 9:30am New York open (13:30 UTC in summer, 14:30 UTC in winter); a zero exposure or zero limit reverts outright, and a premium above `maxPremium` reverts `PremiumTooHigh` instead of charging more than the buyer quoted.
 
 The Stylus `Pricer` runs each market's own 504-scenario weekend gap table, scaled by that feed's realised volatility with a floor of 1.0x (the scale can only push a quote up from the static historical table, never below it), and prices the layer at
 
@@ -28,7 +28,9 @@ premium = EL + 0.03 * (TVaR95 - EL) + 0.04 * limit * 7/365
 
 the expected loss across all 504 scenarios, plus 3% of the tail mass above it (the worst 5%, TVaR95), plus a capital charge of 4% annualised on the locked limit for the real seven-day lock. The quote floors at 50 basis points of the limit, so a zero premium can never bind. A Solidity twin computes the identical formula for a parity check; the deployed pricer runs the Rust version.
 
-Once bound, the reference price for each market is not the caller's spot. It is set via `setReference(id, marketIdx, roundId)`, which only accepts the first round at or after the Friday 4:00pm New York close, landing within 36h of it; a later first round lets anyone void that market, and the layer can then only be cancelled with the premium refunded. Writers deposit USDG into the ERC-4626 `Capacity` vault; a bind locks the limit out of free capacity and pulls the premium in the same transaction, but the premium sits in `pendingPremium`, excluded from share pricing, until the layer settles. `fix(id, marketIdx, roundId)` applies the same rule per market, the first round with `updatedAt >= expiry`, and once every market is fixed the layer settles: payout is the loss computed from the declared exposure and the feed's gap, above retention, clamped at the layer's own locked limit. Buyer and writer both pull their own claim rather than being pushed a payment, and `claimTo` lets the claim owner redirect payout to another address.
+Once bound, the reference price for each market is not the caller's spot. It is set via `setReference(id, marketIdx, roundId)`, which only accepts the round in effect at the Friday 4:00pm New York close, printed after the bind deadline and no more than 26 hours before the close. When that round can never serve as the reference (stale, in a superseded Chainlink phase, already visible at bind, or carrying an out-of-range answer), anyone proves it with `voidReference`, and an out-of-range first Monday round is proven the same way with `voidFix`; each proof is mutually exclusive with the call it replaces, and the layer then cancels with the premium refunded in full. A layer that `fix` can still settle with a valid round is never cancellable.
+
+Writers deposit USDG into one of a book's two ERC-4626 `Capacity` vaults: the first-loss vault takes the first slice of every layer's limit (`juniorShareBps`, fixed at deploy) and the senior vault takes the rest. A bind locks each slice out of its own vault's free capital. The buyer approves the Treaty, which pulls the premium in and hands each vault its share; the share sits in `pendingPremium`, excluded from share pricing, until the layer settles. `fix(id, marketIdx, roundId)` takes the first round with `updatedAt >= expiry` per market, and once every market is fixed the layer settles: payout is the loss computed from the declared exposure and the feed's gap, above retention, clamped at the layer's own locked limit, with the first-loss vault paying the first slice. Buyer and writer both pull their own claim rather than being pushed a payment, a cancelled layer's refund included, and `claimTo` lets the claim owner redirect it to another address.
 
 ## What is novel
 
@@ -38,7 +40,7 @@ Re Protocol, Nayms (rebranded OnRe), and Ensuro sell tokenized access to real, r
 
 ## Stack
 
-Contracts in Solidity (Foundry), with the pricing core ported to Rust and deployed as a Stylus program on Arbitrum. The writer side is an ERC-4626 vault (`Capacity`) taking Paxos USDG deposits, including gasless deposit via `depositWithPermit`. Both `bind` and the fixing path gate on Arbitrum's L2 Sequencer Uptime feed before trusting any oracle round. The web app is Vite and TypeScript, reading deployed addresses from `contracts/deployments/`.
+Contracts in Solidity (Foundry), with the pricing core ported to Rust and deployed as a Stylus program on Arbitrum. The writer side is an ERC-4626 vault (`Capacity`) taking Paxos USDG deposits, including gasless deposit via `depositWithPermit`. `bind`, `setReference`, `fix` and `cancel` gate on Arbitrum's L2 Sequencer Uptime feed before trusting any oracle round. The web app is Vite and TypeScript, reading deployed addresses from `contracts/deployments/`.
 
 ## Security evidence
 
@@ -64,11 +66,17 @@ https://heracles-virid-seven.vercel.app
 
 | Contract | Address |
 |---|---|
-| Treaty | [0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27](https://sepolia.arbiscan.io/address/0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27) (Sourcify exact match) |
-| Capacity | [0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159](https://sepolia.arbiscan.io/address/0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159) (Sourcify exact match) |
+| Treaty | [0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807](https://sepolia.arbiscan.io/address/0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807) (Sourcify exact match) |
+| USDG first-loss vault | [0x80b50d73b87BE3ac7Cd0F2DF35bE74033f8E4cF3](https://sepolia.arbiscan.io/address/0x80b50d73b87BE3ac7Cd0F2DF35bE74033f8E4cF3) (Sourcify exact match) |
+| USDG senior vault | [0x05DD502aa5ca21f97c0536e4164D609B38A632Bc](https://sepolia.arbiscan.io/address/0x05DD502aa5ca21f97c0536e4164D609B38A632Bc) (Sourcify exact match) |
+| USDC first-loss vault | [0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB](https://sepolia.arbiscan.io/address/0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB) (Sourcify exact match) |
+| USDC senior vault | [0x510e4266C55a58879d3a77eC02e77CCF1602cA39](https://sepolia.arbiscan.io/address/0x510e4266C55a58879d3a77eC02e77CCF1602cA39) (Sourcify exact match) |
 | Pricer (Rust/Stylus) | [0xbe99217180a5fcb83372375b0928c971dfa71f88](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) |
 | USDG (Paxos testnet) | [0xFFC95faa3d63Cde504a05B567C600B78C0b41892](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) |
+| USDC (Circle testnet) | [0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d](https://sepolia.arbiscan.io/address/0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d) |
 
-Deploy transactions: Treaty and Capacity [0x7eb7e54a...9369d46d61](https://sepolia.arbiscan.io/tx/0x7eb7e54ab75b662a0025074f637dad40125960a1bca4abf0bcc0259369d46d61), Pricer [0x01a37192...b4ee945e7d](https://sepolia.arbiscan.io/tx/0x01a37192c882dc7f856baf81bbee70679267b983723ca20e7b9460b4ee945e7d).
+Deploy transactions: Treaty and the four vaults [0xe2402635...2b02c9b](https://sepolia.arbiscan.io/tx/0xe24026352f7ba9c7073952c764f756f6ebc7641533b6140543fc777ef2b02c9b), Pricer [0x01a37192...b4ee945e7d](https://sepolia.arbiscan.io/tx/0x01a37192c882dc7f856baf81bbee70679267b983723ca20e7b9460b4ee945e7d).
+
+Live layer on the USDC book: bound 2026-10-01, long 200 USDC of SPY, retention 2, limit 10 USDC, premium 0.195737 USDC, bind tx [0x770752c7...3b85b70](https://sepolia.arbiscan.io/tx/0x770752c7522caf31ce5d493693e48f8bed71726607be0351b835669eb3b85b70). Friday reference opens 2026-10-02 20:00 UTC, Monday fix 2026-10-05 13:30 UTC.
 
 A live quote from the deployed Stylus pricer at block 313,690,038, long 2,000,000 USDG of SPY with a 20,000 USDG retention and a 60,000 USDG limit: premium 1,676.722158 USDG. The same call on the Solidity twin at block 313,704,736 returned identical numbers and used 8.01x more L2 execution gas.

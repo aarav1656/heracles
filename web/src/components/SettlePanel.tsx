@@ -223,29 +223,26 @@ export function SettleItem({ layer, book, now }: { layer: Layer; book: BookSnaps
   );
 }
 
-export function ClaimRow({ layer }: { layer: Layer }) {
+export function ClaimRow({ layer, unit }: { layer: Layer; unit: string }) {
   const me = useOnChain();
   const tx = useTx();
   const toTx = useTx();
   const [to, setTo] = useState('');
   const mine = me.address?.toLowerCase() === layer.buyer.toLowerCase();
   const toValid = /^0x[0-9a-fA-F]{40}$/.test(to.trim());
-  if (layer.state !== 2) {
-    return (
-      <div className="settle-item">
-        <h3><span className="num">Layer #{layer.id.toString()}</span><span className="tag Cancelled">Cancelled</span></h3>
-        <p className="prose">No fresh Monday round arrived within grace. The locked limit was freed and the buyer's premium was refunded.</p>
-      </div>
-    );
-  }
+  const cancelled = layer.state !== 2;
+  const owedToBuyer = cancelled ? layer.premium : layer.payout;
   return (
     <div className="settle-item">
-      <h3><span className="num">Layer #{layer.id.toString()}</span><span className="tag Settled">Settled</span></h3>
+      <h3><span className="num">Layer #{layer.id.toString()}</span><span className={`tag ${cancelled ? 'Cancelled' : 'Settled'}`}>{cancelled ? 'Cancelled' : 'Settled'}</span></h3>
       <p className="prose tight">
-        Payout <span className="num">{fmtUsdg(layer.payout)} USDG</span>
+        {cancelled
+          ? 'This layer could not settle. The locked limit was freed and the whole premium is refundable to the buyer. '
+          : ''}
+        {cancelled ? 'Refund' : 'Payout'} <span className="num">{fmtUsdg(owedToBuyer)} {unit}</span>
         {mine ? (layer.buyerClaimed ? ' (claimed).' : '. Pull it below.') : ` for ${short(layer.buyer)}.`}
       </p>
-      {mine && !layer.buyerClaimed && layer.payout > 0n && (
+      {mine && !layer.buyerClaimed && owedToBuyer > 0n && (
         <>
           <div className="rowline">
             <button
@@ -253,7 +250,7 @@ export function ClaimRow({ layer }: { layer: Layer }) {
               disabled={!me.ready || tx.busy}
               onClick={() => me.address && tx.run({ address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'claim', args: [layer.id], account: me.address })}
             >
-              claim payout
+              {cancelled ? 'claim refund' : 'claim payout'}
             </button>
           </div>
           <div className="rowline">

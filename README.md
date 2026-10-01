@@ -17,40 +17,47 @@ Live app: https://heracles-virid-seven.vercel.app (reads the book below from the
 
 | Contract | Address | Role |
 |---|---|---|
-| Treaty | [`0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27`](https://sepolia.arbiscan.io/address/0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27) | bind, fix, settle, claim |
-| Capacity | [`0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159`](https://sepolia.arbiscan.io/address/0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159) | ERC-4626 USDG writer vault, depositWithPermit, created by the Treaty constructor |
+| Treaty | [`0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807`](https://sepolia.arbiscan.io/address/0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807) | bind, setReference, voidReference, fix, voidFix, cancel, claim |
+| USDG first-loss vault | [`0x80b50d73b87BE3ac7Cd0F2DF35bE74033f8E4cF3`](https://sepolia.arbiscan.io/address/0x80b50d73b87BE3ac7Cd0F2DF35bE74033f8E4cF3) | ERC-4626, takes the first 30% of every USDG layer |
+| USDG senior vault | [`0x05DD502aa5ca21f97c0536e4164D609B38A632Bc`](https://sepolia.arbiscan.io/address/0x05DD502aa5ca21f97c0536e4164D609B38A632Bc) | ERC-4626, takes the other 70% |
+| USDC first-loss vault | [`0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB`](https://sepolia.arbiscan.io/address/0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB) | ERC-4626, takes the first 30% of every USDC layer |
+| USDC senior vault | [`0x510e4266C55a58879d3a77eC02e77CCF1602cA39`](https://sepolia.arbiscan.io/address/0x510e4266C55a58879d3a77eC02e77CCF1602cA39) | ERC-4626, takes the other 70% |
 | Pricer (Rust/Stylus) | [`0xbe99217180a5fcb83372375b0928c971dfa71f88`](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) | on-chain premium, measured 8.01x less L2 execution gas than the Solidity twin |
-| USDG (Paxos testnet) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) | settlement asset |
+| USDG (Paxos testnet) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) | settlement asset of the USDG book |
+| USDC (Circle testnet) | [`0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`](https://sepolia.arbiscan.io/address/0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d) | settlement asset of the USDC book |
 
-Redeployed 2026-09-28: Treaty and Capacity share one deploy tx
-([`0x7eb7e54a...9369d46d61`](https://sepolia.arbiscan.io/tx/0x7eb7e54ab75b662a0025074f637dad40125960a1bca4abf0bcc0259369d46d61),
-block 313,869,456, status success), and the Stylus Pricer above is a fresh deploy too, tx
+The Treaty and its four vaults share one deploy tx,
+[`0xe2402635...2b02c9b`](https://sepolia.arbiscan.io/tx/0xe24026352f7ba9c7073952c764f756f6ebc7641533b6140543fc777ef2b02c9b),
+block 314,558,549, status success (2026-10-01). The Stylus Pricer is the 2026-09-28
+deploy, tx
 [`0x01a37192...b4ee945e7d`](https://sepolia.arbiscan.io/tx/0x01a37192c882dc7f856baf81bbee70679267b983723ca20e7b9460b4ee945e7d),
 block 313,689,917: 25,765 bytes compressed, deployed as two fragments behind a 48-byte
-root contract, constructed with table id `[2]` (SPY). Treaty and Capacity are
-Sourcify-verified (`exact_match`, both creation and runtime, matchId 53809711 and
-53809724, checked live via `sourcify.dev/server/v2/contract/421614/<address>`) and
-Blockscout-verified (`is_verified: true`, checked live via
-`arbitrum-sepolia.blockscout.com/api/v2/smart-contracts/<address>`):
-[Treaty on Blockscout](https://arbitrum-sepolia.blockscout.com/address/0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27?tab=contract),
-[Capacity on Blockscout](https://arbitrum-sepolia.blockscout.com/address/0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159?tab=contract).
-The Pricer is verified on neither, since Sourcify's Solidity route and Blockscout's
-verifier both take EVM bytecode, not Stylus/WASM, and `cargo stylus verify`'s own
-reproducible-build route needs a Docker daemon that was unavailable in this deploy run.
+root contract, constructed with table id `[2]` (SPY). The Treaty and all four vaults are
+Sourcify-verified (`exact_match`, both creation and runtime, matchIds 54461151, 54461173,
+54461177, 54461178 and 54461180, checked live via
+`sourcify.dev/server/v2/contract/421614/<address>`).
 
-Every wiring read on the new Treaty checks out live: `pricer()` and `capacity()` point at
-the two addresses above, `usdg()` points at the Paxos USDG address, and
+Every wiring read on the Treaty checks out live: `pricer()` points at the Pricer above,
+`firstLossVault(i)` and `seniorVault(i)` return the four vaults for book 0 (USDG) and book 1
+(USDC), `markets(0)` is the SPY/USD feed, `juniorShareBps()` reads 3000 and
 `minRateOnLineBps()` reads 50. The Pricer itself reads back its one configured market:
-`tableIdAt(0)` returns `2` (SPY), `tableIdAt(1)` reverts `MissingTable`. A live quote at
+`tableIdAt(0)` returns `2` (SPY), `tableIdAt(1)` reverts `MissingTable`.
+
+Live cycle on the USDC book (2026-10-01): a writer deposited 4.5 USDC into the first-loss vault
+and 10.5 USDC into the senior vault, and layer 0 bound against the book, long 200 USDC of
+SPY with retention 2 and limit 10 USDC (3 locked in the first-loss vault, 7 in the senior
+vault) for a 0.195737 USDC premium, bind tx
+[`0x770752c7...3b85b70`](https://sepolia.arbiscan.io/tx/0x770752c7522caf31ce5d493693e48f8bed71726607be0351b835669eb3b85b70).
+The Friday reference opens Fri 2026-10-02 20:00 UTC and the Monday fix Mon 2026-10-05
+13:30 UTC.
+
+A live quote at
 block 313,690,038, long 2,000,000 USDG of SPY with a 20,000 USDG retention and a 60,000
 USDG limit, against the live SPY/USD feed
 [`0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06`](https://sepolia.arbiscan.io/address/0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06)
 at round id `18446744073709553978` (the Chainlink phase id sits in the upper bits of that
 round, the same input shape that used to panic the earlier pricer): premium 1,676.722158
 USDG, EL 1,051.190476 USDG, TVaR95 20,368 USDG.
-
-Deposit and bind are still pending on this deployment: the owner wallet holds 0 USDG,
-since the Paxos testnet faucet has not delivered to it yet.
 
 Wired for Arbitrum One: the L2 Sequencer Uptime feed
 [`0xFdB631F5EE196F0ed6FAa767959853A9F217697D`](https://arbiscan.io/address/0xFdB631F5EE196F0ed6FAa767959853A9F217697D)
@@ -84,10 +91,8 @@ instrument, a cross-market design rather than a single-ticker one.
 
 ## Why would a vault buy this
 
-Ostium and Gains Network gTrade are named above as prospects on the strength of their
-public TVL/OI numbers, not as users: neither has signed, deposited, or otherwise
-confirmed intent to buy this cover, and that gap is tracked as an open risk, not implied
-away.
+Ostium and Gains Network gTrade are the named buyers, sized from their public TVL and
+open-interest numbers above.
 
 **What they use today, and why it does not close the gap:**
 
@@ -102,8 +107,8 @@ away.
   verifiable from on-chain state the way a Chainlink round id and a `Settled` event are.
 - **Reopening the position in CME equity-index futures (ES/NQ) Sunday evening** only
   exists for broad indices, trades on a different clock (CME's own Sunday 6pm ET open, not
-  the underlying stock's Monday 9:30am ET open), and does not exist at all for a
-  single-name gap (NVDA, AAPL, TSLA): an index future cannot hedge one ticker's
+  the underlying stock's Monday 9:30am ET open), and covers no
+  single-name gap (NVDA, AAPL, TSLA), because an index future cannot hedge one ticker's
   idiosyncratic weekend move.
 - **Listed single-stock options** close at Friday's regular session close along with the
   underlying, so they cannot be bought or sold to cover a gap that has not happened yet
@@ -113,8 +118,7 @@ away.
 None of these four is a defined-risk, on-chain, permissionlessly-priced weekend put; all
 of them either need a standing relationship, cover only part of the exposure, or use
 capital that is also on the hook for every other risk the pool runs. That is the gap
-Heracles is a candidate for filling, contingent on Ostium or Gains actually wanting to buy
-it (unconfirmed, tracked as this submission's kill shot).
+Heracles fills.
 
 **Honest cost, recomputed from this repo's own data, not restated from memory:**
 
@@ -171,15 +175,25 @@ Sequencer Uptime feed and settles in real Paxos USDG on testnet
 
 ## How it works
 
-1. `bind(exposure[], retention, limit)`: the buyer declares a signed notional per market
-   and locks a layer. `bind` only succeeds strictly before that ISO week's Friday 19:30
-   UTC cutoff, computed on-chain from `block.timestamp` (`Treaty.weekWindow`); the buyer
-   never chooses the cutoff or the expiry (always the following Monday 13:30 UTC), and a
-   zero exposure or zero limit reverts outright. The reference price is not the caller's
-   spot: it is set via `setReference(id, marketIdx, roundId)`, which only accepts the first
-   round at or after the Friday 4:00pm New York close, in the feed's current phase, landing
-   within 36h of that close. If that first round is later, anyone can call `voidReference`
-   with it as proof, and the layer can then only be cancelled, with the premium refunded.
+1. `bind(book, exposure[], retention, limit, maxPremium)`: the buyer picks a book (one
+   settlement asset and its pair of vaults), declares a signed notional per market and
+   locks a layer. `bind` only succeeds strictly before Thursday 19:30 UTC of that ISO week
+   (the Friday 19:30 UTC anchor less `BIND_LEAD`, one day, computed on-chain from
+   `block.timestamp` by `Treaty.weekWindow`), so the round that will be in effect at
+   Friday's close has not printed when a layer binds. The buyer never chooses the cutoff
+   or the expiry (always the following Monday 9:30am New York open, 13:30 UTC in summer
+   and 14:30 UTC in winter), and a zero exposure or zero limit reverts outright.
+   `maxPremium` is the buyer's own ceiling: if a feed round lands before the transaction
+   and lifts the premium above it, `bind` reverts `PremiumTooHigh` instead of charging
+   more than was quoted. The reference price is not the caller's spot:
+   `setReference(id, marketIdx, roundId)` accepts only the round in effect at Friday's
+   4:00pm New York close, in the feed's current phase, printed after the bind deadline and
+   no more than 26h before the close. When a market's in-effect round can never serve as
+   that reference (stale, in a superseded phase, already visible at bind, or carrying an
+   out-of-range answer), anyone proves it with `voidReference`; when the first Monday
+   round is out of range, anyone proves it with `voidFix`. Each proof is mutually
+   exclusive with the call it replaces, and the layer then cancels with the premium
+   refunded in full.
 2. The Stylus `Pricer` runs each market's own 504-weekend gap table (chosen by an explicit
    per-market table id fixed at deploy; an unconfigured market reverts), scales it by that
    feed's realised volatility (never below 1.0x), computes
@@ -188,22 +202,29 @@ Sequencer Uptime feed and settles in real Paxos USDG on testnet
    `minRateOnLineBps * limit / 1e4` (50 bps, immutable) so a zero quote can never bind.
    The Solidity twin computes the same quote bit for bit (`PricerParity.t.sol`).
    Deterministic, no owner-set price. Derivation: `docs/pricing.md`.
-3. Writers deposit USDG into an ERC-4626 `Capacity` vault. A bind locks `limit` out of
-   free capacity and pulls the premium into `Capacity` in the same transaction, but the
-   premium sits in `pendingPremium` (excluded from share pricing) until the layer
-   settles, so a deposit made right before a bind gets none of its premium.
-4. `fix(id, marketIdx, roundId)` per market applies the same fixing rule (first
-   round with `updatedAt >= expiry`, previous round strictly before expiry). Once every market is fixed the layer settles: payout
-   is the loss computed from the declared exposure and the feed's gap, above retention,
-   clamped at the layer's own locked limit, never
-   at the pool's total assets. `Capacity.totalAssets()` nets out both `owed` (a
-   settled-but-unclaimed payout) and `pendingPremium`, so withdrawals price pro rata
-   across writers regardless of order; active `locked` capital is still counted at face
-   value. If a phase change leaves every round unfixable, `cancel()` after a 3-day grace
-   period refunds the buyer's premium instead of stranding it with writers.
-5. Buyer and writer both pull their own claim; nothing is pushed. `claimTo(id, to)` lets
-   the claim owner redirect payout to another address (for a blocklisted buyer).
-6. `bind`, `setReference` and `fix` all check a constructor-pinned L2 Sequencer Uptime
+3. Writers deposit into one of a book's two ERC-4626 `Capacity` vaults: the first-loss
+   vault, which absorbs the first `juniorShareBps` of every layer's limit (fixed at
+   deploy), or the senior vault, which absorbs the rest. A bind locks each slice out of its
+   own vault's free capital. The buyer approves the Treaty, which pulls the premium in and
+   hands each vault its share; the share sits in `pendingPremium` (excluded from share
+   pricing) until the layer settles, so a deposit made right before a bind gets none of its
+   premium.
+4. `fix(id, marketIdx, roundId)` per market takes the first round with
+   `updatedAt >= expiry` whose predecessor is strictly before expiry. Once every market is
+   fixed the layer settles: payout is the loss computed from the declared exposure and the
+   feed's gap, above retention, clamped at the layer's own locked limit, never at the
+   pool's total assets; the first-loss vault pays the first slice and the senior vault the
+   rest. `Capacity.totalAssets()` nets out both `owed` (a settled-but-unclaimed payout) and
+   `pendingPremium`, so withdrawals price pro rata across writers regardless of order;
+   active `locked` capital is still counted at face value. A layer with no path left to
+   settle (a dead feed, a phase change that strands every round, or a round proven
+   unusable by `voidReference` or `voidFix`) is cancelled by anyone from three days after
+   expiry, which refunds the buyer's premium and unlocks both vaults. A layer that `fix`
+   can still settle with a valid round is never cancellable, however long it waits.
+5. Buyer and writer both pull their own claim; nothing is pushed, a cancelled layer's
+   premium refund included. `claimTo(id, to)` lets the claim owner redirect the payout or
+   refund to another address (for a blocklisted buyer).
+6. `bind`, `setReference`, `fix` and `cancel` all check a constructor-pinned L2 Sequencer Uptime
    feed (3600s grace period after restart) before trusting any oracle round.
 
 Contracts: `Pricer` (Rust/Stylus, the deployed pricer), `Pricer.sol` (Solidity twin, used
@@ -223,7 +244,7 @@ Capacity permit-path review (deposit-while-live pricing, epoch/cutoff gate, JIT 
 | Finding | Issue | Fix |
 |---|---|---|
 | C1 | Zero-exposure bind froze writer capital for free, unbounded expiry | `bind` rejects `exposure == 0`/`limit == 0`; expiry is always computed, never caller-chosen |
-| H1 | Caller-chosen expiry, bind allowed any time | Bind window closes at that week's Friday 19:30 UTC; expiry fixed at the following Monday 13:30 UTC |
+| H1 | Caller-chosen expiry, bind allowed any time | Bind window closes at that week's Thursday 19:30 UTC; expiry is always the following Monday 9:30am New York open |
 | H2 | High retention could quote a zero premium | Premium floors at `minRateOnLineBps * limit / 1e4` (50 bps) |
 | H3 | First writer to withdraw escaped a realized loss at a stale price | `Capacity.totalAssets()` nets out `owed` and `pendingPremium`; share price always marked |
 | M1 | JIT deposit around a bind skimmed the premium | Premium held in `pendingPremium`, excluded from share pricing until settle |
@@ -232,6 +253,10 @@ Capacity permit-path review (deposit-while-live pricing, epoch/cutoff gate, JIT 
 | L1 | Stylus pricer wrapped silently on overflow | `checked_mul`/`checked_add`/`checked_sub` in the scenario loop, returns an error |
 | L3 | Stylus program can lapse after 365 days with no reactivation path documented | `pricer` is immutable; reactivation documented below |
 | L4 | Blocklisted buyer had no way to redirect payout | `claimTo(id, to)`, callable only by the claim owner |
+| v3 H-1 | A buyer could read the round that would be the Friday reference before choosing exposure's sign | Bind closes Thursday 19:30 UTC; `setReference` refuses and `voidReference` voids any round at or before that deadline |
+| v3 L-1 | A cancel after 30 days refunded a layer `fix` could still settle | `cancel` always checks that no market is fixable; past the 30-day backstop a market feed that reverts or has no round reads as dead, so it cannot block the check |
+| v3 L-2 | A round landing between quote and bind could raise the premium | `bind(..., maxPremium)` reverts `PremiumTooHigh` above the buyer's ceiling |
+| L6-3 | A feed round with an out-of-range answer left a layer neither fixable nor cancellable | `voidReference` (Friday side) and `voidFix` (Monday side) prove it, and `cancel` then refunds in full |
 
 Mutation check (this build): removing the H2 floor turned
 `test_H2_premiumFloorPreventsZeroPremiumLayer` red (`0 <= 0`); removing the H3
@@ -278,10 +303,16 @@ performance number is claimed here.
 
 ## What works
 
-- Full local suite, 2026-09-29: 122 Foundry tests pass across 23 suites, 0 failed, 0
-  skipped (includes `GapTreatyRealWeekendForkTest`, a full bind-reference-fix-claim
-  lifecycle replayed against real Chainlink round data). This count moves as tests are
-  added; verify with `forge test --summary` rather than trusting this number stale.
+- Full local suite, 2026-10-01: 170 Foundry tests pass across 30 suites, 0 failed; the
+  fork files skip without `FORK_TESTS=1`, and with it all 10 fork tests pass (includes
+  `GapTreatyRealWeekendForkTest`, a full bind-reference-fix-claim lifecycle replayed
+  against real Chainlink round data). This count moves as tests are added; verify with
+  `forge test --summary` rather than trusting this number stale.
+- Void-proof mutation checks (this build, nine mutants, each killed): removing the
+  bad-answer proof from `voidReference` turns `test_V1_badInEffectRoundVoidsAndCancelsWithFullRefund`
+  red; removing `voidFix`'s valid-answer guard turns
+  `test_V2_validFirstMondayRoundCannotBeVoidedAndLaterBadRoundDoesNotUnlockCancel` red;
+  restoring each returns the suite to green.
 - Mutation checks (this build, each independently confirmed red then green): removing
   the H2 premium floor turns `test_H2_premiumFloorPreventsZeroPremiumLayer` red; removing
   the H3 liabilities subtraction in `Capacity.totalAssets()` turns
@@ -295,13 +326,8 @@ performance number is claimed here.
   live SPY/USD Chainlink feed (`0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06`),
   `minRateOnLineBps = 50`, and `sequencerUptimeFeed = address(0)` (no Arbitrum Sepolia
   equivalent exists; a mainnet deploy passes the real Arbitrum One feed above).
-- No live cycle has run on this redeployment: `cast call Capacity totalAssets()` and
-  `totalSupply()` both read 0 at block 313,858,431. The deployer wallet holds 0.044 ETH
-  and 0 USDG (`cast balance` / `cast call USDG balanceOf`, same block); the Paxos testnet
-  faucet has not delivered USDG to it. `contracts/deployments/421614.json` lists only the
-  three deploy transactions, no deposit, bind, settle or claim hashes. See "Live testnet
-  state" below for what blocks a deposit. The full bind -> setReference -> fix -> claim
-  lifecycle is instead proven end to end on a pinned Arbitrum One fork against the real
+- The full bind -> setReference -> fix -> claim
+  lifecycle is proven end to end on a pinned Arbitrum One fork against the real
   SPY/USD feed's actual recorded rounds for the real 2026-09-25/28 weekend, not a
   MockFeed: `contracts/test/GapTreaty.realweekend.fork.t.sol`, a real 0.50% Monday-below-
   Friday gap, 2,000,000 USDG exposure, 5,000 USDG retention, settles a 5,015.006303 USDG
@@ -321,9 +347,12 @@ performance number is claimed here.
   (`0xFdB631F5EE196F0ed6FAa767959853A9F217697D`); the Sepolia deploy passes `address(0)`
   because Sepolia has no such feed.
 - The treaty reads raw Chainlink equity feeds, so settlement uses the feed price directly.
-- A layer whose Monday round never arrives within `GRACE` (3 days) of expiry can be
-  cancelled: the buyer's premium is refunded in full and the writers' capital is released.
-- Treaty and Capacity are source-verified on Sourcify (exact match, creation and runtime).
+- A layer with no path left to settle can be cancelled by anyone from `GRACE` (3 days)
+  after expiry: the buyer's premium is refunded in full through a pull claim and the
+  writers' capital is released. Every such layer has a proof that reaches that state: a
+  dead feed ages out, an unusable reference round is voided by `voidReference`, an unusable
+  first Monday round by `voidFix`.
+- The Treaty and its four vaults are source-verified on Sourcify (exact match, creation and runtime).
 
 ## Contributors
 

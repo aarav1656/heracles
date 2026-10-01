@@ -10,6 +10,7 @@ import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 contract PermitUSDG is ERC20, ERC20Permit {
     constructor() ERC20("Permit USDG", "pUSDG") ERC20Permit("Permit USDG") {}
@@ -30,14 +31,15 @@ contract PermitUSDG is ERC20, ERC20Permit {
 /// (always attempt the permit, never leave a signature unconsumed) rather than the reviewer's
 /// literal assertions (which target the alternative fix of skipping unnecessary permits at the
 /// call site, done here in the web app instead of on-chain).
-contract CapacityReReviewTest is Test {
+contract CapacityReReviewTest is Test, TreatyFixture {
     uint256 constant MON0 = 1_789_948_800; // Monday 00:00 UTC
     uint256 constant WEEKS = 10;
 
     MockUSDG usdg;
     MockFeed feed;
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
     address writer = makeAddr("writer");
     address griefer = makeAddr("griefer");
 
@@ -46,8 +48,9 @@ contract CapacityReReviewTest is Test {
         feed = new MockFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
-        capacity = treaty.capacity();
+        treaty = deployTreaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
 
         // setReference now needs its own first-round-after-Friday's-close pair, so each
         // week gets three round ids instead of two: 3w+1 (pre-close predecessor, unchanged Fri
@@ -68,10 +71,12 @@ contract CapacityReReviewTest is Test {
             feed.set(uint80(3 * w + 3), 100e8, expiry + 1);
         }
         vm.warp(MON0 + 1 hours);
-        usdg.mint(writer, 100_000e6);
+        usdg.mint(writer, 200_000e6);
         vm.startPrank(writer);
-        usdg.approve(address(capacity), type(uint256).max);
-        capacity.deposit(100_000e6, writer);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        firstLoss.deposit(100_000e6, writer);
+        usdg.approve(address(senior), type(uint256).max);
+        senior.deposit(100_000e6, writer);
         vm.stopPrank();
     }
 
@@ -93,7 +98,7 @@ contract CapacityReReviewTest is Test {
     function test_H1_rollingDustBindFreezesWritersIndefinitely() public {
         usdg.mint(griefer, 1_000);
         vm.prank(griefer);
-        usdg.approve(address(capacity), type(uint256).max);
+        usdg.approve(address(treaty), type(uint256).max);
 
         uint256 exits;
         uint256 prevId = type(uint256).max;
@@ -104,10 +109,14 @@ contract CapacityReReviewTest is Test {
             vm.warp(MON0 + w * 7 days + 5 minutes);
             uint256 g = gasleft();
             vm.prank(griefer);
-            uint256 id = treaty.bind(_one(1e6), 1_000_000e6, 200);
+            // limit=200 (the original dust size, floored to a 1-base-unit premium) now reverts
+            // with BadParams: the junior sub-quote's own capital charge floors to 0 well before
+            // the whole layer's H2 floor does, and the tranche split requires both slices'
+            // premium nonzero. 5_000 is the smallest limit clearing the junior slice's own floor.
+            uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, 5_000, type(uint256).max);
             bindGas = g - gasleft();
-            (,,,,,,,,, uint256 premium,) = treaty.layers(id);
-            assertEq(premium, 1, "min nonzero premium is 1 base unit");
+            (,,,,,,,,, uint256 premium,) = layerBasics(treaty, id);
+            assertEq(premium, 25, "min nonzero premium clearing both tranches' floors is 25 base units");
 
             if (prevId != type(uint256).max) {
                 // prevId's expiry, DST-aware, not a hardcoded "13:30 UTC" (see setUp).
@@ -118,11 +127,13 @@ contract CapacityReReviewTest is Test {
                 // capital is always, correctly, reserved for whichever dust layer is currently
                 // open, so a redeem of the full balance can never succeed on any version of this
                 // code. What must succeed every week is a redeem within free capacity.
-                uint256 want = capacity.maxRedeem(writer);
+                // checked against the first-loss vault; the senior vault gets the same guard in
+                // Tranche.t.sol/Books.t.sol.
+                uint256 want = firstLoss.maxRedeem(writer);
                 if (want > 1_000e6) want = 1_000e6;
                 if (want > 0) {
                     vm.prank(writer);
-                    try capacity.redeem(want, writer, writer) {
+                    try firstLoss.redeem(want, writer, writer) {
                         exits++;
                     } catch {}
                 }
@@ -136,7 +147,7 @@ contract CapacityReReviewTest is Test {
         console2.log("griefer USDG base units spent over 8 weeks", grieferStart - usdg.balanceOf(griefer));
         console2.log("gas per griefing bind (Solidity Pricer)", bindGas);
         console2.log("writer exits achieved", exits);
-        assertGt(exits, 0, "H1: writer never able to exit across 8 weeks of 1-base-unit binds");
+        assertGt(exits, 0, "H1: writer never able to exit across 8 weeks of dust-sized griefing binds");
     }
 
     /// Same freeze from honest usage (closed): a buyer rolling weekly cover binds next weekend's
@@ -147,20 +158,22 @@ contract CapacityReReviewTest is Test {
         address buyer = makeAddr("buyer");
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);
-        usdg.approve(address(capacity), type(uint256).max);
+        usdg.approve(address(treaty), type(uint256).max);
         vm.prank(buyer);
-        uint256 a = treaty.bind(_one(-500_000e6), 20_000e6, 10_000e6);
+        uint256 a = treaty.bind(0, _one(-500_000e6), 20_000e6, 10_000e6, type(uint256).max);
         // Round 1 (set in setUp, w=0) is the pre-close predecessor; round 2 is the actual
         // Friday-close reference round.
         vm.warp(MON0 + 5 days + 1);
         treaty.setReference(a, 0, 2);
         vm.warp(MON0 + 7 days + 9 hours); // Monday 09:00, next week's roll
         vm.prank(buyer);
-        treaty.bind(_one(-500_000e6), 20_000e6, 10_000e6);
+        treaty.bind(0, _one(-500_000e6), 20_000e6, 10_000e6, type(uint256).max);
         (, uint256 expiryA) = treaty.weekWindow(MON0);
         vm.warp(expiryA + 1);
         treaty.fix(a, 0, 3);
-        assertGt(capacity.maxRedeem(writer), 0, "H1b: exit closed after every past weekend has settled");
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
+        assertGt(firstLoss.maxRedeem(writer), 0, "H1b: exit closed after every past weekend has settled");
     }
 
     /// LOW re-review, closed by always attempting the permit (Resolution 2) instead of the
@@ -171,7 +184,7 @@ contract CapacityReReviewTest is Test {
     /// allowance does not already cover the deposit (see heracles web src/hooks).
     function test_L1r_permitAlwaysConsumedNoReplayWindow() public {
         PermitUSDG pu = new PermitUSDG();
-        Capacity cap = new Capacity(pu, address(this));
+        Capacity cap = new Capacity(pu, address(this), "Test Capacity", "tCAP");
         uint256 pk = 0xA11CE;
         address w = vm.addr(pk);
         pu.mint(w, 1_000_000e6);

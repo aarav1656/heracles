@@ -8,6 +8,7 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// (Slither divide-before-multiply, Treaty.sol:357-358
 /// pre-fix): proves the old two-step formula (`gapBps = diff * 10000 / friday; pnl = exposure *
@@ -18,7 +19,7 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 /// same inputs and shows they diverge by a nonzero, non-rounding-noise amount; it then drives the
 /// real deployed contract through bind -> setReference -> fix and shows the live payout matches
 /// only the new formula, never the old one.
-contract TreatyPrecisionTest is Test {
+contract TreatyPrecisionTest is Test, TreatyFixture {
     uint256 constant T0 = 1_790_000_000; // a Monday; that week's Fri 19:30/Mon 13:30 below
     uint256 constant CUTOFF = 1_790_364_600; // Fri 2026-09-25 19:30 UTC (T0's week)
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
@@ -54,7 +55,8 @@ contract TreatyPrecisionTest is Test {
     MockFeed feed;
     Pricer pricer;
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
 
     address writer = makeAddr("writer");
     address buyer = makeAddr("buyer");
@@ -67,18 +69,25 @@ contract TreatyPrecisionTest is Test {
 
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(pricer), feeds, 50, address(0));
-        capacity = treaty.capacity();
+        treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
 
         usdg.mint(writer, 10_000_000e6);
         vm.prank(writer);
-        usdg.approve(address(capacity), type(uint256).max);
+        usdg.approve(address(firstLoss), type(uint256).max);
         vm.prank(writer);
-        capacity.deposit(5_000_000e6, writer);
+        firstLoss.deposit(5_000_000e6, writer);
+        vm.prank(writer);
+        usdg.approve(address(senior), type(uint256).max);
+        vm.prank(writer);
+        senior.deposit(5_000_000e6, writer);
 
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);
-        usdg.approve(address(capacity), type(uint256).max);
+        // Premium is pulled by Treaty itself, never a vault, so the buyer approves the Treaty
+        // contract, not either vault.
+        usdg.approve(address(treaty), type(uint256).max);
 
         vm.warp(T0);
     }
@@ -111,7 +120,7 @@ contract TreatyPrecisionTest is Test {
         vm.prank(buyer);
         int256[] memory exposure = new int256[](1);
         exposure[0] = EXPOSURE;
-        uint256 id = treaty.bind(exposure, RETENTION, LIMIT);
+        uint256 id = treaty.bind(0, exposure, RETENTION, LIMIT, type(uint256).max);
 
         // round 2: first round at/after Friday's close (REF_TIME); round 1 (setUp, Friday
         // CUTOFF - 1 hours) is its required strictly-earlier predecessor.
@@ -123,7 +132,7 @@ contract TreatyPrecisionTest is Test {
         vm.warp(uint256(EXPIRY) + 20);
         treaty.fix(id, 0, 3);
 
-        (,,,,, Treaty.State state,,,,, uint256 payout) = treaty.layers(id);
+        (,,,,, Treaty.State state,,,,, uint256 payout) = layerBasics(treaty, id);
         assertEq(uint8(state), uint8(Treaty.State.Settled));
 
         uint256 expectedPayoutNew = uint256(-EXPECTED_PNL_NEW); // retention 0, well under LIMIT

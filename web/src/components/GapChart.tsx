@@ -4,8 +4,6 @@ import { backtest, extremes, fmtBps, fmtDay, type GapTable } from '../lib/gaps';
 type LayerTerms = { exposure: number; retention: number; limit: number };
 
 const usd0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-/** -400 -> "4%", -125 -> "1.25%". */
-const span = (bps: number) => `${(Math.abs(bps) / 100).toFixed(2).replace(/\.?0+$/, '')}%`;
 const LEFT = 52;
 const TOP = 10;
 const BOTTOM = 30;
@@ -17,7 +15,7 @@ const BOTTOM = 30;
  * the part of each weekend's bar inside the band is the payout, filled teal. Drawn in real
  * pixels (the SVG is measured), so labels are true 12px. Pointer or arrow keys walk the weekends.
  */
-export function GapChart({ table, layer, notes = true, simple = false, compact = false }: { table: GapTable; layer?: LayerTerms; notes?: boolean; simple?: boolean; compact?: boolean }) {
+export function GapChart({ table, layer, notes = true, simple = false }: { table: GapTable; layer?: LayerTerms; notes?: boolean; simple?: boolean }) {
   const ws = table.weekends;
   const ext = useMemo(() => extremes(ws), [ws]);
   const bt = useMemo(() => (layer ? backtest(ws, layer.exposure, layer.retention, layer.limit) : undefined), [ws, layer]);
@@ -36,8 +34,8 @@ export function GapChart({ table, layer, notes = true, simple = false, compact =
   useEffect(() => { const t = setTimeout(() => setEntering(false), 1500); return () => clearTimeout(t); }, []);
 
   const wide = W >= 700;
-  const H = wide ? (compact ? 290 : 380) : 240;
-  const RIGHT = wide && bt && notes ? (compact ? 112 : 176) : 8;
+  const H = wide ? 380 : 260;
+  const RIGHT = wide && bt && notes ? 176 : 8;
   const pw = Math.max(40, W - LEFT - RIGHT);
   const ph = H - TOP - BOTTOM;
 
@@ -57,7 +55,7 @@ export function GapChart({ table, layer, notes = true, simple = false, compact =
   const slot = pw / ws.length;
   const x = (i: number) => LEFT + (i + 0.5) * slot;
 
-  const step = wide ? (Math.abs(hi - lo) > 2000 ? 500 : 400) : Math.abs(hi - lo) > 1600 ? 500 : Math.abs(hi - lo) > 800 ? 250 : 100;
+  const step = Math.abs(hi - lo) > 1600 ? 500 : Math.abs(hi - lo) > 800 ? 250 : 100;
   const ticks: number[] = [];
   for (let t = Math.ceil(lo / step) * step; t <= hi; t += step) ticks.push(t);
   const years = useMemo(() => ws.flatMap((w, i) => (i > 0 && w.friday.slice(0, 4) !== ws[i - 1].friday.slice(0, 4) ? [{ year: w.friday.slice(0, 4), i }] : [])), [ws]);
@@ -175,7 +173,7 @@ export function GapChart({ table, layer, notes = true, simple = false, compact =
 
         {bt && notes && wide && (
           <div className="gc-notes" aria-hidden="true" style={{ left: LEFT + pw + 16 }}>
-            {!simple && !compact && [
+            {!simple && [
               { b: bt.attachBps, words: 'the cover starts paying' },
               { b: bt.exhaustBps, words: `it pays its cap, ${usd0.format(layer!.limit)}` },
             ].map((n) => (
@@ -183,11 +181,7 @@ export function GapChart({ table, layer, notes = true, simple = false, compact =
                 <b>{fmtBps(n.b)}</b> {n.words}
               </span>
             ))}
-            {compact ? (
-              <span className="gc-note layer" style={{ top: (bandTop + bandBot) / 2 }}>
-                Cover pays<small>{span(bt.attachBps)} to {span(bt.exhaustBps)} {lossSideDown ? 'down' : 'up'}</small>
-              </span>
-            ) : (simple || bandBot - bandTop >= 40) && (
+            {(simple || bandBot - bandTop >= 40) && (
               <span className="gc-note layer" style={{ top: (bandTop + bandBot) / 2 }}>
                 {simple ? <>Heracles pays when the Monday gap reaches this band</> : <>the cover pays inside this band</>}
               </span>
@@ -206,7 +200,7 @@ export function GapChart({ table, layer, notes = true, simple = false, compact =
         )}
       </div>
 
-      {!compact && !(notes && wide && bt) && <div className="gc-key">
+      <div className="gc-key">
         {bt ? (
           <>
             <span><i className="sw layer" />{simple ? 'weekends this cover would have paid on' : <>what the cover would have paid; its cap on <b>{bt.exhausted}</b> of {ws.length} weekends</>}</span>
@@ -216,8 +210,8 @@ export function GapChart({ table, layer, notes = true, simple = false, compact =
         ) : (
           <span>Friday close to next open, one bar per weekend</span>
         )}
-      </div>}
-      {!simple && !compact && <p className="src">
+      </div>
+      {!simple && <p className="src">
         {ws.length} weekends, {fmtDay(ws[0].friday)} to {fmtDay(ws[ws.length - 1].friday)}. Source: <span className="file">{table.file}</span> in the repo, from {table.source}, fetched {fmtDay(table.fetchDate)}.
       </p>}
     </div>

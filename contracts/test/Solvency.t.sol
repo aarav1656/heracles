@@ -8,13 +8,14 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {nTableIds} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Solvency fuzz: across many layers spanning multiple markets, with randomized exposures and
 /// randomized Monday prices, the pool must never be asked to pay out more than it holds, and
 /// `locked` must never exceed `totalAssets()`. This is the property the per-layer limit clamp
 /// and `Capacity.locked` bookkeeping exist to guarantee; the fuzz explores paths a handful of
 /// hand-written unit tests would not reach.
-contract SolvencyTest is Test {
+contract SolvencyTest is Test, TreatyFixture {
     uint256 constant T0 = 1_790_000_000; // a Monday
     uint256 constant CUTOFF = 1_790_364_600; // that week's Fri 19:30 UTC
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
@@ -30,7 +31,8 @@ contract SolvencyTest is Test {
     MockFeed[N_MARKETS] feeds;
     Pricer pricer;
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
     address writer = makeAddr("writer");
 
     function setUp() public {
@@ -46,20 +48,23 @@ contract SolvencyTest is Test {
             feeds[i].set(2, 100e8, REF_TIME);
             feedAddrs[i] = address(feeds[i]);
         }
-        treaty = new Treaty(address(usdg), address(pricer), feedAddrs, 50, address(0));
-        capacity = treaty.capacity();
+        treaty = deployTreaty(address(usdg), address(pricer), feedAddrs, 50, address(0));
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
 
-        usdg.mint(writer, POOL);
-        vm.prank(writer);
-        usdg.approve(address(capacity), type(uint256).max);
-        vm.prank(writer);
-        capacity.deposit(POOL, writer);
+        usdg.mint(writer, POOL * 2);
+        vm.startPrank(writer);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        firstLoss.deposit(POOL, writer);
+        usdg.approve(address(senior), type(uint256).max);
+        senior.deposit(POOL, writer);
+        vm.stopPrank();
 
         vm.warp(T0);
     }
 
     function _layerPayout(uint256 id) internal view returns (uint256 p) {
-        (,,,,,,,,,, p) = treaty.layers(id);
+        (,,,,,,,,,, p) = layerBasics(treaty, id);
     }
 
     /// `seed` drives per-layer exposure/limit sizing and per-market Monday prices; every layer
@@ -74,7 +79,7 @@ contract SolvencyTest is Test {
             buyers[l] = address(uint160(uint256(keccak256(abi.encode("buyer", seed, l)))));
             usdg.mint(buyers[l], 1_000_000e6);
             vm.prank(buyers[l]);
-            usdg.approve(address(capacity), type(uint256).max);
+            usdg.approve(address(treaty), type(uint256).max);
             int256[] memory exposure = new int256[](N_MARKETS);
             for (uint256 m; m < N_MARKETS; m++) {
                 int256 mag = int256(bound(uint256(keccak256(abi.encode(seed, l, m, "exp"))), 0, 500_000e6));
@@ -86,21 +91,21 @@ contract SolvencyTest is Test {
 
             // Only bind if the pool still has free capacity; a pool that's out of capacity must
             // reject the bind, not silently under-reserve it.
-            uint256 free = capacity.totalAssets();
+            uint256 free = firstLoss.totalAssets() + senior.totalAssets();
             if (limit > free) {
                 vm.expectRevert(Capacity.CapacityExceeded.selector);
                 vm.prank(buyers[l]);
-                treaty.bind(exposure, retention, limit);
+                treaty.bind(0, exposure, retention, limit, type(uint256).max);
                 limits[l] = 0;
                 ids[l] = type(uint256).max;
                 continue;
             }
 
             vm.prank(buyers[l]);
-            ids[l] = treaty.bind(exposure, retention, limit);
+            ids[l] = treaty.bind(0, exposure, retention, limit, type(uint256).max);
             limits[l] = limit;
             totalLimit += limit;
-            assertLe(capacity.locked(), usdg.balanceOf(address(capacity)));
+            assertLe(firstLoss.locked() + senior.locked(), usdg.balanceOf(address(firstLoss)) + usdg.balanceOf(address(senior)));
         }
 
         // Set every market's Friday reference for every bound layer (round 2, at/after REF_TIME).
@@ -123,14 +128,14 @@ contract SolvencyTest is Test {
             for (uint256 m; m < N_MARKETS; m++) {
                 treaty.fix(ids[l], m, 3);
             }
-            assertLe(capacity.locked(), usdg.balanceOf(address(capacity)));
+            assertLe(firstLoss.locked() + senior.locked(), usdg.balanceOf(address(firstLoss)) + usdg.balanceOf(address(senior)));
         }
 
         // Every settled layer's buyer can claim in full, and the pool never goes net negative.
         for (uint256 l; l < N_LAYERS; l++) {
             if (ids[l] == type(uint256).max) continue;
             uint256 payout = _layerPayout(ids[l]);
-            uint256 poolBefore = usdg.balanceOf(address(capacity));
+            uint256 poolBefore = usdg.balanceOf(address(firstLoss)) + usdg.balanceOf(address(senior));
             assertLe(payout, poolBefore); // the core solvency assertion: never owe more than held
             if (payout == 0) continue; // no loss this weekend, nothing to pull
             uint256 buyerBefore = usdg.balanceOf(buyers[l]);
@@ -138,6 +143,6 @@ contract SolvencyTest is Test {
             treaty.claim(ids[l]);
             assertEq(usdg.balanceOf(buyers[l]), buyerBefore + payout);
         }
-        assertLe(capacity.locked(), usdg.balanceOf(address(capacity)));
+        assertLe(firstLoss.locked() + senior.locked(), usdg.balanceOf(address(firstLoss)) + usdg.balanceOf(address(senior)));
     }
 }

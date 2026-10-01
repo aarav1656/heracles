@@ -9,14 +9,15 @@ import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {MockSequencerFeed} from "./mocks/MockSequencerFeed.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Adversarial review (SECURITY-REVIEW.md), post-fix. Each test now asserts the FIXED behaviour:
 /// green here means the finding is closed. Where the original attack is now structurally
 /// impossible (e.g. H1's caller-chosen expiry), the test instead proves the replacement invariant
 /// (expiry is always the following Monday 13:30 UTC) and/or that the old attack call now reverts.
-contract AttackReviewTest is Test {
+contract AttackReviewTest is Test, TreatyFixture {
     uint256 constant FRI_CLOSE = 1_790_366_400; // Fri 2026-09-25 20:00 UTC
-    uint256 constant FRI_1900 = FRI_CLOSE - 1 hours; // bind time, before the 19:30 cutoff
+    uint256 constant THU_1900 = FRI_CLOSE - 1 days - 1 hours; // bind time, before the Thursday 19:30 bind deadline (independent v3 review H-1)
     uint256 constant CUTOFF = FRI_CLOSE - 30 minutes; // Fri 19:30 UTC
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes; // Sat 00:00 UTC
     uint40 constant MONDAY = uint40(FRI_CLOSE + 2 days + 17 hours + 30 minutes); // Mon 13:30 UTC
@@ -25,7 +26,8 @@ contract AttackReviewTest is Test {
     MockFeed feed;
     Pricer pricer;
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
 
     address writerA = makeAddr("writerA");
     address writerB = makeAddr("writerB");
@@ -36,32 +38,39 @@ contract AttackReviewTest is Test {
         usdg = new MockUSDG();
         pricer = new Pricer(oneTableId());
         feed = new MockFeed();
-        feed.set(1, 100e8, FRI_1900 - 10 minutes); // Friday reference round
+        feed.set(1, 100e8, THU_1900 - 10 minutes); // round printed before bind; not the reference
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(pricer), feeds, 50, address(0));
-        capacity = treaty.capacity();
+        treaty = deployTreaty(address(usdg), address(pricer), feeds, 50, address(0));
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
         _deposit(writerA, 100_000e6);
         _deposit(writerB, 100_000e6);
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);
-        usdg.approve(address(capacity), type(uint256).max);
-        vm.warp(FRI_1900);
+        // Premium is pulled by Treaty itself, never a vault, so the buyer approves the Treaty
+        // contract, not either vault.
+        usdg.approve(address(treaty), type(uint256).max);
+        vm.warp(THU_1900);
     }
 
     function _deposit(address who, uint256 amt) internal {
-        usdg.mint(who, amt);
+        usdg.mint(who, amt * 2);
         vm.startPrank(who);
-        usdg.approve(address(capacity), type(uint256).max);
-        capacity.deposit(amt, who);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        firstLoss.deposit(amt, who);
+        usdg.approve(address(senior), type(uint256).max);
+        senior.deposit(amt, who);
         vm.stopPrank();
     }
 
-    function _deposit2(Capacity cap, address who, uint256 amt) internal {
-        usdg.mint(who, amt);
+    function _deposit2(Capacity cap1, Capacity cap2, address who, uint256 amt) internal {
+        usdg.mint(who, amt * 2);
         vm.startPrank(who);
-        usdg.approve(address(cap), type(uint256).max);
-        cap.deposit(amt, who);
+        usdg.approve(address(cap1), type(uint256).max);
+        cap1.deposit(amt, who);
+        usdg.approve(address(cap2), type(uint256).max);
+        cap2.deposit(amt, who);
         vm.stopPrank();
     }
 
@@ -71,15 +80,15 @@ contract AttackReviewTest is Test {
     }
 
     function _expiry(uint256 id) internal view returns (uint40 e) {
-        (,, e,,,,,,,,) = treaty.layers(id);
+        (,, e,,,,,,,,) = layerBasics(treaty, id);
     }
 
     function _premium(uint256 id) internal view returns (uint256 p) {
-        (,,,,,,,,, p,) = treaty.layers(id);
+        (,,,,,,,,, p,) = layerBasics(treaty, id);
     }
 
     function _payout(uint256 id) internal view returns (uint256 p) {
-        (,,,,,,,,,, p) = treaty.layers(id);
+        (,,,,,,,,,, p) = layerBasics(treaty, id);
     }
 
     /// Binds, sets the Friday reference and (if warped past expiry) fixes Monday's price so a
@@ -90,9 +99,9 @@ contract AttackReviewTest is Test {
         returns (uint256 id)
     {
         vm.prank(who);
-        id = treaty.bind(exposure, retention, limit);
+        id = treaty.bind(0, exposure, retention, limit, type(uint256).max);
         // setReference now waits for `fridayCloseOf` (FRI_CLOSE), not Saturday midnight;
-        // round 1 (set in setUp, FRI_1900 - 10 minutes) is its required strictly-earlier
+        // round 1 (set in setUp, THU_1900 - 10 minutes) is its required strictly-earlier
         // predecessor, round 2 is the first fresh round at/after FRI_CLOSE.
         feed.set(2, 100e8, FRI_CLOSE);
         vm.warp(FRI_CLOSE + 1);
@@ -106,11 +115,11 @@ contract AttackReviewTest is Test {
     /// frozen for free. Previously: an address holding zero USDG could bind zero exposure for the
     /// whole free capacity with an unbounded expiry.
     function test_C1_zeroExposureBindReverts() public {
-        uint256 free = capacity.totalAssets();
+        uint256 free = firstLoss.totalAssets() + senior.totalAssets();
         assertEq(usdg.balanceOf(attacker), 0);
         vm.prank(attacker);
         vm.expectRevert(Treaty.BadParams.selector);
-        treaty.bind(_one(0), 0, free);
+        treaty.bind(0, _one(0), 0, free, type(uint256).max);
     }
 
     /// H1a (fixed): expiry is never caller-chosen, it is always exactly the following Monday
@@ -118,17 +127,18 @@ contract AttackReviewTest is Test {
     /// cover.
     function test_H1a_expiryIsAlwaysNextMonday() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(_one(1_000_000e6), 20_000e6, 60_000e6);
+        uint256 id = treaty.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
         assertEq(_expiry(id), MONDAY, "H1a: expiry must be exactly the following Monday 13:30 UTC");
     }
 
-    /// H1b (fixed): bind strictly after Friday 19:30 UTC now reverts outright (BadTiming), so a
-    /// bind can no longer be timed to weekend news that is already public.
+    /// H1b (fixed): bind strictly after the weekend's bind deadline now reverts outright
+    /// (BadTiming), so a bind can no longer be timed to weekend news that is already public. The
+    /// deadline is Thursday 19:30 UTC (H-1), so Friday 19:00 UTC is already too late too.
     function test_H1b_bindAfterFridayCloseReverts() public {
         vm.warp(FRI_CLOSE + 22 hours); // Sat 18:00 UTC
         vm.prank(buyer);
         vm.expectRevert(Treaty.BadTiming.selector);
-        treaty.bind(_one(1_000_000e6), 20_000e6, 60_000e6);
+        treaty.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
     }
 
     /// H2 (fixed): a retention above the worst historical scenario loss can no longer quote a
@@ -152,12 +162,14 @@ contract AttackReviewTest is Test {
         uint256 id = _bindReferenceAndFix(buyer, _one(1_000_000e6), 0, 100_000e6, 80e8);
         assertEq(_payout(id), 100_000e6);
 
-        uint256 max = capacity.maxWithdraw(writerA);
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
+        uint256 max = firstLoss.maxWithdraw(writerA);
         vm.prank(writerA);
-        capacity.withdraw(max, writerA, writerA);
+        firstLoss.withdraw(max, writerA, writerA);
         vm.prank(buyer);
         treaty.claim(id);
-        uint256 bLeft = capacity.previewRedeem(capacity.balanceOf(writerB));
+        uint256 bLeft = firstLoss.previewRedeem(firstLoss.balanceOf(writerB));
 
         assertApproxEqRel(usdg.balanceOf(writerA), bLeft, 0.01e18, "H3: loss must be shared pro rata");
     }
@@ -167,44 +179,49 @@ contract AttackReviewTest is Test {
     /// none of it.
     ///
     /// the re-review's H1 fix: the epoch gate now keys on the layer's own cutoff, not on aggregate
-    /// `locked != 0`. `bind` happens 30 minutes before CUTOFF here, so the gate is not yet active
+    /// `locked != 0`. `bind` happens a day and 30 minutes before CUTOFF here (Thursday 19:00 UTC), so the gate is not yet active
     /// and a redeem is allowed (capped at free capacity), but that redeem still cannot skim any
     /// part of the pending premium (proven below); once the layer's own cutoff actually arrives,
     /// the gate closes outright, so the JIT-around-settle path stays closed the same as before.
     function test_M1_jitDepositCannotSkimPremium() public {
         usdg.mint(attacker, 1_000_000e6);
         vm.startPrank(attacker);
-        usdg.approve(address(capacity), type(uint256).max);
-        uint256 shares = capacity.deposit(1_000_000e6, attacker);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        uint256 shares = firstLoss.deposit(1_000_000e6, attacker);
         vm.stopPrank();
         vm.prank(buyer);
-        treaty.bind(_one(-2_000_000e6), 20_000e6, 60_000e6);
+        treaty.bind(0, _one(-2_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
         // M1 in substance still holds: the premium stays excluded from totalAssets() (pending
         // until the layer settles), so even priced, the JIT depositor's shares are worth at most
         // what they put in.
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
         assertLe(
-            capacity.previewRedeem(shares),
+            firstLoss.previewRedeem(shares),
             1_000_000e6,
             "M1: premium must stay excluded from share price while the layer is live"
         );
         // H1: before the layer's own cutoff (still 30 minutes away), the gate is not active, so an
         // exit is allowed; it is still bounded by the M1 assertion above, no premium skim either way.
-        assertGt(capacity.maxRedeem(attacker), 0, "H1: gate must not be active before the layer's own cutoff");
+        assertGt(firstLoss.maxRedeem(attacker), 0, "H1: gate must not be active before the layer's own cutoff");
 
         // Once the layer's own cutoff arrives, the gate closes outright (C1): no exit at all until
         // this layer settles or is cancelled.
         vm.warp(CUTOFF);
-        assertEq(capacity.maxRedeem(attacker), 0, "C1: no exit is allowed once the layer's cutoff has arrived");
+        assertEq(firstLoss.maxRedeem(attacker), 0, "C1: no exit is allowed once the layer's cutoff has arrived");
         vm.prank(attacker);
         vm.expectRevert();
-        capacity.redeem(shares, attacker, attacker);
+        firstLoss.redeem(shares, attacker, attacker);
     }
 
     /// M2 (fixed), part 1: setReference still rejects a round older than REF_WINDOW (24h).
     function test_M2_staleReferenceRoundReverts() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(_one(1_000_000e6), 20_000e6, 60_000e6);
-        feed.set(2, 100e8, SAT_MIDNIGHT - 25 hours);
+        uint256 id = treaty.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
+        // v3 rule 5: the round in effect at close must itself be within MAX_ROUND_AGE (26h) of
+        // FRI_CLOSE. 27h before close is unambiguously stale under the new rule (the old 25h
+        // offset was calibrated against the pre-v3 boundary and now falls inside the 26h window).
+        feed.set(2, 100e8, FRI_CLOSE - 27 hours);
         vm.warp(SAT_MIDNIGHT + 1);
         vm.expectRevert(Treaty.BadRound.selector);
         treaty.setReference(id, 0, 2);
@@ -218,29 +235,32 @@ contract AttackReviewTest is Test {
         MockSequencerFeed seq = new MockSequencerFeed();
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        Treaty guarded = new Treaty(address(usdg), address(pricer), feeds, 50, address(seq));
-        Capacity gCap = guarded.capacity();
+        Treaty guarded = deployTreaty(address(usdg), address(pricer), feeds, 50, address(seq));
+        Capacity gFirstLoss = Capacity(guarded.firstLossVault(0));
+        Capacity gSenior = Capacity(guarded.seniorVault(0));
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);
-        usdg.approve(address(gCap), type(uint256).max);
-        _deposit2(gCap, writerA, 200_000e6);
+        // Premium is pulled by Treaty itself, never a vault, so the buyer approves the Treaty
+        // contract, not either vault.
+        usdg.approve(address(guarded), type(uint256).max);
+        _deposit2(gFirstLoss, gSenior, writerA, 200_000e6);
 
-        vm.warp(CUTOFF - 3 hours); // leave room for the grace-period warp below, still pre-cutoff
+        vm.warp(CUTOFF - 1 days - 3 hours); // leave room for the grace-period warp below, still before the Thursday bind deadline
         seq.setDown();
         vm.prank(buyer);
         vm.expectRevert(Treaty.SequencerDown.selector);
-        guarded.bind(_one(1_000_000e6), 20_000e6, 60_000e6);
+        guarded.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
 
         // Back up, but still inside the grace period: still blocked.
         seq.setUp(block.timestamp);
         vm.prank(buyer);
         vm.expectRevert(Treaty.SequencerDown.selector);
-        guarded.bind(_one(1_000_000e6), 20_000e6, 60_000e6);
+        guarded.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
 
         // Past the grace period: bind succeeds.
         vm.warp(block.timestamp + 1 hours + 1);
         vm.prank(buyer);
-        guarded.bind(_one(1_000_000e6), 20_000e6, 60_000e6);
+        guarded.bind(0, _one(1_000_000e6), 20_000e6, 60_000e6, type(uint256).max);
     }
 
     /// M3 (fixed): a Chainlink phase change after expiry still makes every settling round
@@ -248,7 +268,7 @@ contract AttackReviewTest is Test {
     /// leaving writers holding an owed payout they never have to pay.
     function test_M3_phaseChangeCancelRefundsBuyerPremium() public {
         vm.prank(buyer);
-        uint256 id = treaty.bind(_one(1_000_000e6), 0, 100_000e6);
+        uint256 id = treaty.bind(0, _one(1_000_000e6), 0, 100_000e6, type(uint256).max);
         uint256 premium = _premium(id);
         feed.set(2, 100e8, FRI_CLOSE);
         vm.warp(FRI_CLOSE + 1);
@@ -263,10 +283,14 @@ contract AttackReviewTest is Test {
         vm.warp(uint256(MONDAY) + 8 days);
         uint256 buyerBefore = usdg.balanceOf(buyer);
         treaty.cancel(id);
-        assertEq(usdg.balanceOf(buyer) - buyerBefore, premium, "M3: cancel must refund the buyer's premium");
+        assertEq(usdg.balanceOf(buyer), buyerBefore, "cancel no longer pushes the refund");
 
         vm.prank(buyer);
-        vm.expectRevert(); // no payout was ever settled: nothing to claim
+        treaty.claim(id);
+        assertEq(usdg.balanceOf(buyer) - buyerBefore, premium, "M3: claim after cancel pays the buyer's premium");
+
+        vm.prank(buyer);
+        vm.expectRevert(Treaty.NothingToClaim.selector);
         treaty.claim(id);
     }
 

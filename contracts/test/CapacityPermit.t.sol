@@ -30,7 +30,7 @@ contract CapacityPermitTest is Test {
 
     function setUp() public {
         usdg = new PermitUSDG();
-        capacity = new Capacity(usdg, treaty);
+        capacity = new Capacity(usdg, treaty, "Test Capacity", "tCAP");
         writer = vm.addr(writerPk);
         usdg.mint(writer, 1_000_000e6);
     }

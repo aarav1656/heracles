@@ -36,13 +36,3 @@ test('worst SPY weekend is the March 2020 reopen', () => {
   assert.equal(e.down.gap, -1045);
   assert.equal(e.down.friday, '2020-03-13');
 });
-
-test('compare strip: weekends the reference cover would have paid on each market', () => {
-  const paid = Object.fromEntries(['SPY', 'TSLA', 'NVDA', 'AAPL'].map((t) => {
-    const r = JSON.parse(readFileSync(new URL(`../data/gap-tables/${t}.json`, import.meta.url), 'utf8'));
-    const ws = r.gaps.map((g: { friday: string; monday: string; gap_bps: number }) => ({ friday: g.friday, monday: g.monday, gap: g.gap_bps }));
-    assert.equal(ws.length, 504);
-    return [t, backtest(ws, 2_000_000, 20_000, 60_000).paid];
-  }));
-  assert.deepEqual(paid, { SPY: 36, TSLA: 122, NVDA: 110, AAPL: 70 });
-});

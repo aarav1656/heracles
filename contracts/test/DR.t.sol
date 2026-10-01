@@ -8,17 +8,23 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId, nTableIds} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// Port of the reviewer's DR1/DR2 PoCs (docs/security/capacity-review.md "Re-review (2026-09-28)",
 /// findings H1/H2; original scratch suite at /tmp/heracles-dr/proj/contracts/test/DR.t.sol). H1/H2
 /// locked a Bound layer, and the whole Capacity vault's deposit/withdraw/redeem gate, forever,
-/// with no admin path out, whenever a market's Friday reference could never be set (a live feed
-/// whose genuine crossing round lands later than `REFERENCE_MAX_DELAY`, or a feed that dies before
-/// Friday's close entirely on a multi-market layer). Fixed by `Treaty.voidReference` plus the
+/// with no admin path out, whenever a market's Friday reference could never be set.
+///
+/// Rewritten for v3's reference rule: `setReference` no longer waits for the first round *after*
+/// Friday's close bounded by a max delay; it takes the round already *in effect* at close (rules
+/// 1-5 in `Treaty.setReference`'s own comment) and requires that round itself be no more than
+/// `MAX_ROUND_AGE` (26h) stale relative to close (rule 5). A market genuinely dies, in the sense
+/// this suite cares about, when its only round in effect at close is older than that 26h bound:
+/// `setReference` then reverts `BadRound` forever on that round, and only `voidReference`'s
+/// permissionless stale proof can unstick it. Fixed by `Treaty.voidReference` plus the
 /// `_anyMarketFixable` H1/H2 change: run these against an unpatched Treaty (revert the
-/// `voidReference` function and the `_anyMarketFixable`/`REFERENCE_MAX_DELAY` changes) to see DR1
-/// and DR2 go red again.
-contract DRTest is Test {
+/// `voidReference` function and the `_anyMarketFixable` change) to see DR1 and DR2 go red again.
+contract DRTest is Test, TreatyFixture {
     MockUSDG usdg;
     MockFeed feed;
     MockFeed feedB;
@@ -29,8 +35,13 @@ contract DRTest is Test {
     uint256 constant CLOSE = FRI + 20 hours;
     uint256 constant MON = FRI + 3 days;
     uint256 constant EXPIRY = MON + 13 hours + 30 minutes;
+    uint256 constant BIND_DEADLINE = FRI + 19 hours + 30 minutes - 1 days; // Thu 19:30 UTC (H-1)
     uint80 constant P1 = uint80(uint256(1) << 64); // real proxies sit in phase >= 1
 
+    // Book 0's first-loss vault: DR1/DR2/DR3 all test the gate-lock/unlock liveness property,
+    // which Treaty.sol keeps symmetric across a book's two vaults (both hold a nonzero slice of
+    // every layer and gate together), so one vault is a faithful witness. Both vaults still need
+    // writer capital, or `bind`'s own `lock` call on the un-funded vault would revert here.
     function _deploy(uint256 n) internal returns (Treaty t, Capacity c) {
         usdg = new MockUSDG();
         feed = new MockFeed();
@@ -38,95 +49,104 @@ contract DRTest is Test {
         address[] memory feeds = new address[](n);
         feeds[0] = address(feed);
         if (n > 1) feeds[1] = address(feedB);
-        t = new Treaty(address(usdg), address(new Pricer(n == 1 ? oneTableId() : nTableIds(n))), feeds, 50, address(0));
-        c = t.capacity();
+        t = deployTreaty(address(usdg), address(new Pricer(n == 1 ? oneTableId() : nTableIds(n))), feeds, 50, address(0));
+        c = Capacity(t.firstLossVault(0));
+        Capacity senior = Capacity(t.seniorVault(0));
         usdg.mint(writer, 1_000_000e6);
         vm.startPrank(writer);
         usdg.approve(address(c), type(uint256).max);
+        usdg.approve(address(senior), type(uint256).max);
         c.deposit(500_000e6, writer);
+        senior.deposit(500_000e6, writer);
         vm.stopPrank();
         usdg.mint(buyer, 1_000_000e6);
         vm.prank(buyer);
-        usdg.approve(address(c), type(uint256).max);
+        usdg.approve(address(t), type(uint256).max);
     }
 
-    /// DR1 (H1): the live SPY feed's own heartbeat lands ~24h after the last pre-close update. If
-    /// the last intraday update lands in the final seconds before close, the genuine first
-    /// crossing round can still land later than even the widened 36h `REFERENCE_MAX_DELAY` (an
-    /// extended weekend pause, not just one missed heartbeat): `setReference` reverts `BadRound`
-    /// forever on that round, `fix` reverts `ReferenceNotSet` forever, and before the fix `cancel`
-    /// reverted `StillFixable` forever because the feed is alive with a crossing round in its
-    /// current phase, the Capacity gate never reopens. `voidReference` records the permissionless
-    /// proof that this is the genuine, provably-late crossing round, after which `cancel` succeeds.
+    /// DR1 (H1): the feed's only round is fresh enough to bind against on Monday, then goes
+    /// silent for the rest of the week. By Friday's close that round is far past `MAX_ROUND_AGE`
+    /// (26h), so it is the round "in effect" but `setReference` rule 5 rejects it as stale:
+    /// `setReference` reverts `BadRound` forever on it, `fix` reverts `ReferenceNotSet` forever,
+    /// and before the fix `cancel` reverted `StillFixable` forever because an unreferenced,
+    /// unvoided market is always assumed still fixable. `voidReference` records the
+    /// permissionless proof that this round is genuinely stale relative to close, after which
+    /// `cancel` succeeds.
     function test_DR1_lateHeartbeatReferenceLocksVaultForever() public {
         (Treaty t, Capacity c) = _deploy(1);
-        feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
-        vm.warp(CLOSE - 1 hours);
+        uint256 bindAt = FRI - 4 days + 1 hours; // Monday 01:00 UTC, same ISO week as FRI
+        feed.set(P1 | 1, 770e8, bindAt - 30 minutes); // feed's only round, ever
+        vm.warp(bindAt);
         int256[] memory e = new int256[](1);
         e[0] = 1_000_000e6;
         vm.prank(buyer);
-        uint256 id = t.bind(e, 0, 60_000e6);
+        uint256 id = t.bind(0, e, 0, 60_000e6, type(uint256).max);
 
-        feed.set(P1 | 2, 771e8, CLOSE - 4); // last intraday update 4s before close
-        // Heartbeat, 1s past the (widened) 36h bound, an extended weekend pause.
-        feed.set(P1 | 3, 771e8, CLOSE - 4 + 36 hours + 5);
-        feed.set(P1 | 4, 771e8, CLOSE - 4 + 60 hours + 10);
-        feed.set(P1 | 5, 790e8, EXPIRY + 5 minutes);
         vm.warp(EXPIRY + 1 hours);
-
+        // The only round in effect at close is >100h stale relative to `CLOSE`, far past the
+        // 26h bound: genuinely unreferenceable, not just late.
         vm.expectRevert(Treaty.BadRound.selector);
-        t.setReference(id, 0, P1 | 3);
-        vm.expectRevert();
-        t.setReference(id, 0, P1 | 4);
+        t.setReference(id, 0, P1 | 1);
         vm.expectRevert(Treaty.ReferenceNotSet.selector);
-        t.fix(id, 0, P1 | 5);
+        t.fix(id, 0, P1 | 1);
 
-        feed.set(P1 | 6, 791e8, EXPIRY + 365 days);
         vm.warp(EXPIRY + 365 days);
         assertEq(c.maxRedeem(writer), 0, "writer frozen a year later");
         assertEq(c.maxDeposit(writer), 0, "deposits frozen a year later");
 
-        // Fixed behaviour: record the proof that the genuine first post-close round is late, then
+        // Fixed behaviour: record the proof that the round in effect at close is stale, then
         // cancel. Unpatched Treaty (no `voidReference`, old `_anyMarketFixable`): this call
         // reverts, and so does the `cancel` below with `StillFixable`, the vault stays frozen
         // forever. Patched Treaty: both succeed and the gate reopens.
-        t.voidReference(id, 0, P1 | 3);
+        t.voidReference(id, 0, P1 | 1);
         t.cancel(id);
 
         assertGt(c.maxDeposit(writer), 0, "gate must reopen once the layer is cancelled");
         assertGt(c.maxRedeem(writer), 0, "writer capital must be freed once the layer is cancelled");
     }
 
-    /// DR2 (H2, multi-market): market B's feed dies before Friday's close (so its reference can
-    /// never be set), market A is healthy and gets its reference. `fix(A)` reverts `ReferenceNotSet`
-    /// (fix needs every reference), and before the fix `cancel` reverted `StillFixable` because A
-    /// alone still looked fixable against expiry, permanent lock, even though B can never be
-    /// referenced and `fix` can therefore never succeed for this layer again. Fixed
-    /// `_anyMarketFixable` returns false the instant it finds an unreferenced, dead market,
-    /// regardless of any other market's own state.
+    /// DR2 (H2, multi-market): market B's last-ever round is fresh at bind time (Monday) but
+    /// never updates again, so by Friday's close it is stale past `MAX_ROUND_AGE` the same way as
+    /// DR1, referenceable only via `voidReference`'s stale proof, never via `setReference`. Market
+    /// A stays healthy and gets a real reference. `fix` reverts `ReferenceNotSet` (fix needs every
+    /// reference), and before B's void proof, `cancel` reverted `StillFixable` because an
+    /// unreferenced, unvoided market always counts as still fixable, permanent lock, even though A
+    /// alone is settleable and B can never be referenced. Fixed `_anyMarketFixable` returns false
+    /// the instant it finds an unreferenced, void market, regardless of any other market's state.
     function test_DR2_deadUnreferencedMarketPlusLiveMarketLocksForever() public {
         (Treaty t, Capacity c) = _deploy(2);
-        feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
-        feedB.set(P1 | 1, 100e8, CLOSE - 3 hours); // B's last round ever
-        vm.warp(CLOSE - 1 hours);
+        uint256 bindAt = FRI - 4 days + 1 hours; // Monday 01:00 UTC
+        feed.set(P1 | 1, 770e8, bindAt - 30 minutes);
+        feedB.set(P1 | 1, 100e8, bindAt - 30 minutes); // B's last round, ever
+        vm.warp(bindAt);
         int256[] memory e = new int256[](2);
         e[0] = 1_000_000e6;
         e[1] = 1_000_000e6;
         vm.prank(buyer);
-        uint256 id = t.bind(e, 0, 60_000e6);
+        uint256 id = t.bind(0, e, 0, 60_000e6, type(uint256).max);
 
-        feed.set(P1 | 2, 771e8, CLOSE + 5 minutes);
+        // A keeps printing through the week; its round in effect at close is fresh.
+        feed.set(P1 | 2, 771e8, CLOSE - 5 minutes);
         vm.warp(CLOSE + 10 minutes);
         t.setReference(id, 0, P1 | 2);
-        feed.set(P1 | 3, 790e8, EXPIRY + 5 minutes);
+        // B's only round is already >26h stale relative to close: unreferenceable.
+        vm.expectRevert(Treaty.BadRound.selector);
+        t.setReference(id, 1, P1 | 1);
+
         vm.warp(EXPIRY + 1 hours);
         vm.expectRevert(Treaty.ReferenceNotSet.selector);
-        t.fix(id, 0, P1 | 3);
+        t.fix(id, 0, P1 | 2);
 
-        vm.warp(EXPIRY + 365 days);
-        assertEq(c.maxRedeem(writer), 0, "writer frozen a year later");
+        vm.warp(EXPIRY + 29 days);
+        assertEq(c.maxRedeem(writer), 0, "writer frozen weeks later");
         // Fixed behaviour: layer can never settle (B's reference can never be set), so it must be
-        // cancellable. Unpatched `_anyMarketFixable` reverts this with `StillFixable` forever.
+        // cancellable once B's void proof is recorded. Unpatched `_anyMarketFixable` reverts this
+        // with `StillFixable` forever because it never looks at B's void status. Still inside
+        // CANCEL_BACKSTOP (30 days past expiry) here, so this exercises the void-aware fix itself,
+        // not the backstop.
+        vm.expectRevert(Treaty.StillFixable.selector);
+        t.cancel(id);
+        t.voidReference(id, 1, P1 | 1);
         t.cancel(id);
         assertGt(c.maxDeposit(writer), 0, "gate must reopen once the layer is cancelled");
     }
@@ -136,14 +156,17 @@ contract DRTest is Test {
     /// succeeds. Guards against the H1/H2 change breaking the already-fixed P3 behaviour.
     function test_DR3_p3PhaseOneIdsAndPhaseChange() public {
         (Treaty t,) = _deploy(1);
-        feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
-        vm.warp(CLOSE - 1 hours);
+        uint256 bindAt = CLOSE - 1 days - 1 hours; // Thursday 19:00 UTC, before the bind deadline (H-1)
+        feed.set(P1 | 1, 770e8, bindAt - 1 hours); // fresh at bind, but known at bind: never the reference
+        vm.warp(bindAt);
         int256[] memory e = new int256[](1);
         e[0] = 1_000_000e6;
         vm.prank(buyer);
-        uint256 id = t.bind(e, 0, 60_000e6);
-        feed.set(P1 | 2, 771e8, CLOSE + 20 hours);
-        vm.warp(CLOSE + 21 hours);
+        uint256 id = t.bind(0, e, 0, 60_000e6, type(uint256).max);
+        // The round in effect at close is P1|2: printed after the bind deadline, fresh, at-or-before
+        // close, latest in phase.
+        feed.set(P1 | 2, 771e8, CLOSE - 3 hours);
+        vm.warp(CLOSE + 1 hours);
         t.setReference(id, 0, P1 | 2);
         feed.set(P1 | 3, 775e8, EXPIRY + 5 minutes);
         feed.set(P1 | 4, 776e8, EXPIRY + 1 days);
@@ -156,51 +179,49 @@ contract DRTest is Test {
         t.cancel(id);
     }
 
-    /// Liveness property (H1/H2): whatever the timing of the first post-close round on a
-    /// single-market layer, on time, late-but-under-the-bound, or arbitrarily late, a
-    /// permissionless call sequence from `Bound` always reaches a terminal state (`Settled` or
-    /// `Cancelled`); it never gets stuck. Fuzzes the delay between the last pre-close update and
-    /// the first post-close round from 1 second to 60 days.
-    function testFuzz_liveness_referenceTimingAlwaysReachesTerminalState(uint256 delaySeed) public {
-        // `delay` is exactly `updatedAt - refTime` for the crossing round below, so it lines up
-        // with `REFERENCE_MAX_DELAY` (36h) with no off-by-a-few-seconds slack.
-        uint256 delay = bound(delaySeed, 1, 60 days);
+    /// Liveness property (H1/H2): whatever the age of the round in effect at Friday's close,
+    /// fresh, known at bind, right at the 26h bound, or arbitrarily stale, a permissionless call sequence from
+    /// `Bound` always reaches a terminal state (`Settled` or `Cancelled`); it never gets stuck.
+    /// Fuzzes that age from 1 second to 60 days.
+    function testFuzz_liveness_referenceTimingAlwaysReachesTerminalState(uint256 ageSeed) public {
+        // `age` is exactly `CLOSE - updatedAt` for the round in effect at close, so it lines up
+        // with `MAX_ROUND_AGE` (26h) with no off-by-a-few-seconds slack.
+        uint256 age = bound(ageSeed, 1, 60 days);
         (Treaty t,) = _deploy(1);
-        feed.set(P1 | 1, 770e8, CLOSE - 3 hours);
-        vm.warp(CLOSE - 1 hours);
+        uint256 bindAt = FRI - 4 days + 1 hours; // Monday 01:00 UTC, always fresh at bind time
+        feed.set(P1 | 1, 770e8, bindAt - 30 minutes);
+        vm.warp(bindAt);
         int256[] memory e = new int256[](1);
         e[0] = 1_000_000e6;
         vm.prank(buyer);
-        uint256 id = t.bind(e, 0, 60_000e6);
+        uint256 id = t.bind(0, e, 0, 60_000e6, type(uint256).max);
 
-        feed.set(P1 | 2, 771e8, CLOSE - 1); // last pre-close round
-        uint256 crossingAt = CLOSE + delay;
-        feed.set(P1 | 3, 771e8, crossingAt); // first post-close round, `delay` after Friday's close
+        // The round in effect at close, `age` before `CLOSE`.
+        feed.set(P1 | 2, 771e8, CLOSE - age);
 
-        if (delay <= 36 hours) {
-            // Under the bound: setReference must succeed, and the layer must be fixable to
-            // Settled once Monday's round is in. `EXPIRY` (close + ~65.5h) is always after
-            // `crossingAt` (close + at most 36h) in this branch.
-            vm.warp(crossingAt + 1);
-            t.setReference(id, 0, P1 | 3);
+        if (age < CLOSE - BIND_DEADLINE) {
+            // Fresh and printed after the layer's own bind deadline: setReference must succeed,
+            // and the layer must be fixable to Settled once Monday's round is in.
+            vm.warp(CLOSE + 1 hours);
+            t.setReference(id, 0, P1 | 2);
             uint256 fixAt = EXPIRY + 5 minutes;
-            feed.set(P1 | 4, 771e8, fixAt);
+            feed.set(P1 | 3, 771e8, fixAt);
             vm.warp(fixAt + 1);
-            t.fix(id, 0, P1 | 4);
-            (,,,,, Treaty.State st,,,,,) = t.layers(id);
+            t.fix(id, 0, P1 | 3);
+            (,,,,, Treaty.State st,,,,,) = layerBasics(t, id);
             assertEq(uint8(st), uint8(Treaty.State.Settled), "on-time round must settle");
         } else {
-            // Over the bound: setReference must revert, voidReference must succeed, and cancel
-            // must eventually succeed once GRACE has passed (which, for a very large `delay`, may
-            // be after `crossingAt` itself rather than the usual `expiry + GRACE`).
-            vm.warp(crossingAt + 1);
-            vm.expectRevert(Treaty.BadRound.selector);
-            t.setReference(id, 0, P1 | 3);
-            t.voidReference(id, 0, P1 | 3);
-            uint256 cancelAt = EXPIRY + 3 days > crossingAt ? EXPIRY + 3 days : crossingAt + 1;
-            vm.warp(cancelAt);
+            // Stale (older than 26h) or known at bind (at or before Thursday 19:30 UTC, the H-1
+            // bind deadline): setReference must revert, voidReference must succeed, and cancel
+            // must succeed once expiry + GRACE has passed. The round is always dated before
+            // `CLOSE`, so it can never itself push the terminal state later than `EXPIRY + GRACE`.
+            vm.warp(CLOSE + 1 hours);
+            vm.expectRevert(age > 26 hours ? Treaty.BadRound.selector : Treaty.ReferenceKnownAtBind.selector);
+            t.setReference(id, 0, P1 | 2);
+            t.voidReference(id, 0, P1 | 2);
+            vm.warp(EXPIRY + 3 days);
             t.cancel(id);
-            (,,,,, Treaty.State st,,,,,) = t.layers(id);
+            (,,,,, Treaty.State st,,,,,) = layerBasics(t, id);
             assertEq(uint8(st), uint8(Treaty.State.Cancelled), "late round must cancel");
         }
     }

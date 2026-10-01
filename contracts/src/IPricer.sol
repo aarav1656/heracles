@@ -3,9 +3,9 @@ pragma solidity ^0.8.24;
 
 /// @notice Shared interface for the weekend-gap layer pricer, implemented once in Solidity
 /// (`Pricer.sol`, reference + fallback) and once in Rust/Stylus (`pricer/src/lib.rs`), so
-/// `Treaty` calls whichever is deployed through the same ABI. All amounts are USDG's native
-/// 6-decimal fixed point: exposure/retention/limit/premium/el/tvar95 are all plain USDG units,
-/// no WAD conversion. exposure[i] is signed: positive is long market i (loses when it falls),
+/// `Treaty` calls whichever is deployed through the same ABI. All amounts are the book asset's
+/// 6-decimal fixed point: exposure/retention/limit/premium/el/tvar95 are all plain units of that
+/// asset, no WAD conversion. exposure[i] is signed: positive is long market i (loses when it falls),
 /// negative is short (loses when it rises).
 interface IPricer {
     /// @param feeds Chainlink AggregatorV3-shaped feed address per exposure index, same order as

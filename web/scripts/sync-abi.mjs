@@ -22,17 +22,23 @@ const deployment = JSON.parse(
 );
 
 const treaty = deployment.contracts.Treaty.address;
-const capacity = deployment.contracts.Capacity.address;
 const pricer = deployment.contracts.Pricer.address;
-const usdg = deployment.usdg.address;
 const feeds = deployment.contracts.Treaty.constructorArgs.feeds;
+const books = deployment.books;
 const rpc = deployment.rpc;
 const chainId = deployment.chainId;
 
-for (const [label, a] of Object.entries({ treaty, capacity, pricer, usdg })) {
-  if (!/^0x[0-9a-fA-F]{40}$/.test(a)) throw new Error(`Bad ${label} address in 421614.json: ${a}`);
+const isAddr = (a) => /^0x[0-9a-fA-F]{40}$/.test(a);
+for (const [label, a] of Object.entries({ treaty, pricer })) {
+  if (!isAddr(a)) throw new Error(`Bad ${label} address in 421614.json: ${a}`);
 }
 if (!Array.isArray(feeds) || feeds.length === 0) throw new Error('No feeds in 421614.json');
+if (!Array.isArray(books) || books.length === 0) throw new Error('No books in 421614.json');
+books.forEach((b, i) => {
+  if (b.index !== i) throw new Error(`Book ${i} carries index ${b.index}`);
+  for (const k of ['asset', 'firstLoss', 'senior']) if (!isAddr(b[k])) throw new Error(`Bad ${k} for book ${b.symbol}: ${b[k]}`);
+  if (b.decimals !== 6) throw new Error(`Book ${b.symbol} has ${b.decimals} decimals; the UI formats 6`);
+});
 
 const treatyAbi = loadAbi(join('Treaty.sol', 'Treaty.json').replace(/\\/g, '/'));
 const capacityAbi = loadAbi('Capacity.sol/Capacity.json');
@@ -48,11 +54,20 @@ import type { Address } from 'viem';
 export const CHAIN_ID = ${chainId} as const;
 export const RPC_URL = ${JSON.stringify(rpc)} as const;
 export const TREATY_ADDRESS = ${JSON.stringify(treaty)} as Address;
-export const CAPACITY_ADDRESS = ${JSON.stringify(capacity)} as Address;
 export const PRICER_ADDRESS = ${JSON.stringify(pricer)} as Address;
-export const USDG_ADDRESS = ${JSON.stringify(usdg)} as Address;
 export const FEED_ADDRESSES = ${JSON.stringify(feeds)} as Address[];
-export const USDG_DECIMALS = ${deployment.usdg.decimals} as const;
+
+export type BookConfig = {
+  index: number;
+  symbol: string;
+  asset: Address;
+  decimals: 6;
+  /** EIP-2612 domain of the book asset, for depositWithPermit. */
+  permit: { name: string; version: string };
+  firstLoss: Address;
+  senior: Address;
+};
+export const BOOKS: readonly BookConfig[] = ${JSON.stringify(books.map(({ index, symbol, asset, decimals, permit, firstLoss, senior }) => ({ index, symbol, asset, decimals, permit, firstLoss, senior })))};
 
 export const treatyAbi = ${JSON.stringify(treatyAbi)} as const;
 export const capacityAbi = ${JSON.stringify(capacityAbi)} as const;
@@ -60,7 +75,7 @@ export const pricerAbi = ${JSON.stringify(pricerAbi)} as const;
 `;
 writeFileSync(dest, body);
 console.log(
-  `wrote src/abi/generated.ts (chain ${chainId}, treaty ${treatyAbi.length} + capacity ${capacityAbi.length} + pricer ${pricerAbi.length} ABI entries, ${feeds.length} feed(s))`,
+  `wrote src/abi/generated.ts (chain ${chainId}, treaty ${treatyAbi.length} + capacity ${capacityAbi.length} + pricer ${pricerAbi.length} ABI entries, ${feeds.length} feed(s), ${books.length} book(s))`,
 );
 
 // The four weekend-gap tables the first screen charts, copied in so web/ builds on its own.

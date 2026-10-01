@@ -12,6 +12,8 @@ export type TowerLayer = {
   limit: bigint;
   premium: bigint;
   payout?: bigint;
+  /** Book asset symbol the amounts are in. */
+  unit: string;
   tag?: string;
   state?: 'bound' | 'settled' | 'cancelled';
 };
@@ -21,7 +23,7 @@ const NARROW_AT = 560;
 /**
  * The layer diagram. Loss runs up the page: the vault keeps everything below
  * the retention, the treaty owns the band from retention to retention plus
- * limit, everything above that is uncovered. Band heights are the USDG the
+ * limit, everything above that is uncovered. Band heights are the book asset the
  * contract reported, so the declared exposure marker either lands inside the
  * band the reader bought or in the uncovered space above it.
  *
@@ -39,10 +41,11 @@ export function LayerTower(l: TowerLayer) {
     return () => window.removeEventListener('resize', read);
   }, []);
 
+  const u = l.unit;
   const rate = l.limit > 0n ? ((Number(l.premium) / Number(l.limit)) * 100).toFixed(2) : null;
   const settled = l.state === 'settled';
   const cancelled = l.state === 'cancelled';
-  const range = `${fmtUsdg(l.retention)} to ${fmtUsdg(l.retention + l.limit)} USDG`;
+  const range = `${fmtUsdg(l.retention)} to ${fmtUsdg(l.retention + l.limit)} ${u}`;
 
   // A band label is a name, a range and at most two notes. The line count is
   // known before the drawing is measured, so the boxes can be reserved at the
@@ -52,7 +55,7 @@ export function LayerTower(l: TowerLayer) {
       <span className="swatch keep" />
       the vault keeps
     </span>,
-    <b key="r">0 to {fmtUsdg(l.retention)} USDG</b>,
+    <b key="r">0 to {fmtUsdg(l.retention)} {u}</b>,
   ];
   const layerBody: ReactNode[] = cancelled
     ? [
@@ -68,12 +71,12 @@ export function LayerTower(l: TowerLayer) {
           the layer
         </span>,
         <b key="r">{range}</b>,
-        <em key="p">{settled ? `paid ${fmtUsdg(l.payout ?? 0n)} USDG` : `${fmtUsdg(l.premium)} USDG premium`}</em>,
+        <em key="p">{settled ? `paid ${fmtUsdg(l.payout ?? 0n)} ${u}` : `${fmtUsdg(l.premium)} ${u} premium`}</em>,
         ...(rate ? [<em key="r">{rate}% rate on line</em>] : []),
       ];
   const exposureBody: ReactNode[] = [
     'declared exposure',
-    <b key="v">{fmtUsdg(l.exposure < 0n ? -l.exposure : l.exposure)} USDG</b>,
+    <b key="v">{fmtUsdg(l.exposure < 0n ? -l.exposure : l.exposure)} {u}</b>,
   ];
   const lineCount = { keep: keepBody.length, layer: layerBody.length, open: 3, exposure: exposureBody.length };
 
@@ -99,14 +102,14 @@ export function LayerTower(l: TowerLayer) {
       ? 'declared exposure sits below the retention'
       : verdict === 'inside'
         ? 'declared exposure lands inside the layer'
-        : `${fmtUsdg(g.exposure - l.retention - l.limit)} USDG of the declared exposure lands uncovered`;
+        : `${fmtUsdg(g.exposure - l.retention - l.limit)} ${u} of the declared exposure lands uncovered`;
 
   const openBody: ReactNode[] = [
     <span key="n" className="swatch-name">
       <span className="swatch open" />
       uncovered
     </span>,
-    <b key="r">{uncovered} USDG</b>,
+    <b key="r">{uncovered} {u}</b>,
     <em key="a">above the limit</em>,
   ];
   const bodies: Record<LabelBox['id'], ReactNode[]> = { keep: keepBody, layer: layerBody, open: openBody, exposure: exposureBody };
@@ -132,12 +135,12 @@ export function LayerTower(l: TowerLayer) {
           } as Record<string, string>
         }
         role="img"
-        aria-label={`Layer diagram. Loss from 0 to ${fmtUsdg(l.retention)} USDG is the vault's own. From ${fmtUsdg(l.retention)} to ${fmtUsdg(l.retention + l.limit)} USDG is the layer, premium ${fmtUsdg(l.premium)} USDG. ${uncovered ? `${uncovered} USDG above that is uncovered.` : 'Nothing above the limit is uncovered because the declared exposure stays inside the layer.'} The declared exposure is ${exposure} USDG.${g.broken ? ` The axis is broken: a band under ${BAND_MIN_PX} pixels is drawn at ${BAND_MIN_PX}, so the bands are not in proportion to the scale.` : ''}`}
+        aria-label={`Layer diagram. Loss from 0 to ${fmtUsdg(l.retention)} ${u} is the vault's own. From ${fmtUsdg(l.retention)} to ${fmtUsdg(l.retention + l.limit)} ${u} is the layer, premium ${fmtUsdg(l.premium)} ${u}. ${uncovered ? `${uncovered} ${u} above that is uncovered.` : 'Nothing above the limit is uncovered because the declared exposure stays inside the layer.'} The declared exposure is ${exposure} ${u}.${g.broken ? ` The axis is broken: a band under ${BAND_MIN_PX} pixels is drawn at ${BAND_MIN_PX}, so the bands are not in proportion to the scale.` : ''}`}
       >
         <div className="tower-gutter">
           {g.ticks.map((t) => (
             <span key={t.id} className="tick" style={{ top: `${t.top}px`, height: `${t.height}px` }}>
-              <b>{fmtUsdg(t.value ?? 0n)}</b> USDG
+              <b>{fmtUsdg(t.value ?? 0n)}</b> {u}
             </span>
           ))}
         </div>
@@ -182,7 +185,7 @@ export function LayerTower(l: TowerLayer) {
 
         <div className="tower-axis">
           <span>0</span>
-          <span>loss, USDG · scale top {fmtUsdg(BigInt(Math.round(g.ceiling)))}</span>
+          <span>loss, {u} · scale top {fmtUsdg(BigInt(Math.round(g.ceiling)))}</span>
         </div>
 
         {g.broken && (
@@ -198,28 +201,28 @@ export function LayerTower(l: TowerLayer) {
           <dt>declared exposure</dt>
           <dd>
             {exposure}
-            <small>USDG</small>
+            <small>{u}</small>
           </dd>
         </div>
         <div>
           <dt>retention, vault keeps</dt>
           <dd>
             {fmtUsdg(l.retention)}
-            <small>USDG</small>
+            <small>{u}</small>
           </dd>
         </div>
         <div>
           <dt>limit, writers cover</dt>
           <dd>
             {fmtUsdg(l.limit)}
-            <small>USDG</small>
+            <small>{u}</small>
           </dd>
         </div>
         <div>
           <dt>premium</dt>
           <dd>
             {fmtUsdg(l.premium)}
-            <small>USDG</small>
+            <small>{u}</small>
           </dd>
         </div>
         {rate && (
@@ -233,7 +236,7 @@ export function LayerTower(l: TowerLayer) {
             <dt>payout</dt>
             <dd>
               {fmtUsdg(l.payout)}
-              <small>USDG</small>
+              <small>{u}</small>
             </dd>
           </div>
         )}

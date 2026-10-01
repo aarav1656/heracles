@@ -8,6 +8,7 @@ import {Pricer} from "../src/Pricer.sol";
 import {MockFeed} from "./mocks/MockFeed.sol";
 import {MockUSDG} from "./mocks/MockUSDG.sol";
 import {oneTableId} from "./utils/TableIdsFixture.sol";
+import {TreatyFixture} from "./utils/TreatyFixture.sol";
 
 /// the security review's Critical C1 and Low L2. Ported from the
 /// reviewer's scratch suite at the reviewer's own scratch copy. These tests are red against the code
@@ -16,9 +17,9 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 /// redeem the writers' capital after settle. Green once `Capacity` counts active `locked`
 /// capital at face value, tracks a settled-but-unclaimed payout separately in `owed`, and closes
 /// deposits/withdrawals while any layer is live.
-contract CapacityC1Test is Test {
+contract CapacityC1Test is Test, TreatyFixture {
     uint256 constant FRI_CLOSE = 1_790_366_400;
-    uint256 constant FRI_1900 = FRI_CLOSE - 1 hours;
+    uint256 constant THU_1900 = FRI_CLOSE - 1 days - 1 hours; // before the Thursday 19:30 bind deadline (H-1)
     uint256 constant CUTOFF = FRI_CLOSE - 30 minutes;
     uint256 constant SAT_MIDNIGHT = CUTOFF + 4 hours + 30 minutes;
     uint40 constant MONDAY = uint40(FRI_CLOSE + 2 days + 17 hours + 30 minutes);
@@ -26,7 +27,8 @@ contract CapacityC1Test is Test {
     MockUSDG usdg;
     MockFeed feed;
     Treaty treaty;
-    Capacity capacity;
+    Capacity firstLoss;
+    Capacity senior;
 
     address writer = makeAddr("writer");
     address writerB = makeAddr("writerB");
@@ -35,21 +37,24 @@ contract CapacityC1Test is Test {
     function setUp() public {
         usdg = new MockUSDG();
         feed = new MockFeed();
-        feed.set(1, 100e8, FRI_1900 - 10 minutes);
+        feed.set(1, 100e8, THU_1900 - 10 minutes);
         address[] memory feeds = new address[](1);
         feeds[0] = address(feed);
-        treaty = new Treaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
-        capacity = treaty.capacity();
+        treaty = deployTreaty(address(usdg), address(new Pricer(oneTableId())), feeds, 50, address(0));
+        firstLoss = Capacity(treaty.firstLossVault(0));
+        senior = Capacity(treaty.seniorVault(0));
         _deposit(writer, 100_000e6);
         _deposit(writerB, 100_000e6);
-        vm.warp(FRI_1900);
+        vm.warp(THU_1900);
     }
 
     function _deposit(address who, uint256 amt) internal {
-        usdg.mint(who, amt);
+        usdg.mint(who, amt * 2);
         vm.startPrank(who);
-        usdg.approve(address(capacity), type(uint256).max);
-        capacity.deposit(amt, who);
+        usdg.approve(address(firstLoss), type(uint256).max);
+        firstLoss.deposit(amt, who);
+        usdg.approve(address(senior), type(uint256).max);
+        senior.deposit(amt, who);
         vm.stopPrank();
     }
 
@@ -60,7 +65,7 @@ contract CapacityC1Test is Test {
 
     function _settleNoLoss(uint256 id) internal {
         // setReference now waits for `fridayCloseOf` (FRI_CLOSE), not Saturday midnight;
-        // round 1 (set in setUp, FRI_1900 - 10 minutes) is its required strictly-earlier
+        // round 1 (set in setUp, THU_1900 - 10 minutes) is its required strictly-earlier
         // predecessor, round 2 is the first fresh round at/after FRI_CLOSE.
         feed.set(2, 100e8, FRI_CLOSE);
         vm.warp(FRI_CLOSE + 1);
@@ -76,15 +81,23 @@ contract CapacityC1Test is Test {
     /// ends with at most what they put in (premium + deposit). Buggy behaviour: they walk off with
     /// the writers' 200k.
     function test_C1_depositWhileLockedStealsWriterCapital() public {
-        uint256 free = capacity.totalAssets();
-        assertEq(free, 200_000e6);
+        assertEq(firstLoss.totalAssets(), 200_000e6);
+        assertEq(senior.totalAssets(), 200_000e6);
+        // Both vaults hold the same 200_000e6, but a bind's limit splits juniorShareBps (firstLoss)
+        // / (BPS - juniorShareBps) (senior); senior absorbs the larger 70% share, so it is the
+        // tighter constraint on how large a limit can lock both vaults' full headroom at once.
+        uint256 free = senior.totalAssets() * 1e4 / (1e4 - treaty.juniorShareBps());
 
         usdg.mint(attacker, 2_000e6);
         vm.startPrank(attacker);
-        usdg.approve(address(capacity), type(uint256).max);
-        uint256 id = treaty.bind(_one(1e6), 1_000_000e6, free); // payout always 0, premium = floor
+        usdg.approve(address(firstLoss), type(uint256).max);
+        usdg.approve(address(senior), type(uint256).max);
+        usdg.approve(address(treaty), type(uint256).max);
+        uint256 id = treaty.bind(0, _one(1e6), 1_000_000e6, free, type(uint256).max); // payout always 0, premium = floor
         uint256 shares;
-        try capacity.deposit(1_000e6, attacker) returns (uint256 sh) {
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
+        try firstLoss.deposit(1_000e6, attacker) returns (uint256 sh) {
             shares = sh;
         } catch {}
         vm.stopPrank();
@@ -92,7 +105,7 @@ contract CapacityC1Test is Test {
         _settleNoLoss(id);
 
         vm.prank(attacker);
-        if (shares != 0) capacity.redeem(shares, attacker, attacker);
+        if (shares != 0) firstLoss.redeem(shares, attacker, attacker);
         assertLe(
             usdg.balanceOf(attacker), 2_000e6, "C1: depositor during a live layer must not capture writers' locked capital"
         );
@@ -105,15 +118,19 @@ contract CapacityC1Test is Test {
     function test_C1b_redeemWhileLockedForfeitsLockedCapital() public {
         usdg.mint(attacker, 10_000e6);
         vm.startPrank(attacker);
-        usdg.approve(address(capacity), type(uint256).max);
-        treaty.bind(_one(1e6), 1_000_000e6, 100_000e6); // half the pool locked, cannot pay
+        usdg.approve(address(firstLoss), type(uint256).max);
+        usdg.approve(address(senior), type(uint256).max);
+        usdg.approve(address(treaty), type(uint256).max);
+        treaty.bind(0, _one(1e6), 1_000_000e6, 100_000e6, type(uint256).max); // half the pool locked, cannot pay
         vm.stopPrank();
-        uint256 shares = capacity.balanceOf(writerB);
+        // checked against the first-loss vault; the senior vault gets the same guard in
+        // Tranche.t.sol/Books.t.sol.
+        uint256 shares = firstLoss.balanceOf(writerB);
         vm.prank(writerB);
-        try capacity.redeem(shares, writerB, writerB) returns (uint256 out) {
+        try firstLoss.redeem(shares, writerB, writerB) returns (uint256 out) {
             assertGe(out, 99_000e6, "C1b: a writer exiting before a zero-loss settle should get ~their 100k back");
         } catch {
-            assertGe(capacity.previewRedeem(shares), 99_000e6, "C1b: exit blocked but value intact");
+            assertGe(firstLoss.previewRedeem(shares), 99_000e6, "C1b: exit blocked but value intact");
         }
     }
 
@@ -125,6 +142,6 @@ contract CapacityC1Test is Test {
         address griefer = makeAddr("griefer");
         vm.prank(griefer);
         vm.expectRevert(Treaty.BadParams.selector);
-        treaty.bind(_one(1e6), 1_000_000e6, 199);
+        treaty.bind(0, _one(1e6), 1_000_000e6, 199, type(uint256).max);
     }
 }
