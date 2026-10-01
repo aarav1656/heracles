@@ -1,39 +1,77 @@
 {
   "chainId": 421614,
   "chainName": "Arbitrum Sepolia",
-  "deployedAt": "2026-09-29",
+  "deployedAt": "2026-10-01",
   "deployer": "0x39ef83fbB0BA61A5b4169fF5ce21Fd89e25aab37",
-  "note": "Treaty and Capacity redeployed 2026-09-29 from source whose comments were rewritten to describe each fix directly (no code change); the Stylus Pricer is the 2026-09-28 deploy, reused unchanged.",
+  "note": "v3 redeploy 2026-10-01 (commit e49aae5): two books (USDG, USDC), each a first-loss vault (30%) and a senior vault (70%); Thursday 19:30 UTC bind deadline; maxPremium on bind; void proofs. The Stylus Pricer is the 2026-09-28 deploy, reused unchanged.",
   "contracts": {
     "Treaty": {
-      "address": "0xA5F3832DBa96e3f13a5B7a4C6179f2451681Ac27",
-      "role": "bind, setReference, voidReference, fix, cancel, claim",
-      "deployTx": "0x7eb7e54ab75b662a0025074f637dad40125960a1bca4abf0bcc0259369d46d61",
-      "block": 313869456,
+      "address": "0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807",
+      "role": "bind(book, exposure, retention, limit, maxPremium), setReference, voidReference, fix, voidFix, cancel, claim",
+      "deployTx": "0xe24026352f7ba9c7073952c764f756f6ebc7641533b6140543fc777ef2b02c9b",
+      "block": 314558549,
       "verification": {
         "method": "sourcify",
-        "matchId": "53809711",
+        "matchId": "54461151",
         "matchType": "exact_match (creation and runtime)",
-        "verifiedAt": "2026-09-29T06:55:58Z"
+        "verifiedAt": "2026-10-01T07:04:28Z"
       },
       "constructorArgs": {
+        "assets": [
+          "0xFFC95faa3d63Cde504a05B567C600B78C0b41892",
+          "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
+        ],
         "feeds": [
           "0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06"
         ],
+        "pricer": "0xBE99217180A5Fcb83372375b0928c971dFa71f88",
         "minRateOnLineBps": 50,
-        "sequencerFeed": "0x0000000000000000000000000000000000000000"
+        "sequencerFeed": "0x0000000000000000000000000000000000000000",
+        "livenessFeed": "0x0153002d20B96532C639313c2d54c3dA09109309",
+        "juniorShareBps": 3000
       }
     },
     "Capacity": {
-      "address": "0x9f4dA127f5CA9Ad4b7F4e55BFF0909745DCF6159",
-      "role": "ERC-4626 USDG writer vault, depositWithPermit (deployed by the Treaty constructor)",
-      "deployTx": "0x7eb7e54ab75b662a0025074f637dad40125960a1bca4abf0bcc0259369d46d61",
-      "block": 313869456,
-      "verification": {
-        "method": "sourcify",
-        "matchId": "53809724",
-        "matchType": "exact_match (creation and runtime)",
-        "verifiedAt": "2026-09-29T06:56:12Z"
+      "role": "four ERC-4626 vaults deployed by the Treaty constructor, one first-loss and one senior vault per book",
+      "deployTx": "0xe24026352f7ba9c7073952c764f756f6ebc7641533b6140543fc777ef2b02c9b",
+      "block": 314558549,
+      "vaults": {
+        "usdgFirstLoss": {
+          "address": "0x80b50d73b87BE3ac7Cd0F2DF35bE74033f8E4cF3",
+          "symbol": "hFL-USDG",
+          "verification": {
+            "method": "sourcify",
+            "matchId": "54461173",
+            "matchType": "exact_match (creation and runtime)"
+          }
+        },
+        "usdgSenior": {
+          "address": "0x05DD502aa5ca21f97c0536e4164D609B38A632Bc",
+          "symbol": "hSR-USDG",
+          "verification": {
+            "method": "sourcify",
+            "matchId": "54461177",
+            "matchType": "exact_match (creation and runtime)"
+          }
+        },
+        "usdcFirstLoss": {
+          "address": "0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB",
+          "symbol": "hFL-USDC",
+          "verification": {
+            "method": "sourcify",
+            "matchId": "54461178",
+            "matchType": "exact_match (creation and runtime)"
+          }
+        },
+        "usdcSenior": {
+          "address": "0x510e4266C55a58879d3a77eC02e77CCF1602cA39",
+          "symbol": "hSR-USDC",
+          "verification": {
+            "method": "sourcify",
+            "matchId": "54461180",
+            "matchType": "exact_match (creation and runtime)"
+          }
+        }
       }
     },
     "Pricer": {
@@ -55,6 +93,10 @@
     "USDG": {
       "address": "0xFFC95faa3d63Cde504a05B567C600B78C0b41892",
       "role": "settlement asset (Paxos testnet)"
+    },
+    "USDC": {
+      "address": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+      "role": "second book asset (Circle testnet, 6dp)"
     }
   },
   "constructorArgs": {
@@ -64,9 +106,11 @@
     "feeds": [
       "0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06"
     ],
-    "feedsNote": "SPY/USD, the one live equity feed Arbitrum Sepolia carries."
+    "feedsNote": "SPY/USD, the one live equity feed Arbitrum Sepolia carries.",
+    "LIVENESS_FEED": "0x0153002d20B96532C639313c2d54c3dA09109309",
+    "JUNIOR_SHARE_BPS": 3000
   },
-  "sourceOfTruth": "Read live on 2026-09-29 against https://sepolia-rollup.arbitrum.io/rpc: Treaty.pricer() = Pricer, Treaty.capacity() = Capacity, Treaty.usdg() = USDG, Treaty.minRateOnLineBps() = 50; Pricer.tableIdAt(0) = 2, tableIdAt(1) reverts MissingTable; Sourcify v2 API for the two verifications.",
+  "sourceOfTruth": "Read live on 2026-10-01 against https://sepolia-rollup.arbitrum.io/rpc: Treaty.pricer() = Pricer, Treaty.minRateOnLineBps() = 50, Treaty.livenessFeed(), Treaty.juniorShareBps() = 3000, Treaty.markets(0) = SPY feed, Treaty.firstLossVault(i)/seniorVault(i) for i in 0,1; Sourcify v2 API for the five verifications.",
   "rpc": "https://sepolia-rollup.arbitrum.io/rpc",
   "usdg": {
     "address": "0xFFC95faa3d63Cde504a05B567C600B78C0b41892",
