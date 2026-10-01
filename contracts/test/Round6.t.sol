@@ -230,16 +230,16 @@ contract Round6Test is Test, TreatyFixture {
     }
 
     // ------------------------------------------------------------------------------------------
-    // L6-3. A fresh in-effect round with an out-of-range answer can be neither referenced nor
-    // voided, so the layer can never settle. Round 6 said the 30-day backstop covered it. The
+    // L6-3. A fresh in-effect round with an out-of-range answer was neither referenceable nor
+    // voidable, so the layer could never settle. Round 6 said the 30-day backstop covered it; the
     // independent v3 review's L-1 made the `_anyMarketFixable` check unconditional (a layer that
-    // fix could still settle must never cancel for a full refund), which removes that cover:
-    // these two tests now PIN the residual, accepted in docs/security/capacity-review.md
-    // (Independent v3 review, resolution). They go red the day a third void proof or a Monday
-    // bad-answer detector lands, and must then be flipped to assert the cancel.
+    // `fix` could still settle must never cancel for a full refund), which removed that cover and
+    // left the layer Bound forever. Resolved with a terminal path instead: `voidReference`
+    // accepts the bad-answer round as a proof, and `voidFix` is the Monday-side twin. The
+    // exclusivity fuzz and the full-refund checks live in V3Review.t.sol (V-1 / V-2).
     // ------------------------------------------------------------------------------------------
 
-    function test_L6_3_residual_badAnswerInEffectRoundStaysBoundPastBackstop() public {
+    function test_L6_3_badAnswerInEffectRoundVoidsAndCancelsPastBackstop() public {
         MockUSDG usdg = new MockUSDG();
         live = new MockFeed();
         _deploy(address(usdg), address(new MockFeed()), address(live));
@@ -256,21 +256,20 @@ contract Round6Test is Test, TreatyFixture {
         t.setReference(id, 0, 2); // rule 2, answer
         vm.expectRevert(Treaty.BadRound.selector);
         t.setReference(id, 0, 1); // rule 4, superseded before close
-        vm.expectRevert(Treaty.BadTiming.selector);
-        t.voidReference(id, 0, 2); // not stale
         vm.expectRevert(Treaty.BadRound.selector);
         t.voidReference(id, 0, 1); // rule 4
 
-        vm.expectRevert(Treaty.StillFixable.selector); // L-1: the fixable check is unconditional
+        vm.expectRevert(Treaty.StillFixable.selector); // not yet proven unfixable
         t.cancel(id);
-        assertEq(uint256(_state(id)), uint256(Treaty.State.Bound), "accepted residual: layer stays Bound");
-        assertEq(fl.maxRedeem(writer), 0, "accepted residual: first-loss gate stays shut");
+        t.voidReference(id, 0, 2); // the bad-answer proof
+        t.cancel(id);
+        assertEq(uint256(_state(id)), uint256(Treaty.State.Cancelled), "terminal path reached");
+        assertGt(fl.maxRedeem(writer), 0, "first-loss gate reopened");
     }
 
-    /// Same class on the Monday side (unchanged from v2): the first round after expiry carries an
-    /// out-of-range answer, a good round follows it, so `fix` rejects both and `_isMarketDead`
-    /// (which only reads the latest round) calls the market live.
-    function test_L6_3b_residual_badFirstMondayRoundStaysBoundPastBackstop() public {
+    /// Same class on the Monday side: the first round after expiry carries an out-of-range answer,
+    /// a good round follows it, so `fix` rejects both. `voidFix` proves it, then cancel resolves.
+    function test_L6_3b_badFirstMondayRoundVoidsAndCancelsPastBackstop() public {
         MockUSDG usdg = new MockUSDG();
         live = new MockFeed();
         _deploy(address(usdg), address(new MockFeed()), address(live));
@@ -289,10 +288,12 @@ contract Round6Test is Test, TreatyFixture {
         t.fix(id, 0, 3);
         vm.expectRevert(Treaty.NotFirstRound.selector);
         t.fix(id, 0, 4);
-        vm.expectRevert(Treaty.StillFixable.selector); // L-1: the fixable check is unconditional
+        vm.expectRevert(Treaty.StillFixable.selector); // not yet proven unfixable
         t.cancel(id);
-        assertEq(uint256(_state(id)), uint256(Treaty.State.Bound), "accepted residual: layer stays Bound");
-        assertEq(fl.maxRedeem(writer), 0, "accepted residual: first-loss gate stays shut");
+        t.voidFix(id, 0, 3);
+        t.cancel(id);
+        assertEq(uint256(_state(id)), uint256(Treaty.State.Cancelled), "terminal path reached");
+        assertGt(fl.maxRedeem(writer), 0, "first-loss gate reopened");
     }
 
     // ------------------------------------------------------------------------------------------

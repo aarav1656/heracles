@@ -247,6 +247,9 @@ contract Treaty is ReentrancyGuard {
     // stale/phase proofs). A void market can never have its reference set and must not block
     // `cancel` the way a merely-unreferenced-but-still-fixable market does.
     mapping(uint256 => mapping(uint256 => bool)) public referenceVoid;
+    // Monday twin of `referenceVoid`: a market whose first post-expiry round is proven unusable
+    // (`voidFix`), so `fix` can never succeed for this layer and `cancel` is the only way out.
+    mapping(uint256 => mapping(uint256 => bool)) public fixVoid;
 
     event Bound(
         uint256 indexed id,
@@ -259,6 +262,7 @@ contract Treaty is ReentrancyGuard {
     );
     event ReferenceSet(uint256 indexed id, uint256 indexed marketIdx, uint80 roundId, uint64 price);
     event ReferenceVoided(uint256 indexed id, uint256 indexed marketIdx, uint80 roundId, uint256 updatedAt);
+    event FixVoided(uint256 indexed id, uint256 indexed marketIdx, uint80 roundId, int256 answer);
     event MarketFixed(uint256 indexed id, uint256 indexed marketIdx, uint80 roundId, int256 answer);
     event Settled(uint256 indexed id, uint256 payout, uint256 payoutJunior, uint256 payoutSenior);
     event Claimed(uint256 indexed id, address indexed buyer, address to, uint256 amount);
@@ -280,6 +284,8 @@ contract Treaty is ReentrancyGuard {
     // H1: `setReference`/`voidReference` are mutually exclusive terminal proofs for one market;
     // once either has recorded an outcome the other must not run again for the same market.
     error ReferenceIsVoid();
+    // `voidFix` already recorded its proof for this market.
+    error FixIsVoid();
     // Independent v3 review H-1: the round `setReference` would otherwise accept was already
     // in effect at or before this layer's own bind deadline, so the buyer could have seen it
     // before choosing exposure's sign. `voidReference`'s "known at bind" proof is the only path
@@ -625,7 +631,7 @@ contract Treaty is ReentrancyGuard {
         emit ReferenceSet(id, marketIdx, roundId, price);
     }
 
-    /// Permissionless proof that a market's Friday reference can never be set, either proof
+    /// Permissionless proof that a market's Friday reference can never be set, each proof
     /// callable only after `closeTs`:
     ///
     /// - **stale**: `roundId` is the genuine round in effect at close (rules 2-4 above, minus the
@@ -646,7 +652,15 @@ contract Treaty is ReentrancyGuard {
     ///   now refuses with `ReferenceKnownAtBind`. Disjoint from stale (a round can be fresh, i.e.
     ///   not stale, and still known at bind, or the reverse), so either condition alone voids.
     ///
-    /// All three proofs and `setReference` exclude each other (`AlreadyFixed`/`ReferenceIsVoid`).
+    /// - **bad answer**: `roundId` is the genuine round in effect at close (same rules 2-4) and its
+    ///   answer is `<= 0` or above `uint64.max`, the exact condition `setReference` rejects with
+    ///   `BadRound` (rule 2, answer). That round is the only one `setReference` could ever accept,
+    ///   and round data is immutable, so the market can never be referenced. Without this proof a
+    ///   fresh round with an out-of-range answer was neither referenceable nor voidable and left
+    ///   the layer `Bound` forever (L6-3). Disjoint from `setReference` by construction: the same
+    ///   round cannot have a valid and an invalid answer.
+    ///
+    /// All four proofs and `setReference` exclude each other (`AlreadyFixed`/`ReferenceIsVoid`).
     /// `_anyMarketFixable` below treats a void market the same as a dead one: it stops blocking
     /// `cancel`, so a layer stuck on an unreachable reference reaches `Cancelled` instead of
     /// staying `Bound` forever with the vaults' gates shut and no admin path out.
@@ -679,7 +693,7 @@ contract Treaty is ReentrancyGuard {
         // disjoint ways this market can be void: stale (opposite of rule 5) or known at bind
         // (H-1, `updatedAt` at or before this layer's own bind deadline).
         uint80 checkedLatest = _latestInPhase(feed, roundId);
-        (,,, uint256 updatedAt,) = feed.getRoundData(roundId);
+        (, int256 answer,, uint256 updatedAt,) = feed.getRoundData(roundId);
         if (updatedAt == 0) revert BadRound(); // no round ever printed at this id: nothing to void
         if (updatedAt > closeTs) revert BadRound();
         if (roundId != checkedLatest) {
@@ -688,7 +702,8 @@ contract Treaty is ReentrancyGuard {
         }
         bool stale = updatedAt + MAX_ROUND_AGE < closeTs;
         bool knownAtBind = updatedAt <= uint256(L.fridayCutoff) - BIND_LEAD;
-        if (!stale && !knownAtBind) revert BadTiming(); // must actually be voidable one way or the other
+        bool badAnswer = answer <= 0 || uint256(answer) > type(uint64).max; // setReference's rule 2 (answer)
+        if (!stale && !knownAtBind && !badAnswer) revert BadTiming(); // must actually be voidable one way or the other
 
         referenceVoid[id][marketIdx] = true;
         emit ReferenceVoided(id, marketIdx, roundId, updatedAt);
@@ -723,6 +738,33 @@ contract Treaty is ReentrancyGuard {
         emit MarketFixed(id, marketIdx, roundId, answer);
 
         if (L.fixedCount == markets.length) _settle(id);
+    }
+
+    /// Permissionless proof that a market's Monday fix can never succeed: `roundId` passes every
+    /// check `fix` makes on its round (current phase, `updatedAt` at or after `expiry` and not in
+    /// the future, predecessor strictly before `expiry`, i.e. the one round `fix` could ever take)
+    /// except that its answer is `<= 0` or above `uint64.max`, which `fix` rejects with `BadRound`.
+    /// Round data is immutable, so no later round can stand in (`NotFirstRound`) and the layer can
+    /// never settle; `_anyMarketFixable` then stops counting this market and `cancel` refunds the
+    /// premium in full. Mutually exclusive with `fix` by construction: the same round cannot carry
+    /// a valid and an invalid answer, so a valid first round reverts here with `StillFixable`. No
+    /// reference is needed: a layer whose first Monday round is unusable cannot settle either way.
+    function voidFix(uint256 id, uint256 marketIdx, uint80 roundId) external nonReentrant {
+        Layer storage L = layers[id];
+        if (L.state != State.Bound) revert WrongState();
+        if (marketIdx >= markets.length) revert BadParams();
+        if (fixVoid[id][marketIdx]) revert FixIsVoid();
+
+        AggregatorV3Interface feed = markets[marketIdx];
+        _latestInPhase(feed, roundId);
+        (, int256 answer,, uint256 updatedAt,) = feed.getRoundData(roundId);
+        if (updatedAt < L.expiry || updatedAt > block.timestamp) revert BadRound();
+        (,,, uint256 prevUpdatedAt,) = feed.getRoundData(roundId - 1);
+        if (prevUpdatedAt == 0 || prevUpdatedAt >= L.expiry) revert NotFirstRound();
+        if (answer > 0 && uint256(answer) <= type(uint64).max) revert StillFixable();
+
+        fixVoid[id][marketIdx] = true;
+        emit FixVoided(id, marketIdx, roundId, answer);
     }
 
     /// If a market's feed never produces a fresh round within `GRACE` of expiry (including the
@@ -808,6 +850,7 @@ contract Treaty is ReentrancyGuard {
         bool anyFixable;
         for (uint256 i; i < n; i++) {
             if (marketFixed[id][i]) continue;
+            if (fixVoid[id][i]) return false; // fix can never complete this layer, same as a void reference
             if (!referenceSet[id][i]) {
                 if (referenceVoid[id][i]) return false;
                 anyFixable = true;
@@ -828,17 +871,17 @@ contract Treaty is ReentrancyGuard {
     /// L-1 (independent v3 review): the initial `latestRoundData()` read is also `try`/`catch` now,
     /// not a bare call; a feed that reverts outright (not merely stale) must count as dead too, or
     /// it could block `cancel`'s backstop forever, the same failure mode the phase read already
-    /// guarded against.
+    /// guarded against. The latest round's answer is deliberately not read: an out-of-range answer
+    /// does not make a market dead, since an earlier valid first round may still be fixable. A
+    /// market whose first round is unusable is resolved by `voidFix`, not by this heuristic.
     function _isMarketDead(AggregatorV3Interface feed, uint256 boundary) internal view returns (bool) {
         uint80 latestId;
-        int256 answer;
         uint256 updatedAt;
-        try feed.latestRoundData() returns (uint80 latestId_, int256 answer_, uint256, uint256 updatedAt_, uint80) {
-            (latestId, answer, updatedAt) = (latestId_, answer_, updatedAt_);
+        try feed.latestRoundData() returns (uint80 latestId_, int256, uint256, uint256 updatedAt_, uint80) {
+            (latestId, updatedAt) = (latestId_, updatedAt_);
         } catch {
             return true;
         }
-        if (answer <= 0 || uint256(answer) > type(uint64).max) return true;
         if (updatedAt < boundary) return true;
         if (uint64(latestId) == 0) return true;
         uint80 phase = latestId >> 64;

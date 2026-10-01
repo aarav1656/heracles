@@ -384,4 +384,257 @@ contract V3ReviewTest is Test, TreatyFixture {
         (, uint256 premium,) = _layer(id);
         assertEq(premium, floor_);
     }
+
+    // ------------------------------------------------------------------------------------------
+    // V-1 / V-2. Always a terminal path. A round that is provably invalid for the layer (answer
+    // outside (0, uint64.max]) must not leave it Bound forever: `voidReference` (Friday side) and
+    // `voidFix` (Monday side) are permissionless proofs, mutually exclusive with `setReference` /
+    // `fix`, after which `cancel` refunds the whole premium. `voidFix` is called by raw selector so
+    // this file still compiles, and the tests go red, against the source that lacks it.
+    // ------------------------------------------------------------------------------------------
+
+    function _voidFix(uint256 id, uint256 m, uint80 r) internal returns (bool ok, bytes memory ret) {
+        (ok, ret) = address(t).call(abi.encodeWithSignature("voidFix(uint256,uint256,uint80)", id, m, r));
+    }
+
+    function _sel(bytes memory ret) internal pure returns (bytes4) {
+        return ret.length < 4 ? bytes4(0) : bytes4(ret);
+    }
+
+    /// Bound Thursday 19:00, then a feed round `answer` in effect at the Friday close.
+    function _bindWithFridayRound(int256 answer) internal returns (uint256 id) {
+        _deployMock();
+        live.set(1, 1e8, EXPIRY + 40 days);
+        feed.set(1, 770e8, THU_1900 - 1 hours);
+        vm.warp(THU_1900);
+        id = _bind();
+        feed.set(2, answer, FRI + 19 hours + 45 minutes); // after the bind deadline, fresh at close
+        feed.set(3, 772e8, FRI + 3 days + 4 minutes); // Sunday-night reopen: supersedes round 1 for rule 4
+        vm.warp(CLOSE + 1);
+    }
+
+    function _cancelAndAssertFullRefund(uint256 id, uint256 buyerStart) internal {
+        vm.warp(EXPIRY + 3 days);
+        t.cancel(id);
+        (Treaty.State s,,) = _layer(id);
+        assertEq(uint8(s), uint8(Treaty.State.Cancelled), "terminal path reached");
+        vm.prank(buyer);
+        t.claim(id);
+        assertEq(usdg.balanceOf(buyer), buyerStart, "the whole premium is refunded");
+        assertEq(fl.locked() + sr.locked(), 0, "capital unlocked");
+        assertGt(fl.maxRedeem(writer), 0, "first-loss gate reopened");
+        assertGt(sr.maxRedeem(writer), 0, "senior gate reopened");
+    }
+
+    /// Friday side. A fresh in-effect round with answer 0: `setReference` rejects it (rule 2) and
+    /// the stale / phase / known-at-bind proofs do not apply, so before the fix the layer sat
+    /// Bound forever (one year later, cancel still StillFixable).
+    function test_V1_badInEffectRoundVoidsAndCancelsWithFullRefund() public {
+        uint256 buyerStart = 1_000_000e6;
+        uint256 id = _bindWithFridayRound(0);
+        assertEq(usdg.balanceOf(buyer), buyerStart - _premiumOf(id), "precondition: premium pulled");
+        buyerStart = usdg.balanceOf(buyer) + _premiumOf(id);
+
+        vm.expectRevert(Treaty.BadRound.selector);
+        t.setReference(id, 0, 2);
+        vm.warp(EXPIRY + 3 days);
+        vm.expectRevert(Treaty.StillFixable.selector);
+        t.cancel(id); // not yet proven void: the guard still protects a fixable layer
+        vm.warp(CLOSE + 1);
+
+        t.voidReference(id, 0, 2);
+        assertTrue(t.referenceVoid(id, 0), "void recorded");
+        vm.expectRevert(Treaty.ReferenceIsVoid.selector);
+        t.setReference(id, 0, 2);
+        _cancelAndAssertFullRefund(id, buyerStart);
+    }
+
+    /// Same, for the other half of the invalid range (above uint64.max, which setReference's
+    /// `uint64` price cannot hold) and for a negative answer.
+    function test_V1_outOfRangeAnswersVoid() public {
+        int256[2] memory bad = [int256(uint256(type(uint64).max)) + 1, int256(-5)];
+        for (uint256 i; i < bad.length; i++) {
+            uint256 id = _bindWithFridayRound(bad[i]);
+            vm.expectRevert(Treaty.BadRound.selector);
+            t.setReference(id, 0, 2);
+            t.voidReference(id, 0, 2);
+            assertTrue(t.referenceVoid(id, 0));
+        }
+    }
+
+    /// The rule stays: a fresh round with a valid answer is never voidable, and the layer is not
+    /// cancellable, however long it waits.
+    function test_V1_validInEffectRoundIsNotVoidableAndLayerNotCancellable() public {
+        uint256 id = _bindWithFridayRound(771e8);
+        vm.expectRevert(Treaty.BadTiming.selector);
+        t.voidReference(id, 0, 2);
+        vm.warp(EXPIRY + 365 days);
+        vm.expectRevert(Treaty.StillFixable.selector);
+        t.cancel(id);
+        vm.warp(CLOSE + 1);
+        t.setReference(id, 0, 2);
+        assertTrue(t.referenceSet(id, 0));
+    }
+
+    /// Only the round actually in effect at close can carry the proof: a bad round that was
+    /// already superseded before close proves nothing.
+    function test_V1_supersededBadRoundCannotVoid() public {
+        _deployMock();
+        feed.set(1, 770e8, THU_1900 - 1 hours);
+        vm.warp(THU_1900);
+        uint256 id = _bind();
+        feed.set(2, 0, FRI + 18 hours); // bad, but superseded before the close
+        feed.set(3, 771e8, FRI + 19 hours);
+        vm.warp(CLOSE + 1);
+        vm.expectRevert(Treaty.BadRound.selector);
+        t.voidReference(id, 0, 2);
+        t.setReference(id, 0, 3);
+    }
+
+    /// Answers around both edges of the valid range (0 / 1 and uint64.max / +1), or anywhere.
+    function _answerFrom(int256 raw, uint8 edge) internal pure returns (int256) {
+        int256 off = int256(uint256(edge / 3 % 5)) - 2;
+        if (edge % 3 == 0) return off;
+        if (edge % 3 == 1) return int256(uint256(type(uint64).max)) + off;
+        return raw;
+    }
+
+    /// Exclusivity fuzz over the answer. The in-effect round carries an answer drawn around both
+    /// edges of the valid range (0 / 1 and uint64.max / +1) or anywhere. Exactly one of
+    /// setReference / voidReference succeeds, in either call order, the loser stays shut, and the
+    /// side is decided by `0 < answer <= uint64.max`.
+    function testFuzz_V1_exactlyOneOfSetOrVoidByAnswer(int256 raw, uint8 edge, bool voidFirst) public {
+        int256 answer = _answerFrom(raw, edge);
+        bool valid = answer > 0 && uint256(answer) <= type(uint64).max;
+        uint256 id = _bindWithFridayRound(answer);
+
+        if (voidFirst) {
+            (bool ok,) = address(t).call(abi.encodeCall(Treaty.voidReference, (id, 0, 2)));
+            assertEq(ok, !valid, "void succeeds exactly when the answer is invalid");
+            if (ok) {
+                vm.expectRevert(Treaty.ReferenceIsVoid.selector);
+                t.setReference(id, 0, 2);
+            } else {
+                t.setReference(id, 0, 2);
+            }
+        } else {
+            (bool ok,) = address(t).call(abi.encodeCall(Treaty.setReference, (id, 0, 2)));
+            assertEq(ok, valid, "set succeeds exactly when the answer is valid");
+            if (ok) {
+                vm.expectRevert(Treaty.AlreadyFixed.selector);
+                t.voidReference(id, 0, 2);
+            } else {
+                t.voidReference(id, 0, 2);
+            }
+        }
+        assertTrue(t.referenceSet(id, 0) != t.referenceVoid(id, 0), "exactly one outcome, never both, never neither");
+        assertEq(t.referenceSet(id, 0), valid);
+    }
+
+    function _premiumOf(uint256 id) internal view returns (uint256 p) {
+        (, p,) = _layer(id);
+    }
+
+    /// Bound, referenced; Monday's rounds are written by the test.
+    function _bindReferenced() internal returns (uint256 id) {
+        _deployMock();
+        live.set(1, 1e8, EXPIRY + 40 days);
+        feed.set(1, 770e8, THU_1900 - 1 hours);
+        vm.warp(THU_1900);
+        id = _bind();
+        feed.set(2, 771e8, FRI + 19 hours);
+        vm.warp(CLOSE + 1);
+        t.setReference(id, 0, 2);
+    }
+
+    /// Monday side. The first round after expiry is out of range and a good one follows: `fix`
+    /// rejects both (BadRound, NotFirstRound) and the market read as live, so before the fix the
+    /// layer sat Bound forever.
+    function test_V2_badFirstMondayRoundVoidsAndCancelsWithFullRefund() public {
+        uint256 id = _bindReferenced();
+        uint256 buyerStart = usdg.balanceOf(buyer) + _premiumOf(id);
+        feed.set(3, 0, EXPIRY + 10 minutes);
+        feed.set(4, 760e8, EXPIRY + 1 hours);
+
+        vm.warp(EXPIRY + 3 days);
+        vm.expectRevert(Treaty.StillFixable.selector);
+        t.cancel(id); // not yet proven void
+        vm.expectRevert(Treaty.BadRound.selector);
+        t.fix(id, 0, 3);
+        vm.expectRevert(Treaty.NotFirstRound.selector);
+        t.fix(id, 0, 4);
+
+        (bool ok, bytes memory ret) = _voidFix(id, 0, 4);
+        assertFalse(ok, "a later round is not the first round");
+        assertEq(_sel(ret), Treaty.NotFirstRound.selector);
+
+        (ok, ret) = _voidFix(id, 0, 3);
+        assertTrue(ok, "the first post-expiry round is out of range: void");
+        (ok, ret) = _voidFix(id, 0, 3);
+        assertFalse(ok, "a second proof is refused");
+        _cancelAndAssertFullRefund(id, buyerStart);
+    }
+
+    /// The first Monday round is the only one and is itself the latest: still needs the proof
+    /// (a fixable-looking market is no longer dead on its answer alone), then cancels.
+    function test_V2_badOnlyMondayRoundVoids() public {
+        uint256 id = _bindReferenced();
+        uint256 buyerStart = usdg.balanceOf(buyer) + _premiumOf(id);
+        feed.set(3, -1, EXPIRY + 10 minutes);
+        vm.warp(EXPIRY + 3 days);
+        (bool ok,) = _voidFix(id, 0, 3);
+        assertTrue(ok);
+        _cancelAndAssertFullRefund(id, buyerStart);
+    }
+
+    /// The rule stays on the Monday side: a valid first round is never voidable, and a bad round
+    /// printed after it must not make the market read as dead (before the fix `_isMarketDead`
+    /// read only the latest answer, so this layer was cancellable for a full refund while `fix`
+    /// could still pay the writers or the buyer).
+    function test_V2_validFirstMondayRoundCannotBeVoidedAndLaterBadRoundDoesNotUnlockCancel() public {
+        uint256 id = _bindReferenced();
+        feed.set(3, 755e8, EXPIRY + 10 minutes); // valid first round
+        feed.set(4, 0, EXPIRY + 1 hours); // latest is bad
+        vm.warp(EXPIRY + 365 days);
+
+        vm.expectRevert(Treaty.StillFixable.selector);
+        t.cancel(id);
+        (bool ok, bytes memory ret) = _voidFix(id, 0, 3);
+        assertFalse(ok, "valid first round is not voidable");
+        assertEq(_sel(ret), Treaty.StillFixable.selector);
+
+        t.fix(id, 0, 3);
+        (Treaty.State s,,) = _layer(id);
+        assertEq(uint8(s), uint8(Treaty.State.Settled), "the layer still settles on its valid round");
+    }
+
+    /// Exclusivity fuzz over the Monday answer, same edges as the Friday one. Exactly one of fix /
+    /// voidFix succeeds for the first post-expiry round and the loser can never succeed after.
+    function testFuzz_V2_exactlyOneOfFixOrVoidFixByAnswer(int256 raw, uint8 edge, bool voidFirst) public {
+        int256 answer = _answerFrom(raw, edge);
+        bool valid = answer > 0 && uint256(answer) <= type(uint64).max;
+        uint256 id = _bindReferenced();
+        feed.set(3, answer, EXPIRY + 10 minutes);
+        feed.set(4, 760e8, EXPIRY + 1 hours);
+        vm.warp(EXPIRY + 1 hours);
+
+        bool fixOk;
+        bool voidOk;
+        if (voidFirst) {
+            (voidOk,) = _voidFix(id, 0, 3);
+            (fixOk,) = address(t).call(abi.encodeCall(Treaty.fix, (id, 0, 3)));
+        } else {
+            (fixOk,) = address(t).call(abi.encodeCall(Treaty.fix, (id, 0, 3)));
+            (voidOk,) = _voidFix(id, 0, 3);
+        }
+        assertEq(fixOk, valid, "fix succeeds exactly when the answer is valid");
+        assertEq(voidOk, !valid, "voidFix succeeds exactly when the answer is invalid");
+        (Treaty.State s,,) = _layer(id);
+        assertEq(uint8(s), valid ? uint8(Treaty.State.Settled) : uint8(Treaty.State.Bound));
+        if (!valid) {
+            // and the void side never lets the later good round settle the layer
+            (bool ok,) = address(t).call(abi.encodeCall(Treaty.fix, (id, 0, 4)));
+            assertFalse(ok, "round 4 is not the first round");
+        }
+    }
 }
