@@ -32,3 +32,8 @@ test('orders by the allowlist rather than discovery order', () => {
 test('empty input stays empty', () => {
   assert.deepEqual(filterAllowedConnectors([]), []);
 });
+
+test('real wagmi EIP-6963 connectors: rdns arrives as id, no rdns field', () => {
+  const out = filterAllowedConnectors([{ id: 'app.phantom' }, { id: 'injected' }, { id: 'io.rabby' }]);
+  assert.deepEqual(out.map((c) => c.id), ['io.rabby', 'app.phantom']);
+});

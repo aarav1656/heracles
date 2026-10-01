@@ -13,13 +13,16 @@ export type AllowedRdns = (typeof WALLET_ALLOWLIST)[number]['rdns'];
 
 /** The smallest shape the filter needs. wagmi connectors satisfy this. */
 export type MinimalConnector = {
+  id?: string;
   rdns?: string | readonly string[] | null;
 };
 
 const order = new Map<string, number>(WALLET_ALLOWLIST.map((w, i) => [w.rdns, i]));
 
 const rdnsOf = (c: MinimalConnector): string[] => {
-  if (!c || c.rdns == null) return [];
+  // wagmi's EIP-6963 connectors carry the wallet's rdns as `id` (createConfig: id: info.rdns) and expose no `rdns`.
+  if (!c) return [];
+  if (c.rdns == null) return c.id ? [c.id] : [];
   return typeof c.rdns === 'string' ? [c.rdns] : [...c.rdns];
 };
 
