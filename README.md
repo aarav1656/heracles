@@ -11,7 +11,7 @@ from the feed, not from the vault's own books. A Stylus contract prices the laye
 chain from 504 historical weekend gaps, USDG writers fund it, and settlement uses the
 first fresh Monday oracle round. No offchain price setter, no claims adjuster. Heracles (contract `Treaty`): `contracts/src/Treaty.sol`.
 
-Live app: https://heracles-virid-seven.vercel.app (reads the book below from the chain; screenshots of all three routes at 1440 and 390 px in `evidence/web-{book,bind,write}-{1440,390}.png`).
+Live app: https://heracles-virid-seven.vercel.app (reads the book below from the chain; screenshots of the book, bind and write routes at 1440 and 390 px in `evidence/web-{book,bind,write}-{1440,390}.png`, and of `/replay` and `/quote` at 1440 px in `evidence/web-{replay,quote}-1440.png`).
 
 ## Deployed, Arbitrum Sepolia (421614)
 
@@ -157,6 +157,30 @@ bound, matching the live on-chain quote (1,676.722158 USDG) to the last cent. Ag
   https://x.com/JohannKerbrat/status/2103874953053622694) The weekend is not the tail case
   for this asset class, it is the majority of flow.
 
+## Replay and quote
+
+`/replay` runs the weekend of Friday 25 September 2026 through the Treaty's layer math. The
+vault is Ostium's LP vault, the other side of every trader. Open interest on SPX, NVDA, TSLA
+and AAPL is read from TradingStorage at Arbitrum One block 508,866,731 (Friday 20:00:00 UTC),
+each side valued at Ostium's last trade before the close. The Chainlink round in effect at the
+close and the first round at or after Monday's 13:30 UTC open give the gap per name: SPY
+-0.16%, NVDA +2.13%, TSLA -0.73%, AAPL +0.51%. The vault is long 817,560 of SPX and short
+448,555 NVDA, 7,456 TSLA and 1,630 AAPL, so it loses 1,340.02 on SPX, 9,562.15 on NVDA and
+8.24 on AAPL, 10,910.41 in all (the TSLA gain is not netted, as in `Treaty._settle`). A layer
+with a 3,000 retention and a 20,000 limit pays 7,910.41: 6,000.00 from the first-loss
+tranche, which pays in full, and 1,910.41 from the senior tranche. The Stylus pricer quotes
+3,025.37 for that layer (expected payout 2,612.35, TVaR95 15,868.18) at Arbitrum Sepolia
+block 314,660,728, and the native build of the same `pricer_core` returns the identical
+triple. `scripts/replay_weekend.py` regenerates `web/src/data/replay.json` from the chain,
+and `web/src/lib/replay.test.ts` recomputes the result from the stored rounds.
+
+`/quote` takes a vault's net weekend exposure on the four names the pricer holds tables
+for, prefilled from Ostium's live open interest (the same read as
+`evidence/gap-tables/ostium-oi-by-group.json`, repeated in the browser, with a Refresh
+button), plus a retention and a limit. It calls the deployed Stylus pricer for the premium,
+the expected payout and TVaR95, quotes the first-loss slice of the limit separately for the
+tranche split, and builds a plain-text `mailto:` quote that makes no network call.
+
 ## Why Arbitrum
 
 Ostium and gTrade's capital, open interest and Chainlink feeds already sit on Arbitrum
@@ -168,10 +192,33 @@ execution gas than the Solidity twin (7.93x less total gas), read live at block
 at [`0x6aAf1b58939d55d1142a34aE02903bB788E9e771`](https://sepolia.arbiscan.io/address/0x6aAf1b58939d55d1142a34aE02903bB788E9e771)
 for this comparison only (`script/DeployPricerTwin.s.sol`): Stylus 584,865 total gas /
 578,444 L2 execution gas, Solidity 4,639,494 total / 4,632,865 L2 execution, identical
-outputs. That figure covers a single-market call; a multi-market call is not measured.
-Full numbers in `docs/pricing.md` under "Gas". The treaty gates on Arbitrum One's real L2
+outputs. Full numbers in `docs/pricing.md` under "Gas". The treaty gates on Arbitrum One's real L2
 Sequencer Uptime feed and settles in real Paxos USDG on testnet
 (`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`).
+
+### Why Stylus: gas of one `quote()` call at 1, 4 and 8 markets
+
+Same call, same inputs, same block, both contracts live on Arbitrum Sepolia (the Stylus
+pricer above and its Solidity twin). Arbitrum Sepolia block 314,661,533, `eth_estimateGas`;
+L2 execution gas is the estimate less NodeInterface `gasEstimateL1Component` for the same
+calldata. The two implementations return identical premium, expected loss and TVaR95 at
+every size (asserted by the script).
+
+| Markets | Stylus L2 gas | Solidity L2 gas | Gas saved | Ratio, L2 execution | Ratio, total gas |
+|---|---|---|---|---|---|
+| 1 | 578,996 | 4,633,423 | 4,054,427 | 8.00x | 7.95x |
+| 4 | 1,283,484 | 6,941,890 | 5,658,406 | 5.41x | 5.39x |
+| 8 | 2,214,375 | 9,497,423 | 7,283,048 | 4.29x | 4.28x |
+
+Method: each contract is configured with one market on chain, so the per-market table
+ids are set inside the call with an `eth_estimateGas` state override of the contract's own
+table-id storage (Stylus slot 0, twin slot 252). The table ids are SPY, NVDA, AAPL, TSLA,
+repeated for eight markets. Every market reads its own distinct Chainlink feed (SPY/USD,
+LINK/USD, DAI/USD, ARB/USD, UNI/USD, AVAX/USD, LTC/USD, BNB/USD on Arbitrum Sepolia), and
+both contracts walk the same eight rounds of each. The one-market row reproduces the earlier single-market figure (8.01x at block
+313,704,736). Without the override the same call reverts `MissingTable` on both contracts,
+which the script also asserts. Reproduce: `python3 scripts/measure_pricer_gas.py`; the raw
+reads are in `evidence/gas/pricer-multimarket.json`.
 
 ## How it works
 
@@ -296,8 +343,8 @@ triple for the same call. The 2026-09-28 redeploy compresses to 25,765 bytes, sp
 across two fragments behind a 48-byte root contract, activation fee 0.000084 ETH. The
 measured Stylus-vs-Solidity gas ratio for that deploy, read live via NodeInterface's
 `gasEstimateComponents` at block 313,704,736, is **8.01x** less L2 execution gas (7.93x
-less total gas, single-market call; see `docs/pricing.md` under "Gas"). No other Stylus
-performance number is claimed here.
+less total gas, single-market call; see `docs/pricing.md` under "Gas"). The four and
+eight market measurements are in "Why Stylus" above.
 
 ## What works
 
@@ -355,8 +402,8 @@ performance number is claimed here.
 ## Contributors
 
 Built by aarav1656. The pricing model, the security fixes in
-`docs/SECURITY.md`, and the decision to state the 8.01x gas figure only for the
-single-market call it was measured on, are all this author's calls.
+`docs/SECURITY.md`, and the decision to state every gas figure with the block, the
+method and the number of markets it was measured on, are all this author's calls.
 
 ## Run instructions
 

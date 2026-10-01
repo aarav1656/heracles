@@ -74,8 +74,8 @@ export function Overview() {
           ) : (
             <>
               <p className="terms">
-                A vault that is net long {usd0.format(REFERENCE.exposure)} USDG of {ticker}. The live pricer only quotes SPY on this
-                testnet, so there is no price for {ticker} yet.
+                A vault that is net long {usd0.format(REFERENCE.exposure)} USDG of {ticker}. The treaty on this testnet lists SPY;
+                the <Link to="/quote">quote page</Link> prices {ticker} with the same pricer.
               </p>
               <details className="more">
                 <summary>What it would have paid since 2016</summary>
@@ -114,7 +114,7 @@ export function Overview() {
               price, the average payout and the average of the worst 25 weekends. At settlement the payout comes from the
               same kind of arithmetic: the Monday gap on the feed times the position the vault declared, minus the part the vault
               keeps (the retention), capped at the limit. The call costs <span className="fig">8.01x</span> less
-              L2 execution gas in Stylus than in its Solidity twin, measured at block <a href={explorer.block(313_704_736n)} target="_blank" rel="noreferrer">#313,704,736</a> (<span className="file">docs/pricing.md</span>, "Gas").
+              L2 execution gas in Stylus than in its Solidity twin on one market and <span className="fig">4.29x</span> less on eight, measured at block <a href={explorer.block(314_661_533n)} target="_blank" rel="noreferrer">#314,661,533</a> (<span className="file">docs/pricing.md</span>, "Gas").
             </p>
             {spyFeed && (
               <p className="note">

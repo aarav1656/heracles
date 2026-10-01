@@ -62,6 +62,9 @@ Built by aarav1656.
 
 https://heracles-virid-seven.vercel.app
 
+- `/replay`: the weekend of 25 September 2026 run through the layer math. Ostium's vault loses 10,910.41 on the gap, a 3,000 retention and 20,000 limit layer pays 7,910.41 (6,000.00 first-loss, 1,910.41 senior), and the Stylus pricer quotes 3,025.37 for it.
+- `/quote`: a risk lead's net weekend exposure, prefilled from Ostium's live open interest, priced by the deployed Stylus pricer with the tranche split and a plain-text quote to send.
+
 ## Deployed (Arbitrum Sepolia)
 
 | Contract | Address |

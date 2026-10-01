@@ -7,6 +7,8 @@ import { Wallet } from './components/Wallet';
 import { Overview } from './pages/Overview';
 import { Bind } from './pages/Bind';
 import { Write } from './pages/Write';
+import { QuotePage } from './pages/Quote';
+import { Replay } from './pages/Replay';
 import { short } from './lib/format';
 
 const queryClient = new QueryClient();
@@ -21,6 +23,8 @@ export function App() {
               <NavLink to="/" className="mark" aria-label="Heracles, weekend gaps">Heracles</NavLink>
               <nav aria-label="Sections">
                 <NavLink to="/" end>Weekend gaps</NavLink>
+                <NavLink to="/quote">Quote</NavLink>
+                <NavLink to="/replay">Replay</NavLink>
                 <NavLink to="/bind">Price cover</NavLink>
                 <NavLink to="/write">Earn premium</NavLink>
               </nav>
@@ -30,6 +34,8 @@ export function App() {
           <main className="wrap">
             <Routes>
               <Route path="/" element={<Overview />} />
+              <Route path="/quote" element={<QuotePage />} />
+              <Route path="/replay" element={<Replay />} />
               <Route path="/bind" element={<Bind />} />
               <Route path="/write" element={<Write />} />
             </Routes>

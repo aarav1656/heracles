@@ -307,5 +307,20 @@ same block. Both returned identical outputs (premium 1,676,722,158 base units, E
 
 L2 execution is **8.01x** cheaper in Stylus (7.93x on total gas). This single-market call
 replaces the earlier 4.06x figure, which was measured on an older, single-table version of
-the pricer. Multi-market calls were not measured.
+the pricer.
+
+**Multi-market call gas (2026-10-01, Arbitrum Sepolia, block 314,661,533).** The same two
+contracts, one `quote()` call at 1, 4 and 8 markets with the table ids set in the call's
+state (`eth_estimateGas` with a state override of each contract's table-id storage). Each
+market reads its own Chainlink feed. Both contracts return identical outputs at every size.
+
+| Markets | Stylus L2 gas | Solidity L2 gas | Ratio, L2 execution | Stylus total | Solidity total | Ratio, total |
+|---|---|---|---|---|---|---|
+| 1 | 578,996 | 4,633,423 | 8.00x | 583,055 | 4,637,614 | 7.95x |
+| 4 | 1,283,484 | 6,941,890 | 5.41x | 1,289,020 | 6,947,465 | 5.39x |
+| 8 | 2,214,375 | 9,497,423 | 4.29x | 2,221,360 | 9,504,408 | 4.28x |
+
+Each added market costs about 233,000 to 235,000 L2 gas in Stylus and 640,000 to 770,000
+in the Solidity twin; both walk the same eight feed rounds per market. Reproduce with `python3 scripts/measure_pricer_gas.py`; raw reads in
+`evidence/gas/pricer-multimarket.json`.
 

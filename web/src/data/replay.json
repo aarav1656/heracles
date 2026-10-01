@@ -1,0 +1,195 @@
+{
+  "weekend": {
+    "friday": "2026-09-25",
+    "monday": "2026-09-28",
+    "closeTs": 1790366400,
+    "expiryTs": 1790602200
+  },
+  "snapshot": {
+    "chain": "Arbitrum One",
+    "block": 508866731,
+    "blockTimestamp": 1790366400,
+    "mondayBlock": 509719573,
+    "contract": "0xcCd5891083A8acD2074690F65d3024E7D13d66E7",
+    "call": "getPairOpeningInterestInfo(uint16)",
+    "rpc": "https://arbitrum.gateway.tenderly.co",
+    "headBlock": 510682399
+  },
+  "layer": {
+    "retentionUsd6": 3000000000,
+    "limitUsd6": 20000000000,
+    "juniorShareBps": 3000,
+    "juniorLimitUsd6": 6000000000
+  },
+  "markets": [
+    {
+      "ticker": "SPY",
+      "ostiumPair": "SPX",
+      "pairIndex": 10,
+      "tableId": 2,
+      "oi": {
+        "longUnits": "15773913141567036879",
+        "shortUnits": "121264881919608895993"
+      },
+      "ostiumPrice": {
+        "value": "7750049999999999151936",
+        "orderId": "2207778",
+        "executedAt": 1790366287,
+        "executedBlock": 508866317
+      },
+      "traderLongUsd6": 122248615542,
+      "traderShortUsd6": 939808898121,
+      "vaultExposureUsd6": 817560282578,
+      "feed": {
+        "name": "SPY/USD",
+        "address": "0x46306F3795342117721D8DEd50fbcF6DF2b3cc10",
+        "reference": {
+          "roundId": "36893488147419103590",
+          "answer": 76874000000,
+          "updatedAt": 1790337627
+        },
+        "fix": {
+          "roundId": "36893488147419103594",
+          "answer": 76748000000,
+          "updatedAt": 1790602546
+        }
+      },
+      "gapBps": -16.39,
+      "lossUsd6": 1340018674
+    },
+    {
+      "ticker": "NVDA",
+      "ostiumPair": "NVDA",
+      "pairIndex": 18,
+      "tableId": 0,
+      "oi": {
+        "longUnits": "1995663523150313066473",
+        "shortUnits": "5621442387848347794"
+      },
+      "ostiumPrice": {
+        "value": "225399999835121556441",
+        "orderId": "2207711",
+        "executedAt": 1790366281,
+        "executedBlock": 508866294
+      },
+      "traderLongUsd6": 449822557789,
+      "traderShortUsd6": 1267073113,
+      "vaultExposureUsd6": -448555484675,
+      "feed": {
+        "name": "NVDA/USD",
+        "address": "0x4881A4418b5F2460B21d6F08CD5aA0678a7f262F",
+        "reference": {
+          "roundId": "36893488147419104862",
+          "answer": 22539999999,
+          "updatedAt": 1790366116
+        },
+        "fix": {
+          "roundId": "36893488147419104866",
+          "answer": 23020500000,
+          "updatedAt": 1790602245
+        }
+      },
+      "gapBps": 213.18,
+      "lossUsd6": 9562152211
+    },
+    {
+      "ticker": "TSLA",
+      "ostiumPair": "TSLA",
+      "pairIndex": 22,
+      "tableId": 3,
+      "oi": {
+        "longUnits": "27124881859823308936",
+        "shortUnits": "7102646093955462662"
+      },
+      "ostiumPrice": {
+        "value": "372371249607986624843",
+        "orderId": "2207713",
+        "executedAt": 1790366281,
+        "executedBlock": 508866294
+      },
+      "traderLongUsd6": 10100526153,
+      "traderShortUsd6": 2644821201,
+      "vaultExposureUsd6": -7455704952,
+      "feed": {
+        "name": "TSLA/USD",
+        "address": "0x3609baAa0a9b1f0FE4d6CC01884585d0e191C3E3",
+        "reference": {
+          "roundId": "36893488147419105381",
+          "answer": 37280500000,
+          "updatedAt": 1790351941
+        },
+        "fix": {
+          "roundId": "36893488147419105384",
+          "answer": 37008500000,
+          "updatedAt": 1790602215
+        }
+      },
+      "gapBps": -72.96,
+      "lossUsd6": 0
+    },
+    {
+      "ticker": "AAPL",
+      "ostiumPair": "AAPL",
+      "pairIndex": 23,
+      "tableId": 1,
+      "oi": {
+        "longUnits": "7485399272933650841",
+        "shortUnits": "2703161604964568373"
+      },
+      "ostiumPrice": {
+        "value": "340811388688396436690",
+        "orderId": "2207706",
+        "executedAt": 1790366281,
+        "executedBlock": 508866294
+      },
+      "traderLongUsd6": 2551109321,
+      "traderShortUsd6": 921268260,
+      "vaultExposureUsd6": -1629841060,
+      "feed": {
+        "name": "AAPL/USD",
+        "address": "0x8d0CC5f38f9E802475f2CFf4F9fc7000C2E1557c",
+        "reference": {
+          "roundId": "36893488147419104209",
+          "answer": 34111500000,
+          "updatedAt": 1790365523
+        },
+        "fix": {
+          "roundId": "36893488147419104212",
+          "answer": 34284000000,
+          "updatedAt": 1790602758
+        }
+      },
+      "gapBps": 50.57,
+      "lossUsd6": 8242017
+    }
+  ],
+  "result": {
+    "lossUsd6": 10910412902,
+    "payoutUsd6": 7910412902,
+    "payoutJuniorUsd6": 6000000000,
+    "payoutSeniorUsd6": 1910412902,
+    "vaultKeepsUsd6": 3000000000,
+    "uncoveredUsd6": 0
+  },
+  "premium": {
+    "chain": "Arbitrum Sepolia",
+    "block": 314660728,
+    "pricer": "0xbe99217180a5fcb83372375b0928c971dfa71f88",
+    "tableIds": [
+      2,
+      0,
+      3,
+      1
+    ],
+    "volFeed": "0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06",
+    "premiumUsd6": 3025371529,
+    "quotedUsd6": 3025371529,
+    "elUsd6": 2612354180,
+    "tvar95Usd6": 15868183651,
+    "premiumJuniorUsd6": 2011685161,
+    "premiumSeniorUsd6": 1013686368,
+    "minRateBps": 50,
+    "floorUsd6": 100000000,
+    "nativeCrossCheck": "0x00000000000000000000000000000000000000000000000000000000b4538189000000000000000000000000000000000000000000000000000000009bb55c8400000000000000000000000000000000000000000000000000000003b1d14463"
+  }
+}
