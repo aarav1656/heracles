@@ -4,6 +4,7 @@ import { hexToSignature, type Abi, type Address, type Hash, type PublicClient } 
 import { capacityAbi, erc20Abi, type BookConfig } from '../abi';
 import { arbitrumSepolia } from '../chain';
 import { explainError, explainReceipt, type Explained } from '../lib/revert';
+import { useTxStatus } from '../components/TxStatus';
 import type { TxStatus } from './useTx';
 
 const PERMIT_TYPES = {
@@ -37,6 +38,7 @@ export function useDepositWithPermit() {
   const client = usePublicClient() as PublicClient;
   const { signTypedDataAsync } = useSignTypedData();
   const { writeContractAsync } = useWriteContract();
+  const { report } = useTxStatus();
   const [status, setStatus] = useState<TxStatus>('idle');
   const [hash, setHash] = useState<Hash>();
   const [error, setError] = useState<Explained>();
@@ -57,11 +59,13 @@ export function useDepositWithPermit() {
           address: vault, abi: capacityAbi, functionName: 'deposit', args: [assets, receiver], account: owner, chain: arbitrumSepolia,
         });
         setStatus('wallet');
+        report({ phase: 'wallet' });
         h = await writeContractAsync(request as Parameters<typeof writeContractAsync>[0]);
       } else {
         const nonce = await client.readContract({ address: book.asset, abi: erc20Abi, functionName: 'nonces', args: [owner] });
         const deadline = BigInt(Math.floor(Date.now() / 1000)) + PERMIT_LIFETIME_SECONDS;
         setStatus('wallet');
+        report({ phase: 'wallet' });
         const signature = await signTypedDataAsync({
           domain: { name: book.permit.name, version: book.permit.version, chainId: arbitrumSepolia.id, verifyingContract: book.asset },
           types: PERMIT_TYPES,
@@ -77,20 +81,26 @@ export function useDepositWithPermit() {
       }
       setHash(h);
       setStatus('mining');
+      report({ phase: 'pending', hash: h });
       const receipt = await client.waitForTransactionReceipt({ hash: h });
       if (receipt.status === 'reverted') {
-        setError(await explainReceipt(client, revertAbi, receipt));
+        const explained = await explainReceipt(client, revertAbi, receipt);
+        setError(explained);
         setStatus('error');
+        report({ phase: 'failed', hash: h, reason: explained.name });
         return false;
       }
       setStatus('done');
+      report({ phase: 'confirmed', hash: h });
       return true;
     } catch (err) {
-      setError(explainError(err));
+      const explained = explainError(err);
+      setError(explained);
       setStatus('error');
+      report({ phase: 'failed', reason: explained.name });
       return false;
     }
-  }, [client, signTypedDataAsync, writeContractAsync]);
+  }, [client, signTypedDataAsync, writeContractAsync, report]);
 
   const reset = useCallback(() => { setStatus('idle'); setHash(undefined); setError(undefined); }, []);
   return { run, status, hash, error, reset, busy: status === 'simulating' || status === 'wallet' || status === 'mining' };

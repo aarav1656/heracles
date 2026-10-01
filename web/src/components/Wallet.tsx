@@ -1,12 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useConnect, useConnection, useConnectors, useDisconnect, useSwitchChain } from 'wagmi';
 import { arbitrumSepolia } from '../chain';
 import { short } from '../lib/format';
+import { WALLET_ALLOWLIST, filterAllowedConnectors } from '../lib/wallets';
+
+export { filterAllowedConnectors };
+
+/** Curated label for a connector: the allowlist name, never the raw id. */
+function labelFor(c: { rdns?: string | readonly string[] | null; name: string }): string {
+  const list = !c.rdns ? [] : Array.isArray(c.rdns) ? c.rdns : [c.rdns];
+  const hit = WALLET_ALLOWLIST.find((w) => list.includes(w.rdns));
+  return hit ? hit.label : c.name;
+}
 
 /**
- * One "Connect wallet" CTA, GMX's own label and colour (gmx-trade study.md,
- * order-form CTA). Which wallet it means is the connector list underneath,
- * shown as a menu only when there is more than one to choose from.
+ * One "Connect wallet" button opening the curated EIP-6963 menu.
+ * Only discovered wallets on the allowlist are listed, in allowlist order.
  */
 export function Wallet() {
   const conn = useConnection();
@@ -15,33 +24,64 @@ export function Wallet() {
   const { mutate: disconnect } = useDisconnect();
   const { mutate: switchChain } = useSwitchChain();
   const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        trigger.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open ]);
 
   if (!conn.isConnected) {
-    const single = connectors.length <= 1;
+    const allowed = filterAllowedConnectors(connectors);
     return (
-      <div className="wallet-menu">
+      <div className="wallet-menu" ref={box}>
         <button
+          ref={trigger}
           className="btn"
-          disabled={isPending || connectors.length === 0}
-          onClick={() => (single ? connect({ connector: connectors[0] }) : setOpen((o) => !o))}
-          aria-haspopup={single ? undefined : 'menu'}
-          aria-expanded={single ? undefined : open}
+          disabled={isPending}
+          aria-busy={isPending || undefined}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={menuId}
+          onClick={() => setOpen((o) => !o)}
         >
           Connect wallet
         </button>
-        {!single && open && (
-          <div className="wallet-menu-list" role="menu">
-            {connectors.map((c) => (
-              <button
-                key={c.uid}
-                className="key"
-                role="menuitem"
-                disabled={isPending}
-                onClick={() => { connect({ connector: c }); setOpen(false); }}
-              >
-                {c.name === 'Injected' ? 'Browser wallet' : c.name}
-              </button>
-            ))}
+        {open && (
+          <div className="wallet-menu-list" role="menu" id={menuId} aria-label="Browser wallets">
+            {allowed.length === 0 ? (
+              <p className="note">
+                No browser wallet found. <a href="https://rabby.io" target="_blank" rel="noreferrer">Get Rabby</a>
+              </p>
+            ) : (
+              allowed.map((c) => (
+                <button
+                  key={c.uid}
+                  className="key"
+                  role="menuitem"
+                  disabled={isPending}
+                  onClick={() => { connect({ connector: c }); setOpen(false); }}
+                >
+                  {labelFor(c)}
+                </button>
+              ))
+            )}
           </div>
         )}
       </div>
@@ -56,7 +96,7 @@ export function Wallet() {
         </button>
       )}
       <span className="tx">{conn.address ? short(conn.address) : 'reconnecting'}</span>
-      <button className="key" onClick={() => disconnect()}>disconnect</button>
+      <button className="key" onClick={() => disconnect()}>Disconnect</button>
     </div>
   );
 }

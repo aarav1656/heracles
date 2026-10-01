@@ -25,6 +25,9 @@ export const wagmiConfig = createConfig({
     injected(),
     ...(wcProjectId ? [walletConnect({ projectId: wcProjectId, showQrModal: true })] : []),
   ],
+  // EIP-6963 discovery: each announced browser wallet becomes its own
+  // connector carrying `rdns`, which the wallet menu filters by.
+  multiInjectedProviderDiscovery: true,
   transports: { [arbitrumSepolia.id]: http() },
 });
 

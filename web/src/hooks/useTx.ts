@@ -4,6 +4,7 @@ import { usePublicClient, useWriteContract } from 'wagmi';
 import type { Abi, Address, Hash, PublicClient } from 'viem';
 import { arbitrumSepolia } from '../chain';
 import { explainError, explainReceipt, type Explained } from '../lib/revert';
+import { useTxStatus } from '../components/TxStatus';
 
 export type TxStatus = 'idle' | 'simulating' | 'wallet' | 'mining' | 'done' | 'error';
 
@@ -17,6 +18,7 @@ export function useTx() {
   const client = usePublicClient() as PublicClient;
   const { writeContractAsync } = useWriteContract();
   const qc = useQueryClient();
+  const { report } = useTxStatus();
   const [status, setStatus] = useState<TxStatus>('idle');
   const [hash, setHash] = useState<Hash>();
   const [error, setError] = useState<Explained>();
@@ -28,24 +30,31 @@ export function useTx() {
       setStatus('simulating');
       const { request } = await client.simulateContract({ ...call, chain: arbitrumSepolia } as Parameters<PublicClient['simulateContract']>[0]);
       setStatus('wallet');
+      report({ phase: 'wallet' });
       const h = await writeContractAsync(request as Parameters<typeof writeContractAsync>[0]);
       setHash(h);
       setStatus('mining');
+      report({ phase: 'pending', hash: h });
       const receipt = await client.waitForTransactionReceipt({ hash: h });
       await qc.invalidateQueries({ queryKey: ['atBlock'] });
       if (receipt.status === 'reverted') {
-        setError(await explainReceipt(client, call.abi, receipt));
+        const explained = await explainReceipt(client, call.abi, receipt);
+        setError(explained);
         setStatus('error');
+        report({ phase: 'failed', hash: h, reason: explained.name });
         return false;
       }
       setStatus('done');
+      report({ phase: 'confirmed', hash: h });
       return true;
     } catch (err) {
-      setError(explainError(err));
+      const explained = explainError(err);
+      setError(explained);
       setStatus('error');
+      report({ phase: 'failed', reason: explained.name });
       return false;
     }
-  }, [client, writeContractAsync, qc]);
+  }, [client, writeContractAsync, qc, report]);
 
   const reset = useCallback(() => { setStatus('idle'); setHash(undefined); setError(undefined); }, []);
   return { run, status, hash, error, reset, busy: status === 'simulating' || status === 'wallet' || status === 'mining' };

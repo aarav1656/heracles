@@ -4,6 +4,7 @@ import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
 import { BOOKS, PRICER_ADDRESS, TREATY_ADDRESS } from './abi';
 import { explorer, wagmiConfig } from './chain';
 import { Wallet } from './components/Wallet';
+import { TxStatus } from './components/TxStatus';
 import { Overview } from './pages/Overview';
 import { Bind } from './pages/Bind';
 import { Write } from './pages/Write';
@@ -53,6 +54,7 @@ export function App() {
             </p>
             </div>
           </footer>
+          <TxStatus />
         </BrowserRouter>
       </QueryClientProvider>
     </WagmiProvider>

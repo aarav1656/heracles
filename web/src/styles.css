@@ -96,6 +96,26 @@ b { font-weight: 600; }
 .wallet-menu-list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; display: grid; min-width: 200px; padding: 6px; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; }
 .wallet-menu-list .key { border-color: transparent; text-align: left; }
 .wallet-menu-list .key:hover { border-color: var(--rule); }
+.wallet-menu-list .note { padding: 8px 10px; max-width: 240px; }
+
+/* TxStatus: the current write, fixed bottom-right. Flat paper, hairline border,
+   2px ink rule on top like the ticket. No shadow, no accent, no motion. */
+.txstatus {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 10;
+  display: grid;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 12px 14px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-top: 2px solid var(--ink);
+  border-radius: 8px;
+}
+.txstatus .prose { font-size: 14px; }
+.txstatus .key { justify-self: start; }
 
 /* Type */
 .display { font: 380 56px/60px var(--serif); letter-spacing: -1.23px; text-wrap: balance; }
