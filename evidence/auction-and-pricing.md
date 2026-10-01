@@ -1,4 +1,4 @@
-# Heracles: weekend-gap data and the reference/fixing rule
+# Heracles: weekend move data and the reference/fixing rule
 
 Written 2026-09-26, annotated 2026-09-28. This file started as a wider research pass
 (an auction-format comparison, an options-strike/Black-Scholes reference price, and a
@@ -11,7 +11,7 @@ and physical-delivery sections that used to be here have been removed; they desc
 a different product's spec, not this repo's code. What remains below is the two pieces
 of this research that Heracles' code and docs actually use.
 
-## 1. Weekend-gap statistics (source for the per-market scenario tables)
+## 1. Weekend move statistics (source for the per-market scenario tables)
 
 Friday close to next open, 504 weekends per ticker, 2016-09-26 to 2026-09-26, from
 `https://api.nasdaq.com/api/quote/<T>/historical?assetclass=stocks&fromdate=2016-09-26&todate=2026-09-26&limit=9999`
@@ -30,7 +30,7 @@ this is a disclosed simplification (README "What we cut"), not fabricated data. 
 AAPL/SPY/TSLA rows above are the sourced-but-not-yet-wired per-market tables the
 Roadmap references.
 
-## 2. The reference rule (used by Item 6's fixing-rule fix)
+## 2. The reference rule
 
 Adverse-selection research on 21 tokenized-equity/RWA instruments found weekend price
 predictability strong enough to matter for a Friday-priced, Monday-settled instrument

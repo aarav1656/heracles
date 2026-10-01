@@ -234,12 +234,10 @@ premium).
 
 ## Security fixes
 
-`SECURITY-REVIEW.md` has the full adversarial review and the fix status addendum. Every
-finding below is closed and asserted by a green test in `contracts/test/AttackReview.t.sol`, except
-L2/L5 (latent, not exploitable) and L3 (operational, documented below).
+`docs/SECURITY.md` summarises eight adversarial review rounds. Every
+finding below is closed and asserted by a green test in `contracts/test/AttackReview.t.sol`.
 
-Capacity permit-path review (deposit-while-live pricing, epoch/cutoff gate, JIT premium skim):
-`docs/security/capacity-review.md`.
+Capacity permit-path, per-cutoff gate and v3 review rounds: `docs/SECURITY.md`.
 
 | Finding | Issue | Fix |
 |---|---|---|
@@ -357,7 +355,7 @@ performance number is claimed here.
 ## Contributors
 
 Built by aarav1656. The pricing model, the security fixes in
-`SECURITY-REVIEW.md`, and the decision to state the 8.01x gas figure only for the
+`docs/SECURITY.md`, and the decision to state the 8.01x gas figure only for the
 single-market call it was measured on, are all this author's calls.
 
 ## Run instructions

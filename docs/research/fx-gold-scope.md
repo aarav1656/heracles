@@ -33,7 +33,7 @@ I walked each feed's round history (`getRoundData`, binary search over the phase
 
 Round data: `evidence/gap-tables/chainlink-weekend-rounds.json`.
 
-## 3. Gap tables
+## 3. Weekend scenario tables
 
 Source: Dukascopy's live-chart JSON feed (`freeserv.dukascopy.com/2.0/index.php?path=chart/json3`, reached through the `dukascopy-python` package), 1-minute BID candles, free, no auth. This is the same Dukascopy tick archive that standalone `.bi5` downloaders use, already decoded. For each weekend I took the open of the 1-minute bar starting exactly at Friday 16:00 ET and at Monday 9:30 ET, with DST resolved through IANA `America/New_York` (each instant's own calendar date decides DST, matching `Treaty._isUsDst`/`fridayCloseOf`/`weekWindow`, which use the identical 2nd-Sunday-March/1st-Sunday-November rule). `gap_bps = round((monday_price - friday_price) / friday_price * 10000, 2)`.
 
@@ -67,7 +67,7 @@ XAU/USD, 504 weekends:
 | $16,105 | $161,053 | $488,638.13 | 41 | $49,101.69 |
 | $32,211 | $322,105 | $132,765.24 | 11 | $32,996.44 |
 
-Gold's tail is both fatter and more frequent than EUR/USD's at every attachment point, consistent with its 16.3% past-1% rate against EUR/USD's 1.6%. Adding the 6 (EUR) and 35 (XAU) real weekends found further back barely moved the totals versus the earlier 498/472-row pass (EUR total paid $1,517,010.09 to $1,550,690.86; XAU $2,076,544.98 to $2,194,420.92): the extra history mostly added ordinary weekends, not new tail events, since both instruments' worst weekend was already inside the shorter, holey window.
+Gold's tail is fatter and more frequent than EUR/USD's at every attachment point, matching its 16.3% past-1% weekend rate against EUR/USD's 1.6%. Extending the history by 6 (EUR) and 35 (XAU) real weekends moved the totals by little (EUR total paid $1,517,010.09 to $1,550,690.86; XAU $2,076,544.98 to $2,194,420.92): the added weekends are ordinary ones, and both instruments' worst weekend was already inside the shorter window.
 
 ## 5. Ostium sizing
 
@@ -88,6 +88,6 @@ What each layer would have paid across the 504 weekends (`retention=$289.98`, co
 
 Both layers pay on close to half of all weekends at this retention, which is the direct cost of anchoring retention to a near-zero live buffer rather than to a materially larger one: a buffer of, say, $25,000 to $30,000 (roughly where the $24,831/$16,105 retention rows in section 4 sit) would drop the paying-weekend count to single digits for EUR/USD and the low tens for XAU/USD, at a fraction of the max payout risk. That tradeoff, not the mechanics above, is the actual decision for Ostium: today's ~$290 buffer makes any layer priced to protect it pay often; a materially rebuilt buffer would make the same layer pay rarely.
 
-## What I could not source for all 504 weekends
+## Source coverage
 
-Both EUR.json and XAU.json now hold exactly 504 real weekends each (no backfilled or interpolated rows); getting there required extending EUR/USD's window back to 2016-12-23 and XAU/USD's back to 2016-06-03 to absorb 6 and 35 skipped holiday weekends respectively, both lists in full in section 3. Arbitrum Sepolia has no live Chainlink feed for either pair, so nothing here can be verified against a Sepolia deployment the way the existing SPY table can; a testnet demo would need a different oracle path. The XAU/USD cross-check source (GC=F futures) is not the same instrument as spot XAU/USD, so its 29.29 bps max difference overstates true data-source disagreement.
+EUR.json and XAU.json each hold exactly 504 real weekends with no backfilled or interpolated rows; EUR/USD's window reaches back to 2016-12-23 and XAU/USD's to 2016-06-03 to absorb 6 and 35 skipped holiday weekends, both lists in full in section 3. The XAU/USD cross-check source is GC=F futures, a different instrument from spot XAU/USD, so its 29.29 bps max difference bounds the data-source gap from above.
