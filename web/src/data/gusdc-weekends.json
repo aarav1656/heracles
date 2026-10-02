@@ -1,0 +1,1440 @@
+{
+  "chain": "Arbitrum One (42161)",
+  "diamond": "0xFF162c694eAA571f685030649814282eA457f169",
+  "gToken": "0xd3443ee1e91aF28e5FB858Fbd0D72A63bA8046E0",
+  "collateralIndex": 3,
+  "pricer": "0x1674ecf8d236a91c484c11fd11a21601837f7e37",
+  "pricerChain": "Arbitrum Sepolia (421614)",
+  "pricerBlock": 315047379,
+  "terms": "retention 0.25% and limit 2% of each weekend's gross book, as /quote starts",
+  "weekends": [
+    {
+      "fridayClose": 1790366400,
+      "mondayOpen": 1790602200,
+      "block": 508866731,
+      "gusdcAssets": 4405458588181,
+      "gross": 216305408630,
+      "netGapPnl": -2035098887,
+      "losingLegs": 2050150847,
+      "retention": 500000000,
+      "limit": 4000000000,
+      "payout": 1550150847,
+      "premium": 345680445,
+      "el": 276240516,
+      "tvar95": 2488621731,
+      "legs": [
+        {
+          "ticker": "NVDA",
+          "vault": -24150600044,
+          "traderLong": 24150600081,
+          "traderShort": 37,
+          "pnl": -514834221,
+          "ref": {
+            "roundId": "36893488147419104862",
+            "answer": 22539999999,
+            "updatedAt": 1790366116
+          },
+          "fix": {
+            "roundId": "36893488147419104866",
+            "answer": 23020500000,
+            "updatedAt": 1790602245
+          }
+        },
+        {
+          "ticker": "AAPL",
+          "vault": 1569499999,
+          "traderLong": 30500001,
+          "traderShort": 1600000000,
+          "pnl": 7936876,
+          "ref": {
+            "roundId": "36893488147419104209",
+            "answer": 34111500000,
+            "updatedAt": 1790365523
+          },
+          "fix": {
+            "roundId": "36893488147419104212",
+            "answer": 34284000000,
+            "updatedAt": 1790602758
+          }
+        },
+        {
+          "ticker": "SPY",
+          "vault": 152232023703,
+          "traderLong": 1358400092,
+          "traderShort": 153590423795,
+          "pnl": -249515245,
+          "ref": {
+            "roundId": "36893488147419103590",
+            "answer": 76874000000,
+            "updatedAt": 1790337627
+          },
+          "fix": {
+            "roundId": "36893488147419103594",
+            "answer": 76748000000,
+            "updatedAt": 1790602546
+          }
+        },
+        {
+          "ticker": "TSLA",
+          "vault": 0,
+          "traderLong": 0,
+          "traderShort": 0,
+          "pnl": 0,
+          "ref": {
+            "roundId": "36893488147419105381",
+            "answer": 37280500000,
+            "updatedAt": 1790351941
+          },
+          "fix": {
+            "roundId": "36893488147419105384",
+            "answer": 37008500000,
+            "updatedAt": 1790602215
+          }
+        },
+        {
+          "ticker": "EUR",
+          "vault": -2281400361,
+          "traderLong": 2281406313,
+          "traderShort": 5952,
+          "pnl": 7115084,
+          "ref": {
+            "roundId": "36893488147419107428",
+            "answer": 113988500,
+            "updatedAt": 1790364140
+          },
+          "fix": {
+            "roundId": "36893488147419107495",
+            "answer": 113633000,
+            "updatedAt": 1790604073
+          }
+        },
+        {
+          "ticker": "XAU",
+          "vault": 36071884523,
+          "traderLong": 197412461937,
+          "traderShort": 233484346460,
+          "pnl": -1285801381,
+          "ref": {
+            "roundId": "36893488147419105447",
+            "answer": 428006000000,
+            "updatedAt": 1790348189
+          },
+          "fix": {
+            "roundId": "36893488147419105456",
+            "answer": 412749500000,
+            "updatedAt": 1790606450
+          }
+        }
+      ]
+    },
+    {
+      "fridayClose": 1789761600,
+      "mondayOpen": 1789997400,
+      "block": 506543752,
+      "gusdcAssets": 4668312277878,
+      "gross": 257463098683,
+      "netGapPnl": 1121455913,
+      "losingLegs": 140673886,
+      "retention": 600000000,
+      "limit": 5000000000,
+      "payout": 0,
+      "premium": 323852419,
+      "el": 244285110,
+      "tvar95": 2768674905,
+      "legs": [
+        {
+          "ticker": "NVDA",
+          "vault": -660800044,
+          "traderLong": 660800081,
+          "traderShort": 37,
+          "pnl": -3225590,
+          "ref": {
+            "roundId": "36893488147419104830",
+            "answer": 22227499999,
+            "updatedAt": 1789761329
+          },
+          "fix": {
+            "roundId": "36893488147419104833",
+            "answer": 22336000000,
+            "updatedAt": 1789997870
+          }
+        },
+        {
+          "ticker": "AAPL",
+          "vault": 1569499999,
+          "traderLong": 30500001,
+          "traderShort": 1600000000,
+          "pnl": -9199663,
+          "ref": {
+            "roundId": "36893488147419104182",
+            "answer": 33609000000,
+            "updatedAt": 1789757277
+          },
+          "fix": {
+            "roundId": "36893488147419104185",
+            "answer": 33412000000,
+            "updatedAt": 1789997511
+          }
+        },
+        {
+          "ticker": "SPY",
+          "vault": 162229023616,
+          "traderLong": 1281400092,
+          "traderShort": 163510423708,
+          "pnl": 1120173337,
+          "ref": {
+            "roundId": "36893488147419103581",
+            "answer": 76105500000,
+            "updatedAt": 1789738265
+          },
+          "fix": {
+            "roundId": "36893488147419103584",
+            "answer": 76631000000,
+            "updatedAt": 1789997443
+          }
+        },
+        {
+          "ticker": "TSLA",
+          "vault": 0,
+          "traderLong": 0,
+          "traderShort": 0,
+          "pnl": 0,
+          "ref": {
+            "roundId": "36893488147419105313",
+            "answer": 36344000000,
+            "updatedAt": 1789753715
+          },
+          "fix": {
+            "roundId": "36893488147419105316",
+            "answer": 37270000000,
+            "updatedAt": 1789997447
+          }
+        },
+        {
+          "ticker": "EUR",
+          "vault": -82788000361,
+          "traderLong": 82788006313,
+          "traderShort": 5952,
+          "pnl": 141956462,
+          "ref": {
+            "roundId": "36893488147419107248",
+            "answer": 114889000,
+            "updatedAt": 1789759481
+          },
+          "fix": {
+            "roundId": "36893488147419107315",
+            "answer": 114692000,
+            "updatedAt": 1789999433
+          }
+        },
+        {
+          "ticker": "XAU",
+          "vault": 10215774663,
+          "traderLong": 98681554311,
+          "traderShort": 108897328974,
+          "pnl": -128248633,
+          "ref": {
+            "roundId": "36893488147419105417",
+            "answer": 438586000000,
+            "updatedAt": 1789751028
+          },
+          "fix": {
+            "roundId": "36893488147419105421",
+            "answer": 433080000000,
+            "updatedAt": 1789999441
+          }
+        }
+      ]
+    },
+    {
+      "fridayClose": 1789156800,
+      "mondayOpen": 1789392600,
+      "block": 504157974,
+      "gusdcAssets": 4693340636888,
+      "gross": 168104060210,
+      "netGapPnl": -951447682,
+      "losingLegs": 1126357972,
+      "retention": 400000000,
+      "limit": 3000000000,
+      "payout": 726357972,
+      "premium": 284209069,
+      "el": 219721706,
+      "tvar95": 2292588201,
+      "legs": [
+        {
+          "ticker": "NVDA",
+          "vault": -660800044,
+          "traderLong": 660800081,
+          "traderShort": 37,
+          "pnl": 25769151,
+          "ref": {
+            "roundId": "36893488147419104798",
+            "answer": 21912000000,
+            "updatedAt": 1789144191
+          },
+          "fix": {
+            "roundId": "36893488147419104802",
+            "answer": 21057500000,
+            "updatedAt": 1789392645
+          }
+        },
+        {
+          "ticker": "AAPL",
+          "vault": 1569499999,
+          "traderLong": 30500001,
+          "traderShort": 1600000000,
+          "pnl": 4208342,
+          "ref": {
+            "roundId": "36893488147419104160",
+            "answer": 33379000000,
+            "updatedAt": 1789142222
+          },
+          "fix": {
+            "roundId": "36893488147419104163",
+            "answer": 33468500000,
+            "updatedAt": 1789394133
+          }
+        },
+        {
+          "ticker": "SPY",
+          "vault": 154309023616,
+          "traderLong": 781400092,
+          "traderShort": 155090423708,
+          "pnl": -1126357972,
+          "ref": {
+            "roundId": "36893488147419103570",
+            "answer": 76445000000,
+            "updatedAt": 1789133443
+          },
+          "fix": {
+            "roundId": "36893488147419103573",
+            "answer": 75887000000,
+            "updatedAt": 1789392651
+          }
+        },
+        {
+          "ticker": "TSLA",
+          "vault": 0,
+          "traderLong": 0,
+          "traderShort": 0,
+          "pnl": 0,
+          "ref": {
+            "roundId": "36893488147419105245",
+            "answer": 36543500000,
+            "updatedAt": 1789136950
+          },
+          "fix": {
+            "roundId": "36893488147419105249",
+            "answer": 36403000000,
+            "updatedAt": 1789392686
+          }
+        },
+        {
+          "ticker": "EUR",
+          "vault": -3082300361,
+          "traderLong": 4782306313,
+          "traderShort": 1700005952,
+          "pnl": 16186542,
+          "ref": {
+            "roundId": "36893488147419107071",
+            "answer": 115968000,
+            "updatedAt": 1789155355
+          },
+          "fix": {
+            "roundId": "36893488147419107138",
+            "answer": 115359000,
+            "updatedAt": 1789392940
+          }
+        },
+        {
+          "ticker": "XAU",
+          "vault": -8482436190,
+          "traderLong": 164817504258,
+          "traderShort": 156335068068,
+          "pnl": 128746255,
+          "ref": {
+            "roundId": "36893488147419105381",
+            "answer": 434807500000,
+            "updatedAt": 1789150484
+          },
+          "fix": {
+            "roundId": "36893488147419105390",
+            "answer": 428208000000,
+            "updatedAt": 1789395317
+          }
+        }
+      ]
+    },
+    {
+      "fridayClose": 1788552000,
+      "mondayOpen": 1788787800,
+      "block": 501771684,
+      "gusdcAssets": 4583110686692,
+      "gross": 231843843187,
+      "netGapPnl": -481636740,
+      "losingLegs": 542822985,
+      "retention": 600000000,
+      "limit": 5000000000,
+      "payout": 0,
+      "premium": 362302851,
+      "el": 283650677,
+      "tvar95": 2777535964,
+      "legs": [
+        {
+          "ticker": "NVDA",
+          "vault": -660800044,
+          "traderLong": 660800081,
+          "traderShort": 37,
+          "pnl": -1293375,
+          "ref": {
+            "roundId": "36893488147419104773",
+            "answer": 22991000000,
+            "updatedAt": 1788548931
+          },
+          "fix": {
+            "roundId": "36893488147419104776",
+            "answer": 23036000000,
+            "updatedAt": 1788808170
+          }
+        },
+        {
+          "ticker": "AAPL",
+          "vault": 1588999999,
+          "traderLong": 11000001,
+          "traderShort": 1600000000,
+          "pnl": -2008724,
+          "ref": {
+            "roundId": "36893488147419104114",
+            "answer": 32037500000,
+            "updatedAt": 1788551467
+          },
+          "fix": {
+            "roundId": "36893488147419104117",
+            "answer": 31997000000,
+            "updatedAt": 1788810694
+          }
+        },
+        {
+          "ticker": "SPY",
+          "vault": 151308301627,
+          "traderLong": 4781400092,
+          "traderShort": 156089701719,
+          "pnl": 60441945,
+          "ref": {
+            "roundId": "36893488147419103563",
+            "answer": 76978500000,
+            "updatedAt": 1788533413
+          },
+          "fix": {
+            "roundId": "36893488147419103566",
+            "answer": 77009250000,
+            "updatedAt": 1788792660
+          }
+        },
+        {
+          "ticker": "TSLA",
+          "vault": 0,
+          "traderLong": 0,
+          "traderShort": 0,
+          "pnl": 0,
+          "ref": {
+            "roundId": "36893488147419105192",
+            "answer": 35492500000,
+            "updatedAt": 1788550020
+          },
+          "fix": {
+            "roundId": "36893488147419105195",
+            "answer": 35374500000,
+            "updatedAt": 1788809255
+          }
+        },
+        {
+          "ticker": "EUR",
+          "vault": 580199555,
+          "traderLong": 3629806313,
+          "traderShort": 4210005868,
+          "pnl": 744300,
+          "ref": {
+            "roundId": "36893488147419106894",
+            "answer": 116149000,
+            "updatedAt": 1788551261
+          },
+          "fix": {
+            "roundId": "36893488147419106961",
+            "answer": 116298000,
+            "updatedAt": 1788790251
+          }
+        },
+        {
+          "ticker": "XAU",
+          "vault": 77705541962,
+          "traderLong": 98113454221,
+          "traderShort": 175818996183,
+          "pnl": -539520886,
+          "ref": {
+            "roundId": "36893488147419104697",
+            "answer": 443747000000,
+            "updatedAt": 1788550440
+          },
+          "fix": {
+            "roundId": "36893488147419105351",
+            "answer": 440666000000,
+            "updatedAt": 1788787898
+          }
+        }
+      ]
+    },
+    {
+      "fridayClose": 1787947200,
+      "mondayOpen": 1788183000,
+      "block": 499369411,
+      "gusdcAssets": 4488762935456,
+      "gross": 204891239985,
+      "netGapPnl": -243503655,
+      "losingLegs": 598446228,
+      "retention": 500000000,
+      "limit": 4000000000,
+      "payout": 98446228,
+      "premium": 323292265,
+      "el": 252048156,
+      "tvar95": 2524568692,
+      "legs": [
+        {
+          "ticker": "NVDA",
+          "vault": -2660800044,
+          "traderLong": 2660800081,
+          "traderShort": 37,
+          "pnl": -21639498,
+          "ref": {
+            "roundId": "36893488147419104726",
+            "answer": 21702500000,
+            "updatedAt": 1787943223
+          },
+          "fix": {
+            "roundId": "36893488147419104729",
+            "answer": 21879000000,
+            "updatedAt": 1788183060
+          }
+        },
+        {
+          "ticker": "AAPL",
+          "vault": 88999999,
+          "traderLong": 11000001,
+          "traderShort": 100000000,
+          "pnl": -395691,
+          "ref": {
+            "roundId": "36893488147419104075",
+            "answer": 31939000000,
+            "updatedAt": 1787939472
+          },
+          "fix": {
+            "roundId": "36893488147419104078",
+            "answer": 31797000000,
+            "updatedAt": 1788183394
+          }
+        },
+        {
+          "ticker": "SPY",
+          "vault": 154053234335,
+          "traderLong": 1781400092,
+          "traderShort": 155834634427,
+          "pnl": -574425254,
+          "ref": {
+            "roundId": "36893488147419103554",
+            "answer": 76835500000,
+            "updatedAt": 1787943187
+          },
+          "fix": {
+            "roundId": "36893488147419103557",
+            "answer": 76549000000,
+            "updatedAt": 1788185399
+          }
+        },
+        {
+          "ticker": "TSLA",
+          "vault": 0,
+          "traderLong": 0,
+          "traderShort": 0,
+          "pnl": 0,
+          "ref": {
+            "roundId": "36893488147419105109",
+            "answer": 34835500000,
+            "updatedAt": 1787946877
+          },
+          "fix": {
+            "roundId": "36893488147419105112",
+            "answer": 35118500000,
+            "updatedAt": 1788183143
+          }
+        },
+        {
+          "ticker": "EUR",
+          "vault": -1569800551,
+          "traderLong": 3629806313,
+          "traderShort": 2060005762,
+          "pnl": -1985785,
+          "ref": {
+            "roundId": "36893488147419106719",
+            "answer": 115811000,
+            "updatedAt": 1787944130
+          },
+          "fix": {
+            "roundId": "36893488147419106786",
+            "answer": 115957500,
+            "updatedAt": 1788184140
+          }
+        },
+        {
+          "ticker": "XAU",
+          "vault": -46518405056,
+          "traderLong": 73983484219,
+          "traderShort": 27465079163,
+          "pnl": 354942573,
+          "ref": {
+            "roundId": "36893488147419104658",
+            "answer": 446780000000,
+            "updatedAt": 1787938938
+          },
+          "fix": {
+            "roundId": "36893488147419104665",
+            "answer": 443371000000,
+            "updatedAt": 1788183855
+          }
+        }
+      ]
+    },
+    {
+      "fridayClose": 1787342400,
+      "mondayOpen": 1787578200,
+      "block": 496967299,
+      "gusdcAssets": 5336763954542,
+      "gross": 197926122953,
+      "netGapPnl": -423602513,
+      "losingLegs": 620048935,
+      "retention": 500000000,
+      "limit": 4000000000,
+      "payout": 120048935,
+      "premium": 305815488,
+      "el": 234013810,
+      "tvar95": 2525119998,
+      "legs": [
+        {
+          "ticker": "NVDA",
+          "vault": 839199956,
+          "traderLong": 660800081,
+          "traderShort": 1500000037,
+          "pnl": -5790409,
+          "ref": {
+            "roundId": "36893488147419104626",
+            "answer": 21522000000,
+            "updatedAt": 1787331336
+          },
+          "fix": {
+            "roundId": "36893488147419104629",
+            "answer": 21373500000,
+            "updatedAt": 1787578380
+          }
+        },
+        {
+          "ticker": "AAPL",
+          "vault": 1588999999,
+          "traderLong": 11000001,
+          "traderShort": 1600000000,
+          "pnl": 9491774,
+          "ref": {
+            "roundId": "36893488147419104049",
+            "answer": 30970500000,
+            "updatedAt": 1787334606
+          },
+          "fix": {
+            "roundId": "36893488147419104052",
+            "answer": 31155500000,
+            "updatedAt": 1787578242
+          }
+        },
+        {
+          "ticker": "SPY",
+          "vault": 154053428797,
+          "traderLong": 1781400092,
+          "traderShort": 155834828889,
+          "pnl": -614258526,
+          "ref": {
+            "roundId": "36893488147419103546",
+            "answer": 76743500000,
+            "updatedAt": 1787327509
+          },
+          "fix": {
+            "roundId": "36893488147419103549",
+            "answer": 76437500000,
+            "updatedAt": 1787586749
+          }
+        },
+        {
+          "ticker": "TSLA",
+          "vault": 0,
+          "traderLong": 0,
+          "traderShort": 0,
+          "pnl": 0,
+          "ref": {
+            "roundId": "36893488147419105033",
+            "answer": 36223500000,
+            "updatedAt": 1787342181
+          },
+          "fix": {
+            "roundId": "36893488147419105036",
+            "answer": 35869000000,
+            "updatedAt": 1787578269
+          }
+        },
+        {
+          "ticker": "EUR",
+          "vault": -10039600551,
+          "traderLong": 10139606313,
+          "traderShort": 100005762,
+          "pnl": 8682321,
+          "ref": {
+            "roundId": "36893488147419106547",
+            "answer": 116789000,
+            "updatedAt": 1787341117
+          },
+          "fix": {
+            "roundId": "36893488147419106613",
+            "answer": 116688000,
+            "updatedAt": 1787578967
+          }
+        },
+        {
+          "ticker": "XAU",
+          "vault": 31404893650,
+          "traderLong": 309473115325,
+          "traderShort": 340878008975,
+          "pnl": 178272327,
+          "ref": {
+            "roundId": "36893488147419104621",
+            "answer": 462549800000,
+            "updatedAt": 1787331082
+          },
+          "fix": {
+            "roundId": "36893488147419104629",
+            "answer": 465175500000,
+            "updatedAt": 1787586530
+          }
+        }
+      ]
+    },
+    {
+      "fridayClose": 1786737600,
+      "mondayOpen": 1786973400,
+      "block": 494561366,
+      "gusdcAssets": 5479736537273,
+      "gross": 135550008882,
+      "netGapPnl": -139681234,
+      "losingLegs": 257218892,
+      "retention": 300000000,
+      "limit": 3000000000,
+      "payout": 0,
+      "premium": 189560807,
+      "el": 143558533,
+      "tvar95": 1600255378,
+      "legs": [
+        {
+          "ticker": "NVDA",
+          "vault": -360800044,
+          "traderLong": 1860800081,
+          "traderShort": 1500000037,
+          "pnl": -1420504,
+          "ref": {
+            "roundId": "36893488147419104585",
+            "answer": 22542000000,
+            "updatedAt": 1786720489
+          },
+          "fix": {
+            "roundId": "36893488147419104588",
+            "answer": 22630750000,
+            "updatedAt": 1786973442
+          }
+        },
+        {
+          "ticker": "AAPL",
+          "vault": 1588999999,
+          "traderLong": 11000001,
+          "traderShort": 1600000000,
+          "pnl": 11663149,
+          "ref": {
+            "roundId": "36893488147419104016",
+            "answer": 30518000000,
+            "updatedAt": 1786717304
+          },
+          "fix": {
+            "roundId": "36893488147419104019",
+            "answer": 30742000000,
+            "updatedAt": 1786973614
+          }
+        },
+        {
+          "ticker": "SPY",
+          "vault": 92327787256,
+          "traderLong": 1781400092,
+          "traderShort": 94109187348,
+          "pnl": -255798388,
+          "ref": {
+            "roundId": "36893488147419103535",
+            "answer": 77782500000,
+            "updatedAt": 1786714689
+          },
+          "fix": {
+            "roundId": "36893488147419103538",
+            "answer": 77567000000,
+            "updatedAt": 1786973905
+          }
+        },
+        {
+          "ticker": "TSLA",
+          "vault": 0,
+          "traderLong": 0,
+          "traderShort": 0,
+          "pnl": 0,
+          "ref": {
+            "roundId": "36893488147419104942",
+            "answer": 34246000000,
+            "updatedAt": 1786735743
+          },
+          "fix": {
+            "roundId": "36893488147419104945",
+            "answer": 33995500000,
+            "updatedAt": 1786973446
+          }
+        },
+        {
+          "ticker": "EUR",
+          "vault": 31158003768,
+          "traderLong": 5022001994,
+          "traderShort": 36180005762,
+          "pnl": 69090364,
+          "ref": {
+            "roundId": "36893488147419106374",
+            "answer": 115675000,
+            "updatedAt": 1786735154
+          },
+          "fix": {
+            "roundId": "36893488147419106442",
+            "answer": 115931500,
+            "updatedAt": 1786974912
+          }
+        },
+        {
+          "ticker": "XAU",
+          "vault": 10114417815,
+          "traderLong": 313047491160,
+          "traderShort": 323161908975,
+          "pnl": 36784145,
+          "ref": {
+            "roundId": "36893488147419104589",
+            "answer": 438572000000,
+            "updatedAt": 1786710708
+          },
+          "fix": {
+            "roundId": "36893488147419104594",
+            "answer": 440167000000,
+            "updatedAt": 1786974730
+          }
+        }
+      ]
+    },
+    {
+      "fridayClose": 1786132800,
+      "mondayOpen": 1786368600,
+      "block": 492157136,
+      "gusdcAssets": 6093275760595,
+      "gross": 332004871324,
+      "netGapPnl": 1199314886,
+      "losingLegs": 2025882,
+      "retention": 800000000,
+      "limit": 7000000000,
+      "payout": 0,
+      "premium": 612344597,
+      "el": 480669192,
+      "tvar95": 4690853958,
+      "legs": [
+        {
+          "ticker": "NVDA",
+          "vault": -1860800044,
+          "traderLong": 1860800081,
+          "traderShort": 37,
+          "pnl": 10469337,
+          "ref": {
+            "roundId": "36893488147419104541",
+            "answer": 22395000000,
+            "updatedAt": 1786132650
+          },
+          "fix": {
+            "roundId": "36893488147419104544",
+            "answer": 22269000000,
+            "updatedAt": 1786368876
+          }
+        },
+        {
+          "ticker": "AAPL",
+          "vault": 88999999,
+          "traderLong": 11000001,
+          "traderShort": 100000000,
+          "pnl": -2025882,
+          "ref": {
+            "roundId": "36893488147419103987",
+            "answer": 31411000000,
+            "updatedAt": 1786132563
+          },
+          "fix": {
+            "roundId": "36893488147419103992",
+            "answer": 30696000000,
+            "updatedAt": 1786368666
+          }
+        },
+        {
+          "ticker": "SPY",
+          "vault": 91823487256,
+          "traderLong": 1785700092,
+          "traderShort": 93609187348,
+          "pnl": 114648671,
+          "ref": {
+            "roundId": "36893488147419103528",
+            "answer": 77288000000,
+            "updatedAt": 1786115919
+          },
+          "fix": {
+            "roundId": "36893488147419103531",
+            "answer": 77384500000,
+            "updatedAt": 1786375153
+          }
+        },
+        {
+          "ticker": "TSLA",
+          "vault": 0,
+          "traderLong": 0,
+          "traderShort": 0,
+          "pnl": 0,
+          "ref": {
+            "roundId": "36893488147419104885",
+            "answer": 32828000000,
+            "updatedAt": 1786129448
+          },
+          "fix": {
+            "roundId": "36893488147419104888",
+            "answer": 33009500000,
+            "updatedAt": 1786370489
+          }
+        },
+        {
+          "ticker": "EUR",
+          "vault": -21996232,
+          "traderLong": 22001994,
+          "traderShort": 5762,
+          "pnl": 28718,
+          "ref": {
+            "roundId": "36893488147419106203",
+            "answer": 115656000,
+            "updatedAt": 1786130296
+          },
+          "fix": {
+            "roundId": "36893488147419106270",
+            "answer": 115505000,
+            "updatedAt": 1786371685
+          }
+        },
+        {
+          "ticker": "XAU",
+          "vault": 238209587793,
+          "traderLong": 121000720142,
+          "traderShort": 359210307935,
+          "pnl": 1076194042,
+          "ref": {
+            "roundId": "36893488147419104553",
+            "answer": 434388500000,
+            "updatedAt": 1786111040
+          },
+          "fix": {
+            "roundId": "36893488147419104560",
+            "answer": 436351000000,
+            "updatedAt": 1786377807
+          }
+        }
+      ]
+    },
+    {
+      "fridayClose": 1785528000,
+      "mondayOpen": 1785763800,
+      "block": 489745273,
+      "gusdcAssets": 6128267886733,
+      "gross": 136961495784,
+      "netGapPnl": 1397372142,
+      "losingLegs": 3404704,
+      "retention": 300000000,
+      "limit": 3000000000,
+      "payout": 0,
+      "premium": 256807906,
+      "el": 211721784,
+      "tvar95": 1637880241,
+      "legs": [
+        {
+          "ticker": "NVDA",
+          "vault": -29070200044,
+          "traderLong": 29070200081,
+          "traderShort": 37,
+          "pnl": 410508257,
+          "ref": {
+            "roundId": "36893488147419104475",
+            "answer": 20111500000,
+            "updatedAt": 1785527117
+          },
+          "fix": {
+            "roundId": "36893488147419104479",
+            "answer": 19827500000,
+            "updatedAt": 1785763865
+          }
+        },
+        {
+          "ticker": "AAPL",
+          "vault": 88999999,
+          "traderLong": 11000001,
+          "traderShort": 100000000,
+          "pnl": -527409,
+          "ref": {
+            "roundId": "36893488147419103942",
+            "answer": 30965500000,
+            "updatedAt": 1785527884
+          },
+          "fix": {
+            "roundId": "36893488147419103947",
+            "answer": 30782000000,
+            "updatedAt": 1785763882
+          }
+        },
+        {
+          "ticker": "SPY",
+          "vault": 93058687256,
+          "traderLong": 4134000092,
+          "traderShort": 97192687348,
+          "pnl": 976987550,
+          "ref": {
+            "roundId": "36893488147419103516",
+            "answer": 74676500000,
+            "updatedAt": 1785525457
+          },
+          "fix": {
+            "roundId": "36893488147419103520",
+            "answer": 75460500000,
+            "updatedAt": 1785767086
+          }
+        },
+        {
+          "ticker": "TSLA",
+          "vault": 0,
+          "traderLong": 0,
+          "traderShort": 0,
+          "pnl": 0,
+          "ref": {
+            "roundId": "36893488147419104818",
+            "answer": 31159000000,
+            "updatedAt": 1785527897
+          },
+          "fix": {
+            "roundId": "36893488147419104823",
+            "answer": 31262500000,
+            "updatedAt": 1785763852
+          }
+        },
+        {
+          "ticker": "EUR",
+          "vault": -14244996232,
+          "traderLong": 14245001994,
+          "traderShort": 5762,
+          "pnl": 13281039,
+          "ref": {
+            "roundId": "36893488147419106026",
+            "answer": 115302500,
+            "updatedAt": 1785526251
+          },
+          "fix": {
+            "roundId": "36893488147419106095",
+            "answer": 115195000,
+            "updatedAt": 1785766652
+          }
+        },
+        {
+          "ticker": "XAU",
+          "vault": -498612253,
+          "traderLong": 67982004107,
+          "traderShort": 67483391854,
+          "pnl": -2877295,
+          "ref": {
+            "roundId": "36893488147419103857",
+            "answer": 403597000000,
+            "updatedAt": 1785503149
+          },
+          "fix": {
+            "roundId": "36893488147419104522",
+            "answer": 405926000000,
+            "updatedAt": 1785801699
+          }
+        }
+      ]
+    },
+    {
+      "fridayClose": 1784923200,
+      "mondayOpen": 1785159000,
+      "block": 487327355,
+      "gusdcAssets": 6288372048882,
+      "gross": 200038333753,
+      "netGapPnl": 800950243,
+      "losingLegs": 128297468,
+      "retention": 500000000,
+      "limit": 4000000000,
+      "payout": 0,
+      "premium": 272889565,
+      "el": 221937103,
+      "tvar95": 1818069435,
+      "legs": [
+        {
+          "ticker": "NVDA",
+          "vault": -29070200044,
+          "traderLong": 29070200081,
+          "traderShort": 37,
+          "pnl": 153974261,
+          "ref": {
+            "roundId": "36893488147419104381",
+            "answer": 20673500000,
+            "updatedAt": 1784923054
+          },
+          "fix": {
+            "roundId": "36893488147419104384",
+            "answer": 20564000000,
+            "updatedAt": 1785159173
+          }
+        },
+        {
+          "ticker": "AAPL",
+          "vault": -211000001,
+          "traderLong": 311000001,
+          "traderShort": 100000000,
+          "pnl": -1598173,
+          "ref": {
+            "roundId": "36893488147419103886",
+            "answer": 33336500000,
+            "updatedAt": 1784908296
+          },
+          "fix": {
+            "roundId": "36893488147419103889",
+            "answer": 33589000000,
+            "updatedAt": 1785159057
+          }
+        },
+        {
+          "ticker": "SPY",
+          "vault": 97148687256,
+          "traderLong": 44000092,
+          "traderShort": 97192687348,
+          "pnl": 768303726,
+          "ref": {
+            "roundId": "36893488147419103494",
+            "answer": 73907500000,
+            "updatedAt": 1784917809
+          },
+          "fix": {
+            "roundId": "36893488147419103497",
+            "answer": 74492000000,
+            "updatedAt": 1785159050
+          }
+        },
+        {
+          "ticker": "TSLA",
+          "vault": 0,
+          "traderLong": 0,
+          "traderShort": 0,
+          "pnl": 0,
+          "ref": {
+            "roundId": "36893488147419104727",
+            "answer": 31272000000,
+            "updatedAt": 1784923111
+          },
+          "fix": {
+            "roundId": "36893488147419104731",
+            "answer": 31240000000,
+            "updatedAt": 1785159018
+          }
+        },
+        {
+          "ticker": "EUR",
+          "vault": 31078003768,
+          "traderLong": 12001994,
+          "traderShort": 31090005762,
+          "pnl": 6969724,
+          "ref": {
+            "roundId": "36893488147419105833",
+            "answer": 113704500,
+            "updatedAt": 1784923082
+          },
+          "fix": {
+            "roundId": "36893488147419105901",
+            "answer": 113730000,
+            "updatedAt": 1785160724
+          }
+        },
+        {
+          "ticker": "XAU",
+          "vault": -42530442684,
+          "traderLong": 72500304107,
+          "traderShort": 29969861423,
+          "pnl": -126699295,
+          "ref": {
+            "roundId": "36893488147419103819",
+            "answer": 405669500000,
+            "updatedAt": 1784917570
+          },
+          "fix": {
+            "roundId": "36893488147419103825",
+            "answer": 406878000000,
+            "updatedAt": 1785162529
+          }
+        }
+      ]
+    },
+    {
+      "fridayClose": 1784318400,
+      "mondayOpen": 1784554200,
+      "block": 484910241,
+      "gusdcAssets": 6619710589546,
+      "gross": 128468272202,
+      "netGapPnl": -385719368,
+      "losingLegs": 692382006,
+      "retention": 300000000,
+      "limit": 3000000000,
+      "payout": 392382006,
+      "premium": 224922658,
+      "el": 189917067,
+      "tvar95": 1280057832,
+      "legs": [
+        {
+          "ticker": "NVDA",
+          "vault": -28963200044,
+          "traderLong": 28963200081,
+          "traderShort": 37,
+          "pnl": -365891489,
+          "ref": {
+            "roundId": "36893488147419104319",
+            "answer": 20304000000,
+            "updatedAt": 1784316591
+          },
+          "fix": {
+            "roundId": "36893488147419104323",
+            "answer": 20560500000,
+            "updatedAt": 1784554248
+          }
+        },
+        {
+          "ticker": "AAPL",
+          "vault": 88999999,
+          "traderLong": 11000001,
+          "traderShort": 100000000,
+          "pnl": -301921,
+          "ref": {
+            "roundId": "36893488147419103850",
+            "answer": 33310000000,
+            "updatedAt": 1784311961
+          },
+          "fix": {
+            "roundId": "36893488147419103853",
+            "answer": 33197000000,
+            "updatedAt": 1784554292
+          }
+        },
+        {
+          "ticker": "SPY",
+          "vault": 45851159986,
+          "traderLong": 544000092,
+          "traderShort": 46395160078,
+          "pnl": 306662638,
+          "ref": {
+            "roundId": "36893488147419103482",
+            "answer": 74235000000,
+            "updatedAt": 1784316317
+          },
+          "fix": {
+            "roundId": "36893488147419103485",
+            "answer": 74731500000,
+            "updatedAt": 1784554250
+          }
+        },
+        {
+          "ticker": "TSLA",
+          "vault": 0,
+          "traderLong": 0,
+          "traderShort": 0,
+          "pnl": 0,
+          "ref": {
+            "roundId": "36893488147419104639",
+            "answer": 38191500000,
+            "updatedAt": 1784311355
+          },
+          "fix": {
+            "roundId": "36893488147419104643",
+            "answer": 38078500000,
+            "updatedAt": 1784555395
+          }
+        },
+        {
+          "ticker": "EUR",
+          "vault": 21038003768,
+          "traderLong": 12001994,
+          "traderShort": 21050005762,
+          "pnl": -44951309,
+          "ref": {
+            "roundId": "36893488147419105662",
+            "answer": 114383500,
+            "updatedAt": 1784317997
+          },
+          "fix": {
+            "roundId": "36893488147419105729",
+            "answer": 114139100,
+            "updatedAt": 1784556867
+          }
+        },
+        {
+          "ticker": "XAU",
+          "vault": -32526908405,
+          "traderLong": 338174754106,
+          "traderShort": 305647845701,
+          "pnl": -281237287,
+          "ref": {
+            "roundId": "36893488147419103795",
+            "answer": 400287000000,
+            "updatedAt": 1784316311
+          },
+          "fix": {
+            "roundId": "36893488147419103802",
+            "answer": 403748000000,
+            "updatedAt": 1784601387
+          }
+        }
+      ]
+    },
+    {
+      "fridayClose": 1783713600,
+      "mondayOpen": 1783949400,
+      "block": 482490411,
+      "gusdcAssets": 7360017293202,
+      "gross": 81995114597,
+      "netGapPnl": 513363209,
+      "losingLegs": 140392866,
+      "retention": 200000000,
+      "limit": 2000000000,
+      "payout": 0,
+      "premium": 200521969,
+      "el": 171026346,
+      "tvar95": 1103072269,
+      "legs": [
+        {
+          "ticker": "NVDA",
+          "vault": -29079800044,
+          "traderLong": 29079800081,
+          "traderShort": 37,
+          "pnl": 321633294,
+          "ref": {
+            "roundId": "36893488147419104247",
+            "answer": 21020999999,
+            "updatedAt": 1783700691
+          },
+          "fix": {
+            "roundId": "36893488147419104251",
+            "answer": 20788500000,
+            "updatedAt": 1783950231
+          }
+        },
+        {
+          "ticker": "AAPL",
+          "vault": 88999999,
+          "traderLong": 11000001,
+          "traderShort": 100000000,
+          "pnl": 843608,
+          "ref": {
+            "roundId": "36893488147419103802",
+            "answer": 31597000000,
+            "updatedAt": 1783710758
+          },
+          "fix": {
+            "roundId": "36893488147419103805",
+            "answer": 31896500000,
+            "updatedAt": 1783949449
+          }
+        },
+        {
+          "ticker": "SPY",
+          "vault": 38351159986,
+          "traderLong": 5044000092,
+          "traderShort": 43395160078,
+          "pnl": -140392866,
+          "ref": {
+            "roundId": "36893488147419103469",
+            "answer": 75395000000,
+            "updatedAt": 1783704419
+          },
+          "fix": {
+            "roundId": "36893488147419103472",
+            "answer": 75119000000,
+            "updatedAt": 1783952280
+          }
+        },
+        {
+          "ticker": "TSLA",
+          "vault": 0,
+          "traderLong": 0,
+          "traderShort": 0,
+          "pnl": 0,
+          "ref": {
+            "roundId": "36893488147419104574",
+            "answer": 40726000000,
+            "updatedAt": 1783713253
+          },
+          "fix": {
+            "roundId": "36893488147419104578",
+            "answer": 40181000000,
+            "updatedAt": 1783949446
+          }
+        },
+        {
+          "ticker": "EUR",
+          "vault": -11996232,
+          "traderLong": 12001994,
+          "traderShort": 5762,
+          "pnl": 1418,
+          "ref": {
+            "roundId": "36893488147419105481",
+            "answer": 114163500,
+            "updatedAt": 1783711196
+          },
+          "fix": {
+            "roundId": "36893488147419105550",
+            "answer": 114150000,
+            "updatedAt": 1783951144
+          }
+        },
+        {
+          "ticker": "XAU",
+          "vault": -14463158336,
+          "traderLong": 68580504106,
+          "traderShort": 54117345770,
+          "pnl": 331277755,
+          "ref": {
+            "roundId": "36893488147419103761",
+            "answer": 410985600000,
+            "updatedAt": 1783698568
+          },
+          "fix": {
+            "roundId": "36893488147419103769",
+            "answer": 401572000000,
+            "updatedAt": 1783952252
+          }
+        }
+      ]
+    }
+  ]
+}

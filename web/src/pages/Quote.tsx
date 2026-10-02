@@ -11,6 +11,8 @@ import { gridAxes, buildGrid, type GridCell } from '../lib/grid-core';
 import { GAINS_DIAMOND, GUSDC, readGains, vaultExposureUsd, type GainsRead } from '../lib/gains';
 import { PRICED_CLASSES, PRICED_MARKETS, composeQuoteMail, tableIdsSlot, type PricedClass, type PricedMarket } from '../lib/quote-core';
 import snapshot from '../data/gains-gusdc-book.json';
+import weekends from '../data/gusdc-weekends.json';
+import { fmtDay } from '../lib/gaps-core';
 
 const SNAPSHOT: GainsRead = { block: BigInt(snapshot.block), vaultAssetsUsd: snapshot.vaultAssetsUsd, pairs: snapshot.pairs };
 
@@ -305,6 +307,7 @@ export function QuotePage() {
               plus EUR/USD and XAU/USD, each from 504 real weekends.
             </p>
           </section>
+          <WeekendsLedger />
         </div>
 
         <aside className="ticket" aria-labelledby="qt-h">
@@ -364,5 +367,55 @@ export function QuotePage() {
         </aside>
       </div>
     </>
+  );
+}
+
+const u6 = (v: number) => v / 1e6;
+const day = (ts: number) => fmtDay(new Date(ts * 1000).toISOString().slice(0, 10));
+const signedUsd = (v: number) => `${v < 0 ? '−' : v > 0 ? '+' : ''}${whole(Math.abs(u6(v)))}`;
+
+/** The gUSDC vault's real gap PnL on its stock, index, FX and gold book over recent weekends (scripts/gusdc_weekends.py). */
+function WeekendsLedger() {
+  const rows = weekends.weekends;
+  const prem = rows.reduce((a, r) => a + r.premium, 0);
+  const paid = rows.reduce((a, r) => a + r.payout, 0);
+  const losing = rows.filter((r) => r.netGapPnl < 0).length;
+  const worst = rows.reduce((w, r) => (r.netGapPnl < w.netGapPnl ? r : w), rows[0]);
+  return (
+    <section aria-labelledby="wk-h">
+      <h2 id="wk-h" className="section">The gUSDC vault, weekend by weekend</h2>
+      <p className="prose">
+        Over the last {rows.length} weekends the gUSDC vault's book on these six markets lost money on the gap {losing} times. The worst was the
+        weekend of {day(worst.fridayClose)}: {whole(Math.abs(u6(worst.netGapPnl)))} USDC, {(Math.abs(worst.netGapPnl) / worst.gusdcAssets * 1e4).toFixed(2)} bps
+        of the vault. A layer at this page's starting terms on each weekend's book would have cost {whole(u6(prem))} USDC in premium and paid {whole(u6(paid))}.
+      </p>
+      <div className="ledger" role="table" aria-label="The gUSDC vault's weekend gap PnL and a layer on each weekend's book">
+        <div className="ledger-head rp-grid" role="row">
+          <span role="columnheader">Weekend</span>
+          <span role="columnheader">Vault gap PnL</span>
+          <span role="columnheader">Losing legs</span>
+          <span role="columnheader">Layer pays</span>
+          <span role="columnheader">Premium</span>
+        </div>
+        {rows.map((r) => (
+          <div className="ledger-row" role="row" key={r.fridayClose}>
+            <div className="ledger-grid rp-grid">
+              <span role="cell" data-k="Weekend">{day(r.fridayClose)} <span className="xname">book {whole(u6(r.gross))}, layer {whole(u6(r.retention))} to {whole(u6(r.retention + r.limit))}</span></span>
+              <span role="cell" data-k="Vault gap PnL">{signedUsd(r.netGapPnl)}</span>
+              <span role="cell" data-k="Losing legs">{whole(u6(r.losingLegs))}</span>
+              <span role="cell" data-k="Layer pays">{whole(u6(r.payout))}</span>
+              <span role="cell" data-k="Premium">{whole(u6(r.premium))}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="src">
+        USDC. Each book is the vault's side of gTrade's USDC-collateral open interest at the Arbitrum One block of that Friday's 4:00pm New York close
+        (<span className="file">getPairOiAfterV10Collateral</span> plus <span className="file">getPairOisBeforeV10Collateral</span>, archive reads), and each gap
+        is the Chainlink round in effect at the close against the first round at or after Monday's 9:30am open, the two rounds the Treaty settles on.
+        The layer keeps 0.25% of the gross book and covers up to 2%, paying on the losing legs as the Treaty does; premiums are the six-table Stylus pricer's
+        quote today at Arbitrum Sepolia block {weekends.pricerBlock.toLocaleString('en-US')}. Reproduce with <span className="file">python3 scripts/gusdc_weekends.py</span>.
+      </p>
+    </section>
   );
 }

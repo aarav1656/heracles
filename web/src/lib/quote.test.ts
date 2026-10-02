@@ -45,6 +45,32 @@ test('the vault holds the opposite side of the traders', () => {
   assert.equal(vaultExposureUsd(91_201, 524_812), 433_611); // traders net short SPY, vault long
 });
 
+test('every gUSDC weekend row recomputes from its own legs, and the latest matches the replay built separately', () => {
+  const w = JSON.parse(readFileSync(new URL('../data/gusdc-weekends.json', import.meta.url), 'utf8'));
+  const tdiv = (a: bigint, b: bigint) => a / b; // BigInt division truncates toward zero, as Solidity does
+  assert.ok(w.weekends.length >= 12);
+  for (const r of w.weekends) {
+    const pnl = r.legs.map((l: { vault: number; ref: { answer: number }; fix: { answer: number } }) =>
+      tdiv(BigInt(l.vault) * (BigInt(l.fix.answer) - BigInt(l.ref.answer)), BigInt(l.ref.answer)));
+    assert.deepEqual(pnl.map(Number), r.legs.map((l: { pnl: number }) => l.pnl), `legs ${r.fridayClose}`);
+    const net = pnl.reduce((a: bigint, b: bigint) => a + b, 0n);
+    const losing = pnl.filter((x: bigint) => x < 0n).reduce((a: bigint, b: bigint) => a - b, 0n);
+    assert.equal(Number(net), r.netGapPnl);
+    assert.equal(Number(losing), r.losingLegs);
+    const pay = losing > BigInt(r.retention) ? losing - BigInt(r.retention) : 0n;
+    assert.equal(r.payout, Number(pay < BigInt(r.limit) ? pay : BigInt(r.limit)));
+    assert.ok(r.premium >= r.limit * 50 / 10_000, 'premium floor');
+    assert.ok(r.legs.every((l: { ref: { updatedAt: number }; fix: { updatedAt: number } }) => l.ref.updatedAt <= r.fridayClose && l.fix.updatedAt >= r.mondayOpen));
+  }
+  const replay = JSON.parse(readFileSync(new URL('../data/replay.json', import.meta.url), 'utf8'));
+  const latest = w.weekends[0];
+  assert.equal(latest.block, replay.snapshot.block, 'same Friday-close block found twice');
+  for (const m of replay.markets) {
+    const leg = latest.legs.find((l: { ticker: string }) => l.ticker === m.ticker);
+    assert.equal(Math.round(((leg.fix.answer - leg.ref.answer) / leg.ref.answer) * 1e6) / 100, m.gapBps, m.ticker);
+  }
+});
+
 test('the mail carries the figures and is a mailto link', () => {
   const m = composeQuoteMail({
     rows: [{ ticker: 'SPY', exposureUsd: 433_611 }, { ticker: 'NVDA', exposureUsd: -453_222 }],

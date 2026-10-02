@@ -215,6 +215,13 @@ read above, repeated in the browser at the latest block with a Refresh button, a
 the expected payout and TVaR95, shows the premium and expected payout of each asset class priced alone on the same terms, quotes the first-loss slice of the limit separately for the
 tranche split, and builds a plain-text `mailto:` quote that makes no network call.
 
+Below the quote, `/quote` lays out the gUSDC vault's last 12 weekends from chain
+(`scripts/gusdc_weekends.py`): the vault's side of gTrade's USDC open interest at each Friday-close
+block, the Chainlink rounds the Treaty settles on, and the gap PnL that followed. The book lost
+money on the gap in 7 of the 12, worst 2,035.10 USDC on the weekend of 25 September 2026 (4.62 bps
+of gUSDC). A layer keeping 0.25% of each weekend's book and covering up to 2% would have cost
+3,702.20 USDC in premium at today's Stylus quote and paid 2,887.39.
+
 FX and gold are priced from 504 real weekends each, measured at the Treaty's own fixing minutes
 (Friday 16:00 ET to Monday 9:30 ET) from Dukascopy 1-minute bars: EUR/USD spans 2016-12-23 to
 2026-09-25 and XAU/USD 2016-06-03 to 2026-09-25, with holiday weekends left out rather than
