@@ -207,7 +207,8 @@ bound, matching the live on-chain quote (1,676.722158 USDG) to the last cent. Ag
   lenders eat the Monday gap.**
   (@MoneyNomads1, 2026-09-28, https://x.com/MoneyNomads1/status/2104630009302290492) This
   is a major lending protocol structurally exposed to the same gap this treaty prices.
-- **"Billion-dollar-plus days in Stock Token volume, 72% of it on weekends."** (Johann
+- **"We're already seeing the signals: billion-dollar-plus days in Stock Token volume, 72% of it
+  on weekends, with developer activity driving adoption."** (Johann
   Kerbrat, SVP & GM Crypto and International, Robinhood, 2026-09-26,
   https://x.com/JohannKerbrat/status/2103874953053622694) That is the market's own framing.
   What Heracles measures is the gap itself: 504 recorded Friday-close to Monday-open weekends per
