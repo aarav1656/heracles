@@ -27,6 +27,7 @@ Live app: https://heracles-virid-seven.vercel.app (reads the book below from the
 | USDC senior vault | [`0x510e4266C55a58879d3a77eC02e77CCF1602cA39`](https://sepolia.arbiscan.io/address/0x510e4266C55a58879d3a77eC02e77CCF1602cA39) | ERC-4626, takes the other 70% |
 | Pricer (Rust/Stylus) | [`0xbe99217180a5fcb83372375b0928c971dfa71f88`](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) | on-chain premium, 4.29x to 8.00x less L2 execution gas than the Solidity twin from eight markets to one, block 314,661,533, `python3 scripts/measure_pricer_gas.py` |
 | Six-table pricer (Rust/Stylus) | [`0x1674ecf8d236a91c484c11fd11a21601837f7e37`](https://sepolia.arbiscan.io/address/0x1674ecf8d236a91c484c11fd11a21601837f7e37) | prices equities, EUR/USD and XAU/USD on chain; the `/quote` desk reads it |
+| Six-table pricer on Robinhood Chain testnet (46630) | [`0x01143a467990d06b6481c3d7bef95ad25c36a49b`](https://explorer.testnet.chain.robinhood.com/address/0x01143a467990d06b6481c3d7bef95ad25c36a49b) | the same Stylus build, activated on chain 46630; returns identical quotes to the Arbitrum Sepolia pricer |
 | OIGuard | [`0x96BE263EfD057167E01a212BBd076904391217Ce`](https://sepolia.arbiscan.io/address/0x96be263efd057167e01a212bbd076904391217ce#code) | a perp venue's open-interest check over the six-table pricer, source verified on Arbiscan |
 | VaultCover | [`0xe6085fF7Bf0d37c0Cd865072cA5B434F2c228997`](https://sepolia.arbiscan.io/address/0xe6085ff7bf0d37c0cd865072ca5b434f2c228997#code) | a perp LP vault's book on chain: guarded opens, free closes, one Treaty layer a week bound on that book, source verified on Arbiscan |
 | USDG (Paxos testnet) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) | settlement asset of the USDG book |
@@ -422,6 +423,16 @@ in `contracts/test/SequencerFeed.fork.t.sol`, pinned to Arbitrum One block 511,0
 `latestRoundData()` reads answer 0 (up) since `startedAt` 1,779,307,607, so a bind clears
 the gate and stops at the bind deadline (`BadTiming`); with the feed reporting the sequencer
 down, or back up for under the one-hour grace, the same bind reverts `SequencerDown()`.
+
+The six-table pricer also runs on Robinhood Chain testnet (46630) at
+`0x01143a467990d06b6481c3d7bef95ad25c36a49b` (deploy tx `0xee6ed1a4...0e34d2cf0`, block 127,713,821,
+Stylus version 3 with 364 days of activation left). `scripts/pricer_parity.py` puts the same feed
+on both chains with an `eth_call` state override and calls both pricers with identical inputs: all 10
+cases (EUR/USD, gold, TSLA, a two-leg equity book and gTrade's gUSDC book of 25 September, each with a
+flat feed and one moving 1.5% a round) return the same premium, expected loss and TVaR95 on both
+chains, and the flat-feed EUR/USD, gold and TSLA quotes equal the figures
+`scripts/fx_gold_fair_premium.py` computes from the evidence files alone
+(`evidence/parity/rh-testnet.json`).
 
 ## Stylus
 

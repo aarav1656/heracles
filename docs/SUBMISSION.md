@@ -79,6 +79,7 @@ https://heracles-virid-seven.vercel.app
 | USDC senior vault | [0x510e4266C55a58879d3a77eC02e77CCF1602cA39](https://sepolia.arbiscan.io/address/0x510e4266C55a58879d3a77eC02e77CCF1602cA39) (Sourcify exact match) |
 | Pricer (Rust/Stylus) | [0xbe99217180a5fcb83372375b0928c971dfa71f88](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) |
 | Six-table pricer (Rust/Stylus) | [0x1674ecf8d236a91c484c11fd11a21601837f7e37](https://sepolia.arbiscan.io/address/0x1674ecf8d236a91c484c11fd11a21601837f7e37) |
+| Six-table pricer, Robinhood Chain testnet (46630) | [0x01143a467990d06b6481c3d7bef95ad25c36a49b](https://explorer.testnet.chain.robinhood.com/address/0x01143a467990d06b6481c3d7bef95ad25c36a49b), identical quotes to Arbitrum Sepolia in 10 of 10 parity cases |
 | OIGuard | [0x96BE263EfD057167E01a212BBd076904391217Ce](https://sepolia.arbiscan.io/address/0x96be263efd057167e01a212bbd076904391217ce#code) (Arbiscan verified) |
 | VaultCover | [0xe6085fF7Bf0d37c0Cd865072cA5B434F2c228997](https://sepolia.arbiscan.io/address/0xe6085ff7bf0d37c0cd865072ca5b434f2c228997#code) (Arbiscan verified) |
 | USDG (Paxos testnet) | [0xFFC95faa3d63Cde504a05B567C600B78C0b41892](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) |

@@ -1,0 +1,22 @@
+{
+  "chainId": 46630,
+  "chainName": "Robinhood Chain testnet",
+  "rpc": "https://robinhood-sepolia-rpc.publicnode.com",
+  "deployer": "0x39ef83fbB0BA61A5b4169fF5ce21Fd89e25aab37",
+  "contracts": {
+    "PricerSixTables": {
+      "address": "0x01143a467990d06b6481c3d7bef95ad25c36a49b",
+      "role": "the same six-table Stylus pricer build as Arbitrum Sepolia 0x1674ecf8d236a91c484c11fd11a21601837f7e37: NVDA, AAPL, SPY, TSLA, EUR/USD, XAU/USD",
+      "deployTx": "0xee6ed1a461b69e354011086504fd9d94d757b61df0b6092bd2908ec0e34d2cf0",
+      "block": 127713821,
+      "deployedAt": "2026-10-02",
+      "status": "0x1",
+      "constructorArgs": { "table_ids": [0, 1, 2, 3, 4, 5] },
+      "size": "28,247 bytes compressed, 2 fragments, 48-byte root (0xeff00200)",
+      "activation": "Stylus version 3, programTimeLeft 364 days (scripts/stylus-program.sh), wasm data fee 0.000142 ETH",
+      "checks": "tableIdAt(0..5) = 0..5, tableIdAt(6) reverts MissingTable",
+      "parity": "scripts/pricer_parity.py: 10 of 10 cases identical to Arbitrum Sepolia under the same overridden feed; flat-feed EUR, XAU and TSLA equal scripts/fx_gold_fair_premium.py figures (evidence/parity/rh-testnet.json)",
+      "funding": "0.01 ETH from the Robinhood Chain testnet faucet, claimed by the user"
+    }
+  }
+}

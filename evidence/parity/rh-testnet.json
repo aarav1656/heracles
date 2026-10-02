@@ -1,0 +1,219 @@
+{
+  "chains": {
+    "Arbitrum Sepolia (421614)": {
+      "rpc": "https://sepolia-rollup.arbitrum.io/rpc",
+      "pricer": "0x1674ecf8d236a91c484c11fd11a21601837f7e37"
+    },
+    "Robinhood Chain testnet (46630)": {
+      "rpc": "https://robinhood-sepolia-rpc.publicnode.com",
+      "pricer": "0x01143a467990d06b6481c3d7bef95ad25c36a49b"
+    }
+  },
+  "feed": "0x00000000000000000000000000000000000fEed1",
+  "feedCode": "contracts/test/mocks/MockFeed.sol runtime",
+  "cases": [
+    {
+      "feed": "flat",
+      "case": "EUR/USD long 2,000,000",
+      "results": {
+        "Arbitrum Sepolia (421614)": [
+          1977298772,
+          1648960317,
+          12082160000
+        ],
+        "Robinhood Chain testnet (46630)": [
+          1977298772,
+          1648960317,
+          12082160000
+        ]
+      },
+      "identical": true,
+      "python": [
+        1977298772,
+        1648960317,
+        12082160000
+      ],
+      "matchesPython": true
+    },
+    {
+      "feed": "flat",
+      "case": "XAU/USD long 1,000,000",
+      "results": {
+        "Arbitrum Sepolia (421614)": [
+          1635305987,
+          1173676587,
+          15794200000
+        ],
+        "Robinhood Chain testnet (46630)": [
+          1635305987,
+          1173676587,
+          15794200000
+        ]
+      },
+      "identical": true,
+      "python": [
+        1635305987,
+        1173676587,
+        15794200000
+      ],
+      "matchesPython": true
+    },
+    {
+      "feed": "flat",
+      "case": "TSLA long 500,000",
+      "results": {
+        "Arbitrum Sepolia (421614)": [
+          2398667943,
+          1847519841,
+          19452000000
+        ],
+        "Robinhood Chain testnet (46630)": [
+          2398667943,
+          1847519841,
+          19452000000
+        ]
+      },
+      "identical": true,
+      "python": [
+        2398667943,
+        1847519841,
+        19452000000
+      ],
+      "matchesPython": true
+    },
+    {
+      "feed": "flat",
+      "case": "gUSDC book, 2026-09-25 close",
+      "results": {
+        "Arbitrum Sepolia (421614)": [
+          345678891,
+          276239192,
+          2488612758
+        ],
+        "Robinhood Chain testnet (46630)": [
+          345678891,
+          276239192,
+          2488612758
+        ]
+      },
+      "identical": true,
+      "python": null,
+      "matchesPython": null
+    },
+    {
+      "feed": "flat",
+      "case": "NVDA short 1,000,000, SPY long 1,000,000",
+      "results": {
+        "Arbitrum Sepolia (421614)": [
+          2090736244,
+          1317063492,
+          21992000000
+        ],
+        "Robinhood Chain testnet (46630)": [
+          2090736244,
+          1317063492,
+          21992000000
+        ]
+      },
+      "identical": true,
+      "python": null,
+      "matchesPython": null
+    },
+    {
+      "feed": "moving 1.5% a round",
+      "case": "EUR/USD long 2,000,000",
+      "results": {
+        "Arbitrum Sepolia (421614)": [
+          5625492543,
+          5165103174,
+          20000000000
+        ],
+        "Robinhood Chain testnet (46630)": [
+          5625492543,
+          5165103174,
+          20000000000
+        ]
+      },
+      "identical": true,
+      "python": null,
+      "matchesPython": null
+    },
+    {
+      "feed": "moving 1.5% a round",
+      "case": "XAU/USD long 1,000,000",
+      "results": {
+        "Arbitrum Sepolia (421614)": [
+          5433196138,
+          4649672619,
+          30000000000
+        ],
+        "Robinhood Chain testnet (46630)": [
+          5433196138,
+          4649672619,
+          30000000000
+        ]
+      },
+      "identical": true,
+      "python": null,
+      "matchesPython": null
+    },
+    {
+      "feed": "moving 1.5% a round",
+      "case": "TSLA long 500,000",
+      "results": {
+        "Arbitrum Sepolia (421614)": [
+          6904776594,
+          6166765873,
+          30000000000
+        ],
+        "Robinhood Chain testnet (46630)": [
+          6904776594,
+          6166765873,
+          30000000000
+        ]
+      },
+      "identical": true,
+      "python": null,
+      "matchesPython": null
+    },
+    {
+      "feed": "moving 1.5% a round",
+      "case": "gUSDC book, 2026-09-25 close",
+      "results": {
+        "Arbitrum Sepolia (421614)": [
+          1240189977,
+          1151671633,
+          4000000000
+        ],
+        "Robinhood Chain testnet (46630)": [
+          1240189977,
+          1151671633,
+          4000000000
+        ]
+      },
+      "identical": true,
+      "python": null,
+      "matchesPython": null
+    },
+    {
+      "feed": "moving 1.5% a round",
+      "case": "NVDA short 1,000,000, SPY long 1,000,000",
+      "results": {
+        "Arbitrum Sepolia (421614)": [
+          16282669100,
+          13477777777,
+          101860000000
+        ],
+        "Robinhood Chain testnet (46630)": [
+          16282669100,
+          13477777777,
+          101860000000
+        ]
+      },
+      "identical": true,
+      "python": null,
+      "matchesPython": null
+    }
+  ],
+  "allIdentical": true
+}
