@@ -2,7 +2,7 @@
 // USDC book (bound, referenced, then fixed on Monday), and the OIGuard's verdict on the VaultCover book
 // plus 2,000,000 more NVDA short.
 import { BaseError, ContractFunctionRevertedError, type PublicClient } from 'viem';
-import { BOOKS, OIGUARD_ADDRESS, TREATY_ADDRESS, VAULT_COVER_ADDRESS, capacityAbi, oiGuardAbi, treatyAbi, vaultCoverAbi } from '../abi/generated';
+import { BOOKS, LIVE_CYCLE, OIGUARD_ADDRESS, TREATY_ADDRESS, VAULT_COVER_ADDRESS, capacityAbi, oiGuardAbi, treatyAbi, vaultCoverAbi } from '../abi/generated';
 import { LAYER_STATES } from './treaty';
 
 export const PROBE_SIZE = -2_000_000_000_000n; // 2,000,000 more NVDA short, book market 0
@@ -28,6 +28,9 @@ export type TourRead = {
   layer0: { state: (typeof LAYER_STATES)[number]; expiry: bigint; premium: bigint; payout: bigint; referenced: boolean; fridayPrice: bigint; mondayPrice: bigint };
   guard: GuardVerdict;
 };
+
+/** Layer 0's lifecycle transactions as the Treaty emitted them, from its bind block. */
+export type TourEvents = { referenceTx?: `0x${string}`; fixTx?: `0x${string}`; settleTx?: `0x${string}`; claimTx?: `0x${string}` };
 
 export async function readTour(client: PublicClient): Promise<TourRead> {
   const block = await client.getBlockNumber();
@@ -61,4 +64,17 @@ export async function readTour(client: PublicClient): Promise<TourRead> {
     },
     guard,
   };
+}
+
+/** Read on its own so a slow log range never holds back the figures above. */
+export async function readTourEvents(client: PublicClient): Promise<TourEvents> {
+  const block = await client.getBlockNumber();
+  // A refused or slow log range must not blank the tour: the page then links the transactions recorded in deployments.
+  return client
+    .getContractEvents({ address: TREATY_ADDRESS, abi: treatyAbi, fromBlock: BigInt(LIVE_CYCLE.bindBlock), toBlock: block })
+    .then((logs) => {
+      const tx = (name: string) => logs.find((l) => l.eventName === name && 'id' in l.args && l.args.id === 0n)?.transactionHash ?? undefined;
+      return { referenceTx: tx('ReferenceSet'), fixTx: tx('MarketFixed'), settleTx: tx('Settled'), claimTx: tx('Claimed') };
+    })
+    .catch(() => ({}));
 }

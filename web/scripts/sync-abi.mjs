@@ -78,7 +78,7 @@ export const GUIDE_RUN = ${JSON.stringify(deployment.integrationGuideRun)} as co
 export const MOCK_FEED_RUNTIME = ${JSON.stringify(mockFeedRuntime)} as \`0x\${string}\`;
 export const RH_SIX_TABLE_PRICER = ${JSON.stringify(rh.contracts.PricerSixTables.address)} as Address;
 /** The live cycle's transactions, for the landing tour: layer 0 on the USDC book and the USDG deposits. */
-export const LIVE_CYCLE = ${JSON.stringify({ bindTx: deployment.liveCycle.txs.bind, referenceTx: deployment.liveCycle.txs.setReference, usdgDeposits: deployment.liveCycle.usdgBook.deposits.map(({ vault, tx, amount }) => ({ vault, tx, amount })), vaultCoverOpens: deployment.contracts.VaultCover.gusdcBookMirror.opens })} as const;
+export const LIVE_CYCLE = ${JSON.stringify({ bindTx: deployment.liveCycle.txs.bind, bindBlock: deployment.liveCycle.bindBlock, referenceTx: deployment.liveCycle.txs.setReference, usdgDeposits: deployment.liveCycle.usdgBook.deposits.map(({ vault, tx, amount }) => ({ vault, tx, amount })), vaultCoverOpens: deployment.contracts.VaultCover.gusdcBookMirror.opens })} as const;
 /** The OIGuard on Robinhood Chain testnet over the Stock Token mirror feeds, and its two recorded checks. */
 export const RH_TESTNET = ${JSON.stringify({ chainId: rh.chainId, rpc: rh.rpc, explorer: 'https://explorer.testnet.chain.robinhood.com', guard: rhGuard.address, pricer: rhGuard.pricer, feeds: rhGuard.feeds, book: rhGuard.book, accepted: rhGuard.accepted, refused: rhGuard.refused })} as const;
 /** The forced open the guard refused on chain (receipt status 0x0). */

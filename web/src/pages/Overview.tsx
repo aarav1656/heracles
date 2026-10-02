@@ -45,12 +45,11 @@ export function Overview() {
       <div className="desk doc">
         <div className="main-col">
           <header className="argument">
-            <h2 className="display">Cover for the weekend gap</h2>
+            <h2 className="title">How a cover is priced</h2>
             <p className="lede">
               If a stock opens Monday far from Friday's close, Heracles pays a perp exchange's LP vault a set
               amount, worked out from the price feed and the position size the vault declared.
             </p>
-            <Link className="btn only-narrow" to="/bind">Price cover for your vault</Link>
           </header>
 
           <section className="exhibit" aria-labelledby="chart-h">
@@ -91,7 +90,7 @@ export function Overview() {
             </>
           )}
           <div className="acts">
-            <Link className="btn" to="/bind">Price cover for your vault</Link>
+            <Link className="btn" to="/bind">Price SPY cover</Link>
           </div>
           <p className="note">No wallet needed to see a price; connect one to buy.</p>
           {ticker === 'SPY' && quote.data && (
@@ -116,9 +115,7 @@ export function Overview() {
               it runs the cover over the same 504 SPY weekends drawn above, scaled by the live volatility, and returns the
               price, the average payout and the average of the worst 25 weekends. At settlement the payout comes from the
               same kind of arithmetic: the Monday gap on the feed times the position the vault declared, minus the part the vault
-              keeps (the retention), capped at the limit. The call costs <span className="fig">4.29x</span> to <span className="fig">8.00x</span> less
-              L2 execution gas in Stylus than in its Solidity twin, from eight markets down to one, measured at block <a href={explorer.block(314_661_533n)} target="_blank" rel="noreferrer">#314,661,533</a> (<span className="file">scripts/measure_pricer_gas.py</span>).
-            </p>
+              keeps (the retention), capped at the limit.</p>
             {spyFeed && (
               <p className="note">
                 SPY/USD feed on chain: <span className="fig">{fmtPx(spyFeed.latest.answer)}</span>, round {age(now - Number(spyFeed.latest.updatedAt))} old

@@ -5,7 +5,7 @@ import type { PublicClient } from 'viem';
 import { LIVE_CYCLE, OIGUARD_ADDRESS, QUOTE_PRICER_ADDRESS, RH_SIX_TABLE_PRICER, RH_TESTNET, TREATY_ADDRESS, VAULT_COVER_ADDRESS, VAULT_COVER_REFUSED } from '../abi';
 import { explorer } from '../chain';
 import { fmtCountdown, fmtPx, fmtStamp, fmtUsdg, fmtUsdg2, short } from '../lib/format';
-import { readTour, type GuardVerdict } from '../lib/tour';
+import { readTour, readTourEvents, type GuardVerdict } from '../lib/tour';
 import { readRhGuard } from '../lib/rhGuard';
 import { readVaultCover } from '../lib/vaultCover';
 import { readParity, PYTHON_PREMIUM } from '../lib/parity';
@@ -54,7 +54,7 @@ function WeekendBars() {
           <line x1="0" x2="100" y1="0" y2="0" className="wb-zero" />
         </svg>
         <p className="wb-note" style={{ left: `${(W.indexOf(WORST) + 0.5) * bw}%`, top: `${(y(WORST.losingLegs) / h) * 100 + 4}%` }}>
-          <b>{day(WORST.fridayClose)}</b> lost {u(Math.abs(WORST.netGapPnl))}; the layer pays {u(WORST.payout)}
+          <b>{day(WORST.fridayClose)}</b>: losing legs {u(WORST.losingLegs)}, the layer pays {u(WORST.payout)}
         </p>
       </div>
       <div className="wb-x" aria-hidden="true">
@@ -85,6 +85,8 @@ export function JudgeTour() {
   const tour = useQuery({ queryKey: ['tour'], enabled: !!client, queryFn: () => readTour(client!), refetchInterval: 60_000, retry: 1 });
   const rh = useQuery({ queryKey: ['rh-guard'], queryFn: readRhGuard, refetchInterval: 60_000, retry: 1 });
   const vc = useQuery({ queryKey: ['vault-cover'], enabled: !!client, queryFn: () => readVaultCover(client!), refetchInterval: 60_000, retry: 1 });
+  const ev = useQuery({ queryKey: ['tour-events'], enabled: !!client, queryFn: () => readTourEvents(client!), refetchInterval: 120_000, retry: 1 });
+  const e = ev.data;
   const parity = useQuery({ queryKey: ['parity'], enabled: !!client, queryFn: () => readParity(client!), retry: 1, staleTime: Infinity });
   const t = tour.data;
   const rv = rh.data?.refusedNow;
@@ -99,12 +101,13 @@ export function JudgeTour() {
           <header className="argument">
             <h1 className="display">The Monday gap cost gTrade's LP vault money on {LOSING} of its last {W.length} weekends.</h1>
             <p className="lede">
-              The worst, {day(WORST.fridayClose)}, cost {u(Math.abs(WORST.netGapPnl))} USDC. Heracles prices that gap on chain, refuses open
+              The worst, {day(WORST.fridayClose)}, cost{' '}
+              <a href={`https://arbiscan.io/block/${WORST.block}`} target="_blank" rel="noreferrer">{u(Math.abs(WORST.netGapPnl))} USDC</a>. Heracles prices that gap on chain, refuses open
               interest a vault cannot afford to cover, and pays the vault from the price feed when the gap lands.
             </p>
             <p className="live-now only-narrow">
-              Live now: both guards refuse 2,000,000 more NVDA short, cover {t ? fmtUsdg2(t.guard.premium) : '…'} and {rhVerdict ? fmtUsdg2(rhVerdict.premium) : '…'} against
-              a 4,000.00 budget. <a href="#gv-h">See the reads</a>
+              <b>Refused, live:</b> 2,000,000 more NVDA short would need cover of {t ? fmtUsdg2(t.guard.premium) : '…'} against a 4,000.00 budget;{' '}
+              <a href={explorer.tx(VAULT_COVER_REFUSED.tx)} target="_blank" rel="noreferrer">the same refusal on chain</a>.
             </p>
           </header>
           <section className="exhibit" aria-labelledby="wb-h">
@@ -122,7 +125,8 @@ export function JudgeTour() {
           <p className="terms">
             Ask either guard now to take 2,000,000 more NVDA short and it refuses: cover for that book would cost{' '}
             <b>{t ? fmtUsdg2(t.guard.premium) : '…'}</b> on Arbitrum and <b>{rhVerdict ? fmtUsdg2(rhVerdict.premium) : '…'}</b> on Robinhood Chain, against a{' '}
-            {t ? fmtUsdg2(t.guard.budget) : '4,000.00'} budget.
+            {t ? fmtUsdg2(t.guard.budget) : '4,000.00'} budget. The two figures differ because each chain prices on its own NVDA feed and volatility;
+            on the same feed the two pricers agree to the unit (<a href="#pr-h">below</a>).
           </p>
           <VerdictRows chain="Arbitrum Sepolia" v={t?.guard} block={t?.block} blockHref={t ? explorer.block(t.block) : undefined} txHref={explorer.tx(VAULT_COVER_REFUSED.tx)} tx={VAULT_COVER_REFUSED.tx} />
           <VerdictRows chain="Robinhood Chain testnet" v={rhVerdict} block={rh.data?.block} blockHref={rh.data ? rx(`block/${rh.data.block}`) : undefined} txHref={rx(`tx/${RH_TESTNET.refused.tx}`)} tx={RH_TESTNET.refused.tx} />
@@ -142,7 +146,7 @@ export function JudgeTour() {
         <ol className="steps">
           <li>
             <h3>Writers back the cover</h3>
-            <p>{t ? <>The USDG book holds {fmtUsdg2(t.usdg.firstLoss)} USDG first-loss and {fmtUsdg2(t.usdg.senior)} senior, every unit from the Paxos testnet faucet.</> : 'Reading the vaults…'}</p>
+            <p>{t ? <>The USDG book holds {fmtUsdg2(t.usdg.firstLoss)} USDG first-loss and {fmtUsdg2(t.usdg.senior)} senior, deposited with one signed permit each.</> : 'Reading the vaults…'}</p>
             <p className="txs">{LIVE_CYCLE.usdgDeposits.map((d) => <a key={d.tx} href={explorer.tx(d.tx)} target="_blank" rel="noreferrer">{u(d.amount)} {d.vault === 'usdgSenior' ? 'senior' : 'first-loss'}</a>)}</p>
           </li>
           <li>
@@ -171,15 +175,22 @@ export function JudgeTour() {
           <li className={t && t.layer0.referenced && t.layer0.state === 'Bound' ? 'done' : undefined}>
             <h3>Friday's close becomes the reference</h3>
             <p>{t ? (t.layer0.referenced ? <>Set at SPY {fmtPx(t.layer0.fridayPrice)}, the round in effect at Friday's 4:00pm New York close.</> : 'Opens after Friday 4:00pm New York.') : 'Reading…'}</p>
-            <p className="txs"><a href={explorer.tx(LIVE_CYCLE.referenceTx)} target="_blank" rel="noreferrer">setReference</a></p>
+            <p className="txs"><a href={explorer.tx(e?.referenceTx ?? LIVE_CYCLE.referenceTx)} target="_blank" rel="noreferrer">setReference</a></p>
           </li>
           <li className={t && t.layer0.state === 'Bound' ? 'now' : undefined}>
             <h3>Monday's open settles it</h3>
             <p>
               {!t ? 'Reading…' : t.layer0.state === 'Settled'
                 ? <>Fixed at SPY {fmtPx(t.layer0.mondayPrice)}; the layer paid {fmtUsdg2(t.layer0.payout)} USDC.</>
-                : <>Fixing opens {fmtStamp(t.layer0.expiry)}, {t.layer0.expiry > now ? `in ${fmtCountdown(Number(t.layer0.expiry - now))}` : 'now'}: the first SPY round after the open decides the payout, and anyone can send it.</>}
+                : <>Fixing opens {fmtStamp(t.layer0.expiry)}, {t.layer0.expiry > now ? `in ${fmtCountdown(Number(t.layer0.expiry - now))}` : 'now'}: the first SPY round after the open decides the payout, anyone can send it, and its transactions appear here as the Treaty emits them.</>}
             </p>
+            {e && (e.fixTx || e.settleTx || e.claimTx) && (
+              <p className="txs">
+                {e.fixTx && <a href={explorer.tx(e.fixTx)} target="_blank" rel="noreferrer">fix</a>}
+                {e.settleTx && <a href={explorer.tx(e.settleTx)} target="_blank" rel="noreferrer">settled</a>}
+                {e.claimTx && <a href={explorer.tx(e.claimTx)} target="_blank" rel="noreferrer">claimed</a>}
+              </p>
+            )}
           </li>
           <li>
             <h3>Next week's cover renews itself</h3>
