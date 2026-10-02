@@ -94,3 +94,9 @@ for (const t of ['SPY', 'NVDA', 'AAPL', 'TSLA']) {
   writeFileSync(join(gapDest, `${t}.json`), readFileSync(join(gapSrc, `${t}.json`), 'utf8'));
 }
 console.log('copied gap tables SPY, NVDA, AAPL, TSLA into src/data/gap-tables');
+
+// The pricing method the /write caption links to, served by the site itself.
+const docsDest = join(here, '..', 'public', 'docs');
+mkdirSync(docsDest, { recursive: true });
+writeFileSync(join(docsDest, 'pricing.md'), readFileSync(join(root, 'docs', 'pricing.md'), 'utf8'));
+console.log('copied docs/pricing.md into public/docs');

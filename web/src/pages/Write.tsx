@@ -139,7 +139,7 @@ export function Write() {
             {fmtDay(SPY_WEEKENDS[SPY_WEEKENDS.length - 1].friday)}, Friday close to Monday open (<span className="file">evidence/gap-tables/SPY.json</span>).
             The premium is the Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>'s
             quote at the latest block, priced from these same weekends: their average payout, a load on the worst 5% and a capital charge on the
-            limit (<a href="https://github.com/aarav1656/heracles/blob/main/docs/pricing.md#model" target="_blank" rel="noreferrer">method</a>).
+            limit (<a href="/docs/pricing.md" target="_blank" rel="noreferrer">method</a>).
             The line is the path a writer takes through them: each drawdown and the weekends that paid the most.
           </p>
           <WriterPath />
