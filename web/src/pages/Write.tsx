@@ -11,6 +11,10 @@ import { Money } from '../components/Money';
 import { TxNote } from '../components/TxNote';
 import { fmtUsdg, parseUsdg } from '../lib/format';
 import { explainError } from '../lib/revert';
+import { usePublicClient } from 'wagmi';
+import type { PublicClient } from 'viem';
+import { erc20Abi } from '../abi';
+import { SimPanel, type Sim } from '../components/SimPanel';
 import { CapacityStrip } from './Overview';
 import { useReferenceQuote } from '../hooks/useReferenceQuote';
 import { RECORDED, REFERENCE, TABLES, backtest, fmtDay } from '../lib/gaps';
@@ -54,6 +58,43 @@ export function Write() {
       return e instanceof Error ? e.message : String(e);
     }
   })();
+
+  const client = usePublicClient() as PublicClient | undefined;
+  const [sim, setSim] = useState<Sim>({ kind: 'idle', why: 'Enter an amount to simulate the deposit.' });
+  useEffect(() => {
+    if (!client || parsed === undefined || parsed === 0n) { setSim({ kind: 'idle', why: 'Enter an amount to simulate the deposit.' }); return; }
+    if (!me.address) { setSim({ kind: 'idle', why: 'Connect a wallet to simulate this deposit from your account.' }); return; }
+    const owner = me.address;
+    const assets = parsed;
+    let live = true;
+    setSim({ kind: 'running' });
+    const t = setTimeout(async () => {
+      try {
+        const allowance = await client.readContract({ address: cfg.asset, abi: erc20Abi, functionName: 'allowance', args: [owner, vaultAddr] });
+        const block = await client.getBlockNumber();
+        let shares: bigint;
+        let how: string;
+        if (allowance >= assets) {
+          const r = await client.simulateContract({ address: vaultAddr, abi: capacityAbi, functionName: 'deposit', args: [assets, owner], account: owner });
+          shares = r.result as bigint;
+          how = 'Your standing allowance covers it, so no signature is requested.';
+        } else {
+          if (bv && bv.myAsset < assets) throw Object.assign(new Error('balance'), { balance: true });
+          shares = (await client.readContract({ address: vaultAddr, abi: capacityAbi, functionName: 'previewDeposit', args: [assets] })) as bigint;
+          how = 'The wallet asks for one permit signature, then deposits in a single transaction.';
+        }
+        if (live) setSim({ kind: 'ok', block, rows: [
+          { k: 'Shares minted', v: fmtUsdg(shares) },
+          { k: 'Deposit', v: `${fmtUsdg(assets)} ${sym}` },
+          { k: 'Signing', v: how },
+        ] });
+      } catch (e) {
+        const x = (e as { balance?: boolean }).balance ? { name: 'ERC20InsufficientBalance', words: 'Your balance of this asset is too low for this amount.' } : explainError(e);
+        if (live) setSim({ kind: 'revert', name: x.name, words: x.words });
+      }
+    }, 350);
+    return () => { live = false; clearTimeout(t); };
+  }, [client, parsed, me.address, cfg.asset, vaultAddr, bv?.myAsset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deposit = () => {
     if (!me.address || parsed === undefined) return;
@@ -130,8 +171,9 @@ export function Write() {
           </div>
           {!me.ready && <p className="note">{me.reason}</p>}
           {vault?.gateActive && <p className="note" role="status">Deposits and withdrawals in this vault are closed until this weekend's covers settle.</p>}
+          <SimPanel title="Simulation before you sign" sim={sim} />
           <div className="acts">
-            <button className="btn" disabled={!me.ready || permitTx.busy || !!amountError || !parsed || vault?.gateActive} onClick={deposit}>
+            <button className="btn" disabled={!me.ready || permitTx.busy || !!amountError || !parsed || vault?.gateActive || sim.kind === 'revert'} onClick={deposit}>
               Deposit {sym}
             </button>
           </div>

@@ -19,6 +19,9 @@ const spy = TABLES[0];
 const usd2 = (v: bigint) => (Number(v) / 1e6).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 import { fmtClock, fmtCountdown, fmtUsdg, parseExposure, parseUsdg, short } from '../lib/format';
 import { explainError } from '../lib/revert';
+import { checkFreshness } from '../lib/safety-core';
+import { useFeedAge } from '../hooks/useFeedAge';
+import { SimPanel, type Sim } from '../components/SimPanel';
 import { useConnection } from 'wagmi';
 
 type Quote = { premium: bigint; premiumJunior: bigint; el: bigint; tvar: bigint; block: bigint };
@@ -110,6 +113,40 @@ export function Bind() {
     me.address && effective !== undefined
       ? approveTx.run({ address: cfg.asset, abi: erc20Abi, functionName: 'approve', args: [TREATY_ADDRESS, effective], account: me.address })
       : undefined;
+
+  const feedAge = useFeedAge(FEED_ADDRESSES[0]);
+  const freshness = feedAge.data ? checkFreshness(feedAge.data.updatedAt, now) : undefined;
+  const stale = freshness !== undefined && !freshness.fresh;
+
+  const [sim, setSim] = useState<Sim>({ kind: 'idle', why: 'Fill in the cover to simulate it.' });
+  useEffect(() => {
+    if (closed) { setSim({ kind: 'idle', why: 'Binding is closed for this weekend, so there is nothing to simulate.' }); return; }
+    if (!client || !parsed.exp || parsed.ret === undefined || parsed.lim === undefined || parsed.jun === undefined || effective === undefined) {
+      setSim({ kind: 'idle', why: 'Fill in the cover to simulate it.' }); return;
+    }
+    if (!me.address) { setSim({ kind: 'idle', why: 'Connect a wallet to simulate this bind from your account.' }); return; }
+    if (needsApprove) { setSim({ kind: 'idle', why: `Approve ${fmtUsdg(effective)} ${sym} first. The bind is simulated as soon as the allowance is in place.` }); return; }
+    let live = true;
+    setSim({ kind: 'running' });
+    const { exp, ret, lim, jun } = parsed;
+    (async () => {
+      try {
+        await client.simulateContract({ address: TREATY_ADDRESS, abi: treatyAbi, functionName: 'bind', args: [BigInt(bookIdx), exp, ret, lim, effective], account: me.address });
+        const block = await client.getBlockNumber();
+        const jp = quote && quote.premiumJunior < effective ? quote.premiumJunior : effective;
+        if (live) setSim({ kind: 'ok', block, rows: [
+          { k: 'Premium charged', v: `${fmtUsdg(effective)} ${sym}` },
+          { k: 'First-loss slice', v: `${fmtUsdg(jun)} ${sym} of limit, earns ${fmtUsdg(jp)}` },
+          { k: 'Senior slice', v: `${fmtUsdg(lim - jun)} ${sym} of limit, earns ${fmtUsdg(effective - jp)}` },
+        ] });
+      } catch (e) {
+        const x = explainError(e);
+        const words = x.name === 'BadTiming' && win ? `Bind closes ${fmtClock(win.bindDeadline)} UTC; this call is outside that window.` : x.words;
+        if (live) setSim({ kind: 'revert', name: x.name, words });
+      }
+    })();
+    return () => { live = false; };
+  }, [client, parsed, effective, needsApprove, me.address, bookIdx, closed, win?.bindDeadline, quote?.block]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const bind = () => {
     if (!me.address || !parsed.exp || parsed.ret === undefined || parsed.lim === undefined || effective === undefined) return;
@@ -213,6 +250,19 @@ export function Bind() {
             )}
           </div>
 
+          <div className="sim">
+            <h3 className="label sub">Price feed</h3>
+            {freshness ? (
+              <p className={stale ? 'err' : 'note'} role={stale ? 'alert' : undefined}>
+                {stale && <b>Held</b>} {freshness.words}
+              </p>
+            ) : (
+              <p className="note">Reading the feed's latest round.</p>
+            )}
+            {feedAge.data && <p className="src">Latest round of feed <a href={explorer.address(FEED_ADDRESSES[0])} target="_blank" rel="noreferrer">{short(FEED_ADDRESSES[0])}</a>, read at block {feedAge.data.block.toLocaleString('en-US')}.</p>}
+          </div>
+          <SimPanel title="Simulation before you sign" sim={sim} />
+
           {closed && win ? (
             <p className="err" role="status">
               <b>Closed</b> Buying cover for this weekend closed at {fmtClock(win.bindDeadline)} UTC. Cover for
@@ -233,8 +283,8 @@ export function Bind() {
                     Approve {effective !== undefined ? fmtUsdg(effective) : ''} {sym} for the price
                   </button>
                 )}
-                <button className="btn" disabled={!me.ready || tx.busy || !!formError || effective === undefined || needsApprove || !!shortBy} onClick={bind}>
-                  {shortBy ? `Not enough ${sym} backing yet` : 'Buy this cover for the coming weekend'}
+                <button className="btn" disabled={!me.ready || tx.busy || !!formError || effective === undefined || needsApprove || !!shortBy || stale || sim.kind === 'revert'} onClick={bind}>
+                  {shortBy ? `Not enough ${sym} backing yet` : stale ? 'Held: price feed is stale' : 'Buy this cover for the coming weekend'}
                 </button>
               </div>
               {!me.ready && <p className="note">{me.reason}</p>}

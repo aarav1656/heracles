@@ -7,6 +7,7 @@ import { explorer } from '../chain';
 import { Money } from '../components/Money';
 import { fmtUsdg, parseExposure, parseUsdg, short } from '../lib/format';
 import { explainError } from '../lib/revert';
+import { gridAxes, buildGrid, type GridCell } from '../lib/grid-core';
 import { readOstium, type OstiumRead } from '../lib/ostium';
 import { bucketOf, groupOi, vaultExposureUsd, type Bucket, type PairOi } from '../lib/ostium-core';
 import { PRICED_CLASSES, PRICED_MARKETS, composeQuoteMail, tableIdsSlot, type PricedClass, type PricedMarket } from '../lib/quote-core';
@@ -140,6 +141,35 @@ export function QuotePage() {
     return () => clearTimeout(t);
   }, [client, parsed, terms.data]);
 
+  const [grid, setGrid] = useState<{ cells: GridCell[][]; block: bigint }>();
+  const [gridError, setGridError] = useState<string>();
+  const [gridMode, setGridMode] = useState<'premium' | 'pct'>('premium');
+  useEffect(() => {
+    if (!client || parsed.error || !parsed.exp || parsed.ret === undefined || parsed.lim === undefined) { setGrid(undefined); return; }
+    const { exp, ret, lim } = parsed;
+    const used = exp.map((e, i) => ({ e, m: PRICED_MARKETS[i] })).filter((x) => x.e !== 0n);
+    let live = true;
+    const t = setTimeout(async () => {
+      try {
+        const axes = gridAxes(ret, lim);
+        const block = await client.getBlockNumber();
+        // The pricer is a view with no batch entry point, so the 25 cells go out as concurrent eth_calls pinned to one block.
+        const quotes = await Promise.all(axes.retentions.map((r) => Promise.all(axes.limits.map(async (l) => {
+          const out = await client.readContract({
+            address: QUOTE_PRICER_ADDRESS, abi: pricerAbi, functionName: 'quote',
+            args: [used.map((x) => x.e), used.map(() => FEED_ADDRESSES[0]), r, l], blockNumber: block,
+            stateOverride: [{ address: QUOTE_PRICER_ADDRESS, stateDiff: [{ slot: `0x${'0'.repeat(64)}` as const, value: tableIdsSlot(used.map((x) => x.m.tableId)) }] }],
+          });
+          return [out[0], out[1]] as const;
+        }))));
+        if (live) { setGrid({ cells: buildGrid(axes, quotes, terms.data?.minRateBps ?? 50n), block }); setGridError(undefined); }
+      } catch (e) {
+        if (live) { setGrid(undefined); setGridError(explainError(e).words); }
+      }
+    }, 600);
+    return () => { live = false; clearTimeout(t); };
+  }, [client, parsed, terms.data]);
+
   const premium = quote ? (quote.premium >= quote.floor ? quote.premium : quote.floor) : undefined;
   const premiumJunior = quote && premium !== undefined ? (quote.premiumJunior > premium ? premium : quote.premiumJunior) : undefined;
   const mail = useMemo(() => {
@@ -215,6 +245,46 @@ export function QuotePage() {
               {status && <> {status}.</>}
               {ostium.isError && <> Showing the saved read.</>}
             </p>
+          </section>
+
+          <section aria-labelledby="grid-h">
+            <div className="exhibit-head">
+              <h2 id="grid-h" className="chart-title">Premium across retention and limit</h2>
+              <div className="markets" role="tablist" aria-label="Grid figure">
+                <button role="tab" type="button" aria-selected={gridMode === 'premium'} onClick={() => setGridMode('premium')}>Premium</button>
+                <button role="tab" type="button" aria-selected={gridMode === 'pct'} onClick={() => setGridMode('pct')}>Premium as % of limit</button>
+              </div>
+            </div>
+            <p className="caveat">Each cell is one call to the Stylus pricer for that retention (down the side) and limit (across the top), on the exposure above. Your own terms sit in the outlined cell. Under each premium, the expected payout a weekend.</p>
+            {grid ? (
+              <div className="pgrid" role="table" aria-label="Premium by retention and limit">
+                <div className="pg-row pg-head" role="row">
+                  <span role="columnheader">Keeps first, pays up to</span>
+                  {grid.cells[0].map((c) => <span role="columnheader" key={c.limit.toString()}>{fmtUsdg(c.limit)}</span>)}
+                </div>
+                {grid.cells.map((row, r) => (
+                  <div className="pg-row" role="row" key={row[0].retention.toString() + r}>
+                    <span role="rowheader" className="pg-ret">{fmtUsdg(row[0].retention)}</span>
+                    {row.map((c, l) => (
+                      <span role="cell" key={l} className={c.current ? 'pg-cell current' : 'pg-cell'} aria-current={c.current ? 'true' : undefined}>
+                        <b>{gridMode === 'premium' ? fmtUsdg(c.premium) : `${(Number(c.rateBps) / 100).toFixed(2)}%`}</b>
+                        <small>{fmtUsdg(c.el)} expected</small>
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : gridError ? (
+              <p className="err" role="alert"><b>Grid</b> {gridError}</p>
+            ) : (
+              <p className="note">The pricer is filling the grid.</p>
+            )}
+            {grid && (
+              <p className="src">
+                USDG. Priced by <a href={explorer.address(QUOTE_PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(QUOTE_PRICER_ADDRESS)}</a> at
+                block <a href={explorer.block(grid.block)} target="_blank" rel="noreferrer">#{grid.block.toLocaleString('en-US')}</a>; premiums below the treaty minimum rate are shown raised to it.
+              </p>
+            )}
           </section>
 
           <section aria-labelledby="oi-h">
