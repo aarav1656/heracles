@@ -363,10 +363,27 @@
           "amount": 60000000,
           "totalAssetsBefore": 0,
           "totalAssetsAfter": 60000000
+        },
+        {
+          "vault": "usdgFirstLoss",
+          "method": "depositWithPermit (the /write permit path, sent by scripts/permit-deposit.sh because the browser wallet was locked)",
+          "tx": "0xe76fde7b903e64e620d903d9200ab18ba6bd2eca8dd3cb560ccde9b2ec4ba6f9",
+          "block": 315099460,
+          "status": "0x1",
+          "amount": 20000000,
+          "totalAssetsBefore": 30000000,
+          "totalAssetsAfter": 50000000
         }
       ],
       "bindWindow": "weekWindow(now) at block time 1790950003 (Fri 2026-10-02 14:06 UTC): cutoff Fri 19:30 UTC, bind closed since Thu 2026-10-01 19:30 UTC; next window Mon 2026-10-05 00:00 UTC to Thu 2026-10-08 19:30 UTC. 10 USDG held by the deployer for that bind's premium.",
-      "script": "scripts/permit-deposit.sh"
+      "script": "scripts/permit-deposit.sh",
+      "faucetTopUps": [
+        {
+          "date": "2026-10-02",
+          "request": "2874eeb9-2466-4c9b-b1d5-032713a2418f",
+          "amount": 100000000
+        }
+      ]
     }
   },
   "books": [
