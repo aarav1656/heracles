@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#F3F0E8"/>
+  <g transform="translate(512 512) scale(1.193) translate(-512.0 -420.0)">
+  <!-- the layer: attachment to limit, what writers pay -->
+  <rect x="160" y="200" width="704" height="230" fill="#0B6B6B" fill-opacity=".13"/>
+  <line x1="160" y1="200" x2="864" y2="200" stroke="#0B6B6B" stroke-width="6" stroke-dasharray="18 12"/>
+  <!-- one bar per weekend: the vault keeps the loss below attachment, the layer pays above it -->
+  <rect x="207" y="520" width="90" height="120" fill="#1C1A16"/>
+  <rect x="337" y="470" width="90" height="170" fill="#1C1A16"/>
+  <rect x="467" y="430" width="90" height="210" fill="#1C1A16"/>
+  <rect x="467" y="250" width="90" height="180" fill="#0B6B6B"/>
+  <rect x="597" y="560" width="90" height="80" fill="#1C1A16"/>
+  <rect x="727" y="430" width="90" height="210" fill="#1C1A16"/>
+  <rect x="727" y="380" width="90" height="50" fill="#0B6B6B"/>
+  <line x1="160" y1="430" x2="864" y2="430" stroke="#1C1A16" stroke-width="6"/>
+  <line x1="160" y1="640" x2="864" y2="640" stroke="#1C1A16" stroke-width="8"/>
+  </g>
+</svg>
