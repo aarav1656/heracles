@@ -321,6 +321,12 @@ export function QuotePage() {
               <div className="rows figs">
                 <div className="row"><span className="k" title="Expected loss">Expected payout a weekend</span><span className="v"><Money v={usd(quote.el)} /></span></div>
                 <div className="row"><span className="k" title="TVaR95: the mean payout over the worst 25 of 504 weekends">Average in the worst 5% of weekends</span><span className="v"><Money v={usd(quote.tvar)} /></span></div>
+                {read.vaultAssetsUsd > 0 && (
+                  <div className="row">
+                    <span className="k" title="Premium over the gUSDC vault's totalAssets, read at the same block as the book">Cost against the gUSDC vault<small>{(usd(premium) / read.vaultAssetsUsd * 52 * 100).toFixed(2)}% over 52 weekends of {whole(read.vaultAssetsUsd)} USDC</small></span>
+                    <span className="v">{(usd(premium) / read.vaultAssetsUsd * 10_000).toFixed(2)} bps a weekend</span>
+                  </div>
+                )}
               </div>
               <h3 className="label sub">By asset class</h3>
               <div className="rows figs">
