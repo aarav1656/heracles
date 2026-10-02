@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // heracles-quote --exposure NVDA=1000000,EUR=-400000 --retention 20000 --limit 200000 [--open NVDA=600000] [--json]
 import { parseArgs } from 'node:util';
-import { MARKETS, OIGUARD_ADDRESS, fmtUsdg2, guardCheck, heraclesClient, parseExposure, parseUsdg, quote, type Book, type Ticker } from './index';
+import { MARKETS, guardCheck, heraclesClient, parseExposure, parseUsdg, quote, quoteText, type Book, type Ticker } from './index';
 
 const USAGE = `heracles-quote: live weekend-gap cover quote from the Heracles Stylus pricer on Arbitrum Sepolia
 
@@ -21,8 +21,6 @@ function pairs(s: string): [Ticker, bigint][] {
     return [t, parseExposure(v)];
   });
 }
-
-const signed = (v: bigint) => `${v < 0n ? 'short' : 'long'} ${fmtUsdg2(v < 0n ? -v : v)}`;
 
 async function main() {
   const { values } = parseArgs({
@@ -54,26 +52,7 @@ async function main() {
     console.log(JSON.stringify({ chainId: 421614, quote: q, book, retention, limit, open, guard: g }, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 2));
     return;
   }
-  const lines = [
-    `Heracles weekend-gap quote, Arbitrum Sepolia block ${blockNumber}`,
-    `  pricer         ${q.pricer} (Stylus, six tables)`,
-    `  book           ${MARKETS.filter((t) => book[t]).map((t) => `${t} ${signed(book[t]!)}`).join(', ')}`,
-    `  retention      ${fmtUsdg2(retention)}`,
-    `  limit          ${fmtUsdg2(limit)}`,
-    `  premium        ${fmtUsdg2(q.premium)}`,
-    `  expected loss  ${fmtUsdg2(q.el)}`,
-    `  worst 5% avg   ${fmtUsdg2(q.tvar95)}`,
-  ];
-  if (g && open) {
-    lines.push(
-      '',
-      `OIGuard ${OIGUARD_ADDRESS}, open ${open[0]} ${signed(open[1])}`,
-      g.ok
-        ? `  ACCEPTED       premium after the trade ${fmtUsdg2(g.premium)} within budget ${fmtUsdg2(g.budget)} or below today's`
-        : `  REFUSED        PremiumOverBudget: premium after the trade ${fmtUsdg2(g.premium)}, budget ${fmtUsdg2(g.budget)}, book today ${fmtUsdg2(g.currentPremium!)}`,
-    );
-  }
-  console.log(lines.join('\n'));
+  console.log(quoteText({ quote: q, book, retention, limit, open, guard: g }));
 }
 
 main().catch((e) => {

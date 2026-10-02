@@ -9,7 +9,8 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": { "viem": ["./node_modules/viem"], "viem/*": ["./node_modules/viem/*"] }
   },
   "include": ["src", "tsdown.config.ts"]
 }

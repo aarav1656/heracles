@@ -257,14 +257,14 @@ b { font-weight: 600; }
 .form { display: grid; gap: 16px; }
 .field { display: grid; gap: 6px; min-width: 0; }
 .field label { font: 600 11.5px/16px var(--sans); letter-spacing: 0.9px; text-transform: uppercase; color: var(--ink-2); }
-.field input {
+.field input, .field select {
   font: 400 18px/24px var(--serif); color: var(--ink);
   background: var(--paper-2); border: 1px solid transparent; border-bottom-color: var(--ink-3);
   border-radius: 8px 8px 0 0; padding: 10px 12px; min-height: 46px; width: 100%;
   font-variant-numeric: tabular-nums;
 }
-.field input:hover { border-bottom-color: var(--ink); }
-.field input:focus-visible { outline: none; border-bottom: 2px solid var(--ink); padding-bottom: 9px; }
+.field input:hover, .field select:hover { border-bottom-color: var(--ink); }
+.field input:focus-visible, .field select:focus-visible { outline: none; border-bottom: 2px solid var(--ink); padding-bottom: 9px; }
 .field input::placeholder { color: var(--ink-4); }
 .hint { font-size: 13px; line-height: 20px; color: var(--ink-3); }
 .hint.bad { color: var(--ink); font-weight: 600; }
@@ -473,3 +473,14 @@ a, .btn, .key, .markets button, .top nav a, .field input { transition: color 120
 .pg-cell small { font: 400 12px/16px var(--sans); color: var(--ink-3); }
 .pg-cell.current { box-shadow: inset 0 0 0 1.5px var(--ink); background: var(--paper-2); }
 .sim .src + .src { margin-top: 4px; }
+
+/* /sdk: the weekend cover premium against the vault owner's budget, and terminal blocks. */
+.meter-bar { position: relative; height: 44px; background: rgba(28, 26, 22, 0.06); }
+.meter-bar .now { position: absolute; left: 0; top: 0; bottom: 0; background: var(--layer-wash); box-shadow: inset 0 0 0 1px var(--layer); }
+.meter-bar .after { position: absolute; left: 0; top: 14px; bottom: 14px; background: var(--layer); transition: width 320ms var(--ease); }
+.meter.over .meter-bar .after { background: var(--ink); }
+.meter[aria-busy="true"] .meter-bar { opacity: 0.6; }
+.swatch.ink { background: var(--ink); }
+.term { margin: 16px 0 0; padding: 16px 18px; background: var(--ink); color: var(--paper); border-radius: 8px; font: 400 12.5px/20px ui-monospace, 'SF Mono', Menlo, monospace; overflow-x: auto; white-space: pre; }
+.term .cmd { color: var(--ink-4); }
+.meter .ladder-scale span { white-space: nowrap; }

@@ -10,6 +10,7 @@ import { Bind } from './pages/Bind';
 import { Write } from './pages/Write';
 import { QuotePage } from './pages/Quote';
 import { Replay } from './pages/Replay';
+import { SdkPage } from './pages/Sdk';
 import { short } from './lib/format';
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ export function App() {
                 <NavLink to="/replay">Replay</NavLink>
                 <NavLink to="/bind">Price cover</NavLink>
                 <NavLink to="/write">Earn premium</NavLink>
+                <NavLink to="/sdk">SDK</NavLink>
               </nav>
               <Wallet />
             </div>
@@ -39,6 +41,7 @@ export function App() {
               <Route path="/replay" element={<Replay />} />
               <Route path="/bind" element={<Bind />} />
               <Route path="/write" element={<Write />} />
+              <Route path="/sdk" element={<SdkPage />} />
             </Routes>
           </main>
           <footer className="wrap">
