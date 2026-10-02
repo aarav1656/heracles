@@ -10,12 +10,12 @@ Every finding was resolved, and each one ships with a test that fails without th
 - **Proof-of-concept tests ported into the suite.** Every exploit is written as a Foundry test, shown red on the original source, then kept at HEAD as a regression test that is green on the fixed source (`AttackReview.t.sol`, `CapacityC1.t.sol`, `CapacityReReview.t.sol`, `CapacityReReview3.t.sol`, `CapacityReReview4.t.sol`, `Round6.t.sol`, `V3Review.t.sol`).
 - **Mutation testing.** For each fix the guard is cut out in a scratch copy, the named test goes red, the source is restored byte-identical (`diff` clean) and the suite goes green again. The two v3 passes killed 9 of 9 mutants each: the Thursday bind window, the `setReference` check, the void proofs, the `maxPremium` check, the bad-answer disjunct, the `voidFix` guards and the expiry and phase guards. The six-table pricer runs through `scripts/mutate_six_tables.py`: 18 mutants across `Pricer.sol` and `pricer/core` (the table-id bound, the EUR/USD and XAU/USD table dispatch, the per-table unit, `FX_UNIT` and the loss divisor) are each killed by Foundry, `pricer_core` or Stylus-crate tests that pin every FX, gold and equity table to figures `scripts/fx_gold_fair_premium.py` computes from the evidence files alone (kill table in `evidence/mutation/six-tables.json`).
 - **Fuzz and exclusivity fuzzes.** `invariant_solvency`-style invariants run 256 runs at depth 500 (128,000 calls each) with zero violations. `testFuzz_V1_exactlyOneOfSetOrVoidByAnswer` and `testFuzz_V2_exactlyOneOfFixOrVoidFixByAnswer` run 256 runs each with answers drawn around both edges of the valid range, so for any round exactly one of set and void (or fix and voidFix) succeeds.
-- **Fork tests.** 10 fork tests across 4 suites replay the lifecycle against the live Arbitrum Sepolia feeds and the real USDG EIP-2612 permit path, and prove the sequencer-uptime gate against Arbitrum One's real feed. `OIGuard.t.sol` and `SequencerFeed.fork.t.sol` add 7 more: the guard against the live Stylus pricer through `eth_call`, and the sequencer gate against the real feed at Arbitrum One block 511,011,337 (up, then down and inside the one-hour grace, each reverting `bind` with `SequencerDown`).
+- **Fork tests.** 17 fork tests across 6 suites replay the lifecycle against the live Arbitrum Sepolia feeds and the real USDG EIP-2612 permit path, settle real Robinhood Chain weekends, run the OIGuard against the live Stylus pricer through `eth_call` at the fork's own block, and prove the sequencer gate against Arbitrum One's real uptime feed at block 511,011,337 (up, then down and inside the one-hour grace, each reverting `bind` with `SequencerDown`).
 
 ## Test counts
 
-- Full suite: 170 passed, 0 failed, 30 suites.
-- Fork suites: 10 passed, 0 failed.
+- Full suite, 2026-10-02: 196 passed, 0 failed, 34 suites (`forge test`).
+- Fork suites: 17 passed, 0 failed, 6 suites (`FORK_TESTS=1`; the Robinhood Chain suite takes an archive endpoint in `RHC_RPC_URL`).
 - Review progression: 45 tests at the first review, 53, 62, 71, 97, 145, 155, then 165 at the last Treaty pass.
 
 ## Design protections

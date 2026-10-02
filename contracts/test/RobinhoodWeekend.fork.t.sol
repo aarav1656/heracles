@@ -70,7 +70,8 @@ contract RobinhoodWeekendForkTest is Test, TreatyFixture {
             vm.skip(true);
             return;
         }
-        vm.createSelectFork(RPC);
+        // RHC_RPC_URL overrides the public endpoint, which can answer forge with a Cloudflare challenge.
+        vm.createSelectFork(vm.envOr("RHC_RPC_URL", string(RPC)));
     }
 
     function _deploy(address feed, uint8 tableId) internal returns (Treaty t, Capacity firstLoss, Capacity senior) {

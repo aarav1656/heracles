@@ -437,11 +437,11 @@ in "Why Stylus" above); the first single-market read at block 313,704,736 gave 8
 
 ## What works
 
-- Full local suite, 2026-10-01: 170 Foundry tests pass across 30 suites, 0 failed; the
-  fork files skip without `FORK_TESTS=1`, and with it all 10 fork tests pass (includes
-  `GapTreatyRealWeekendForkTest`, a full bind-reference-fix-claim lifecycle replayed
-  against real Chainlink round data). This count moves as tests are added; verify with
-  `forge test --summary` rather than trusting this number stale.
+- Full local suite, 2026-10-02: 196 Foundry tests pass across 34 suites, 0 failed. With
+  `FORK_TESTS=1` the 17 fork tests across 6 suites pass too, including
+  `GapTreatyRealWeekendForkTest`, a full bind-reference-fix-claim lifecycle replayed against
+  real Chainlink round data, and the Robinhood Chain weekend payouts (`RHC_RPC_URL` takes an
+  archive endpoint). `forge test --summary` reproduces the count.
 - Void-proof mutation checks (this build, nine mutants, each killed): removing the
   bad-answer proof from `voidReference` turns `test_V1_badInEffectRoundVoidsAndCancelsWithFullRefund`
   red; removing `voidFix`'s valid-answer guard turns

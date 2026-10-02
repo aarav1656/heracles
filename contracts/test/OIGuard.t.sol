@@ -106,14 +106,15 @@ contract OIGuardTest is Test {
     }
 }
 
-/// Against Arbitrum Sepolia at a pinned block. Forge's EVM cannot execute Stylus WASM (a local
+/// Against Arbitrum Sepolia at the latest block, the fork and the Stylus eth_call on the same one
+/// (the public RPC prunes historical state within hours, so a fixed pin stops resolving). Forge's EVM cannot execute Stylus WASM (a local
 /// call to the pricer returns OpcodeNotFound on its 0xEFF002 prefix), so the live Stylus pricer is
 /// reached through `vm.rpc("eth_call")`, which the Arbitrum node executes, and the guard runs
 /// locally on the Solidity twin of the same six tables over the live SPY/USD feed. Gated on
 /// FORK_TESTS like the other fork suites; with it set, an unreachable RPC fails setUp.
 contract OIGuardForkTest is Test {
     string constant RPC = "https://sepolia-rollup.arbitrum.io/rpc";
-    uint256 constant FORK_BLOCK = 314_938_000;
+    uint256 forkBlock;
     address constant STYLUS_PRICER = 0x1674ECf8D236A91C484C11Fd11a21601837F7e37;
     address constant SPY_FEED = 0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06;
     uint256 constant RETENTION = 20_000e6;
@@ -127,7 +128,11 @@ contract OIGuardForkTest is Test {
             vm.skip(true);
             return;
         }
-        vm.createSelectFork(RPC, FORK_BLOCK);
+        string memory url = vm.envOr("ARB_SEPOLIA_RPC_URL", string(RPC));
+        // the L2 head: inside an Arbitrum fork, block.number reads the L1 block number
+        bytes memory head = vm.rpc(url, "eth_blockNumber", "[]");
+        forkBlock = uint256(bytes32(head)) >> (256 - 8 * head.length);
+        vm.createSelectFork(url, forkBlock);
         uint8[] memory ids = new uint8[](6);
         for (uint8 i; i < 6; i++) {
             ids[i] = i;
@@ -145,9 +150,9 @@ contract OIGuardForkTest is Test {
     function _stylusQuote(int256[] memory book) internal returns (uint256 premium, uint256 el, uint256 tvar95) {
         bytes memory data = abi.encodeCall(IPricer.quote, (book, feeds, RETENTION, LIMIT));
         string memory params = string.concat(
-            '[{"to":"', vm.toString(STYLUS_PRICER), '","data":"', vm.toString(data), '"},"0x', _hex(FORK_BLOCK), '"]'
+            '[{"to":"', vm.toString(STYLUS_PRICER), '","data":"', vm.toString(data), '"},"0x', _hex(forkBlock), '"]'
         );
-        (premium, el, tvar95) = abi.decode(vm.rpc(RPC, "eth_call", params), (uint256, uint256, uint256));
+        (premium, el, tvar95) = abi.decode(vm.rpc(vm.envOr("ARB_SEPOLIA_RPC_URL", string(RPC)), "eth_call", params), (uint256, uint256, uint256));
     }
 
     function _hex(uint256 v) internal pure returns (string memory s) {
