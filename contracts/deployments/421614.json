@@ -331,7 +331,8 @@
       "depositFirstLoss": "0xdaa7aacf4ba6e5a38f705c59c95be4d5def40c22b0576b155dad62fc6e680fb0",
       "depositSenior": "0x5f23b41e810d828e2ad11b5e0abfb1b7d2111ce9a083856242bb6a5a21e2b4a2",
       "approveTreaty": "0x16c405370228f3251c9e908a3d2ad6189e64b3b2a94ad2bcf81953f2e955df6b",
-      "bind": "0x770752c7522caf31ce5d493693e48f8bed71726607be0351b835669eb3b85b70"
+      "bind": "0x770752c7522caf31ce5d493693e48f8bed71726607be0351b835669eb3b85b70",
+      "setReference": "0x85cdb3380d4d4750fcce04e787761f7c653a6fd1e8007da022699cfa7d163cbd"
     },
     "bindBlock": 314559779,
     "usdgBook": {
@@ -384,6 +385,16 @@
           "amount": 100000000
         }
       ]
+    },
+    "reference": {
+      "layer": 0,
+      "market": 0,
+      "roundId": "18446744073709553985",
+      "updatedAt": "2026-10-02T13:30:50Z",
+      "price": 77038000000,
+      "tx": "0x85cdb3380d4d4750fcce04e787761f7c653a6fd1e8007da022699cfa7d163cbd",
+      "status": "0x1",
+      "script": "scripts/settle-layer.sh 0"
     }
   },
   "books": [

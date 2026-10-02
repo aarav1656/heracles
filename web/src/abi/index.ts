@@ -3,7 +3,7 @@
 import { parseAbi } from 'viem';
 
 export { treatyAbi, capacityAbi, pricerAbi, oiGuardAbi, vaultCoverAbi } from './generated';
-export { TREATY_ADDRESS, PRICER_ADDRESS, QUOTE_PRICER_ADDRESS, OIGUARD_ADDRESS, VAULT_COVER_ADDRESS, VAULT_COVER_DEPLOY_BLOCK, VAULT_COVER_REFUSED, GUIDE_RUN, RH_TESTNET, FEED_ADDRESSES, BOOKS } from './generated';
+export { TREATY_ADDRESS, PRICER_ADDRESS, QUOTE_PRICER_ADDRESS, OIGUARD_ADDRESS, VAULT_COVER_ADDRESS, VAULT_COVER_DEPLOY_BLOCK, VAULT_COVER_REFUSED, GUIDE_RUN, RH_TESTNET, LIVE_CYCLE, RH_SIX_TABLE_PRICER, FEED_ADDRESSES, BOOKS } from './generated';
 export type { BookConfig } from './generated';
 
 export const erc20Abi = parseAbi([

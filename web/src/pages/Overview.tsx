@@ -18,6 +18,7 @@ import { fmtClock, fmtCountdown, fmtPx, fmtStamp, fmtUsdg, short } from '../lib/
 import { LAYER_STATES } from '../lib/treaty';
 import { explainError } from '../lib/revert';
 import { RECORDED, REFERENCE, TABLES, backtest, type Ticker } from '../lib/gaps';
+import { JudgeTour } from '../components/JudgeTour';
 
 const usd0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const usd2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -40,10 +41,11 @@ export function Overview() {
 
   return (
     <>
-      <div className="desk">
+      <JudgeTour />
+      <div className="desk doc">
         <div className="main-col">
           <header className="argument">
-            <h1 className="display">Cover for the weekend gap</h1>
+            <h2 className="display">Cover for the weekend gap</h2>
             <p className="lede">
               If a stock opens Monday far from Friday's close, Heracles pays a perp exchange's LP vault a set
               amount, worked out from the price feed and the position size the vault declared.

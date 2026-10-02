@@ -49,6 +49,7 @@ const treatyAbi = loadAbi(join('Treaty.sol', 'Treaty.json').replace(/\\/g, '/'))
 const capacityAbi = loadAbi('Capacity.sol/Capacity.json');
 const pricerAbi = loadAbi('IPricer.sol/IPricer.json');
 const oiGuardAbi = loadAbi('OIGuard.sol/OIGuard.json');
+const mockFeedRuntime = JSON.parse(readFileSync(join(outDir, 'MockFeed.sol', 'MockFeed.json'), 'utf8')).deployedBytecode.object;
 const vaultCoverAbi = loadAbi('VaultCover.sol/VaultCover.json');
 
 const dest = join(here, '..', 'src', 'abi', 'generated.ts');
@@ -72,6 +73,12 @@ export const VAULT_COVER_ADDRESS = ${JSON.stringify(vaultCover.address)} as Addr
 export const VAULT_COVER_DEPLOY_BLOCK = ${vaultCover.block}n;
 /** The guard and VaultCover web/scripts/integrate-vault.sh deployed when it was run as written. */
 export const GUIDE_RUN = ${JSON.stringify(deployment.integrationGuideRun)} as const;
+/** Runtime of contracts/test/mocks/MockFeed.sol: the landing page places it on both chains in an eth_call
+ * state override so the two deployed pricers price against the same feed (scripts/pricer_parity.py). */
+export const MOCK_FEED_RUNTIME = ${JSON.stringify(mockFeedRuntime)} as \`0x\${string}\`;
+export const RH_SIX_TABLE_PRICER = ${JSON.stringify(rh.contracts.PricerSixTables.address)} as Address;
+/** The live cycle's transactions, for the landing tour: layer 0 on the USDC book and the USDG deposits. */
+export const LIVE_CYCLE = ${JSON.stringify({ bindTx: deployment.liveCycle.txs.bind, referenceTx: deployment.liveCycle.txs.setReference, usdgDeposits: deployment.liveCycle.usdgBook.deposits.map(({ vault, tx, amount }) => ({ vault, tx, amount })), vaultCoverOpens: deployment.contracts.VaultCover.gusdcBookMirror.opens })} as const;
 /** The OIGuard on Robinhood Chain testnet over the Stock Token mirror feeds, and its two recorded checks. */
 export const RH_TESTNET = ${JSON.stringify({ chainId: rh.chainId, rpc: rh.rpc, explorer: 'https://explorer.testnet.chain.robinhood.com', guard: rhGuard.address, pricer: rhGuard.pricer, feeds: rhGuard.feeds, book: rhGuard.book, accepted: rhGuard.accepted, refused: rhGuard.refused })} as const;
 /** The forced open the guard refused on chain (receipt status 0x0). */

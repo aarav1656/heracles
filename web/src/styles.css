@@ -484,3 +484,41 @@ a, .btn, .key, .markets button, .top nav a, .field input { transition: color 120
 .term { margin: 16px 0 0; padding: 16px 18px; background: var(--ink); color: var(--paper); border-radius: 8px; font: 400 12.5px/20px ui-monospace, 'SF Mono', Menlo, monospace; overflow-x: auto; white-space: pre; }
 .term .cmd { color: var(--ink-4); }
 .meter .ladder-scale span { white-space: nowrap; }
+
+/* Landing tour: the gUSDC vault's weekends (the noun), the guard live on two chains, the lifecycle. */
+.tour .display { max-width: 22ch; }
+.tour .live-now { margin-top: 14px; font-size: 15px; color: var(--ink); }
+.tour .live-now a { color: var(--ink-2); }
+.wb { margin: 18px 0 0; }
+.wb-plot { position: relative; height: 230px; margin-left: 52px; }
+.wb-svg { width: 100%; height: 210px; display: block; overflow: visible; }
+.wb-axis { position: absolute; left: -52px; top: 0; height: 210px; width: 44px; }
+.wb-axis span { position: absolute; right: 0; transform: translateY(-50%); font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.wb-grid { stroke: var(--rule-soft); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.wb-zero { stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.wb-loss { fill: rgba(28, 26, 22, 0.16); transform-box: fill-box; transform-origin: top; animation: wb-drop 520ms var(--ease) both; animation-delay: 120ms; }
+.wb-paid { fill: var(--layer); transform-box: fill-box; transform-origin: top; animation: wb-drop 420ms var(--ease) both; animation-delay: calc(640ms + var(--i) * 40ms); }
+.wb-note { position: absolute; transform: translateX(-60%); margin: 0; font-size: 13px; line-height: 18px; color: var(--ink-2); white-space: nowrap; animation: wb-fade 300ms var(--ease) both; animation-delay: 1200ms; }
+.wb-note b { color: var(--ink); font-weight: 600; }
+.wb-x { position: relative; height: 20px; margin-left: 52px; }
+.wb-x span { position: absolute; transform: translateX(-50%); font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+@keyframes wb-drop { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes wb-fade { from { opacity: 0; } to { opacity: 1; } }
+.ticket .rows + .rows { margin-top: 0; }
+.tour-life, .tour-pricer { padding-top: 56px; max-width: 860px; }
+.steps { list-style: none; margin: 8px 0 0; padding: 0; counter-reset: step; border-left: 1px solid var(--rule); }
+.steps li { counter-increment: step; position: relative; padding: 14px 0 14px 28px; border-left: 2px solid transparent; margin-left: -1px; }
+.steps li::before { content: counter(step); position: absolute; left: 10px; top: 16px; font: 500 13px/20px var(--sans); color: var(--ink-3); font-variant-numeric: tabular-nums; transform: translateX(-100%) translateX(-18px); }
+.steps li.now { border-left-color: var(--layer); }
+.steps li.now h3 { color: var(--layer); }
+.steps h3 { font: 450 19px/26px var(--serif); margin: 0; }
+.steps p { margin: 4px 0 0; color: var(--ink-2); max-width: 68ch; }
+.steps .txs { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; }
+.tour-pricer .rows { margin-top: 12px; }
+@media (max-width: 720px) {
+  .wb-plot { margin-left: 40px; }
+  .wb-axis { left: -40px; width: 34px; }
+  .wb-x { margin-left: 40px; }
+  .wb-note { white-space: normal; width: 150px; transform: translateX(-80%); }
+  .tour-life, .tour-pricer { padding-top: 40px; }
+}
