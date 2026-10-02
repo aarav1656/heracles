@@ -22,7 +22,7 @@ Live app: https://heracles-virid-seven.vercel.app (reads the book below from the
 | USDG senior vault | [`0x05DD502aa5ca21f97c0536e4164D609B38A632Bc`](https://sepolia.arbiscan.io/address/0x05DD502aa5ca21f97c0536e4164D609B38A632Bc) | ERC-4626, takes the other 70% |
 | USDC first-loss vault | [`0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB`](https://sepolia.arbiscan.io/address/0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB) | ERC-4626, takes the first 30% of every USDC layer |
 | USDC senior vault | [`0x510e4266C55a58879d3a77eC02e77CCF1602cA39`](https://sepolia.arbiscan.io/address/0x510e4266C55a58879d3a77eC02e77CCF1602cA39) | ERC-4626, takes the other 70% |
-| Pricer (Rust/Stylus) | [`0xbe99217180a5fcb83372375b0928c971dfa71f88`](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) | on-chain premium, measured 8.01x less L2 execution gas than the Solidity twin |
+| Pricer (Rust/Stylus) | [`0xbe99217180a5fcb83372375b0928c971dfa71f88`](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) | on-chain premium, 4.29x to 8.00x less L2 execution gas than the Solidity twin from eight markets to one, block 314,661,533, `python3 scripts/measure_pricer_gas.py` |
 | Six-table pricer (Rust/Stylus) | [`0x1674ecf8d236a91c484c11fd11a21601837f7e37`](https://sepolia.arbiscan.io/address/0x1674ecf8d236a91c484c11fd11a21601837f7e37) | prices equities, EUR/USD and XAU/USD on chain; the `/quote` desk reads it |
 | OIGuard | [`0x96BE263EfD057167E01a212BBd076904391217Ce`](https://sepolia.arbiscan.io/address/0x96be263efd057167e01a212bbd076904391217ce#code) | a perp venue's open-interest check over the six-table pricer, source verified on Arbiscan |
 | USDG (Paxos testnet) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) | settlement asset of the USDG book |
@@ -227,9 +227,11 @@ the CLI prints at the stamped block.
 Ostium and gTrade's capital, open interest and Chainlink feeds already sit on Arbitrum
 One; the treaty must lock and pay a vault's cover without a claims adjuster, and writers
 must be able to recompute the price from public data. The pricer runs in Stylus because
-it is re-run on every bind and every capacity withdrawal check: measured 8.01x less L2
-execution gas than the Solidity twin (7.93x less total gas), read live at block
-313,704,736 via NodeInterface's `gasEstimateComponents` against a Solidity twin deployed
+it is re-run on every bind and every capacity withdrawal check: 4.29x to 8.00x less L2
+execution gas than the Solidity twin, from eight markets to one, at Arbitrum Sepolia block
+314,661,533 (`python3 scripts/measure_pricer_gas.py`, table below). The first single-market
+read, 8.01x less L2 execution gas (7.93x less total gas) at block 313,704,736 via
+NodeInterface's `gasEstimateComponents`, ran against a Solidity twin deployed
 at [`0x6aAf1b58939d55d1142a34aE02903bB788E9e771`](https://sepolia.arbiscan.io/address/0x6aAf1b58939d55d1142a34aE02903bB788E9e771)
 for this comparison only (`script/DeployPricerTwin.s.sol`): Stylus 584,865 total gas /
 578,444 L2 execution gas, Solidity 4,639,494 total / 4,632,865 L2 execution, identical
@@ -382,10 +384,9 @@ cast call 0xbe99217180a5fcb83372375b0928c971dfa71f88 \
 The Solidity twin at `0x6aAf1b58939d55d1142a34aE02903bB788E9e771` returns the identical
 triple for the same call. The 2026-09-28 redeploy compresses to 25,765 bytes, split
 across two fragments behind a 48-byte root contract, activation fee 0.000084 ETH. The
-measured Stylus-vs-Solidity gas ratio for that deploy, read live via NodeInterface's
-`gasEstimateComponents` at block 313,704,736, is **8.01x** less L2 execution gas (7.93x
-less total gas, single-market call; see `docs/pricing.md` under "Gas"). The four and
-eight market measurements are in "Why Stylus" above.
+measured Stylus-vs-Solidity gas ratio is **4.29x to 8.00x** less L2 execution gas, from
+eight markets to one, at block 314,661,533 (`python3 scripts/measure_pricer_gas.py`, table
+in "Why Stylus" above); the first single-market read at block 313,704,736 gave 8.01x.
 
 ## What works
 

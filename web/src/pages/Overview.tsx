@@ -113,8 +113,8 @@ export function Overview() {
               it runs the cover over the same 504 SPY weekends drawn above, scaled by the live volatility, and returns the
               price, the average payout and the average of the worst 25 weekends. At settlement the payout comes from the
               same kind of arithmetic: the Monday gap on the feed times the position the vault declared, minus the part the vault
-              keeps (the retention), capped at the limit. The call costs <span className="fig">8.01x</span> less
-              L2 execution gas in Stylus than in its Solidity twin on one market and <span className="fig">4.29x</span> less on eight, measured at block <a href={explorer.block(314_661_533n)} target="_blank" rel="noreferrer">#314,661,533</a> (<span className="file">docs/pricing.md</span>, "Gas").
+              keeps (the retention), capped at the limit. The call costs <span className="fig">4.29x</span> to <span className="fig">8.00x</span> less
+              L2 execution gas in Stylus than in its Solidity twin, from eight markets down to one, measured at block <a href={explorer.block(314_661_533n)} target="_blank" rel="noreferrer">#314,661,533</a> (<span className="file">scripts/measure_pricer_gas.py</span>).
             </p>
             {spyFeed && (
               <p className="note">
