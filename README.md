@@ -30,8 +30,22 @@ Live app: https://heracles-virid-seven.vercel.app (reads the book below from the
 | Six-table pricer on Robinhood Chain testnet (46630) | [`0x01143a467990d06b6481c3d7bef95ad25c36a49b`](https://explorer.testnet.chain.robinhood.com/address/0x01143a467990d06b6481c3d7bef95ad25c36a49b) | the same Stylus build, activated on chain 46630; returns identical quotes to the Arbitrum Sepolia pricer |
 | OIGuard | [`0x96BE263EfD057167E01a212BBd076904391217Ce`](https://sepolia.arbiscan.io/address/0x96be263efd057167e01a212bbd076904391217ce#code) | a perp venue's open-interest check over the six-table pricer, source verified on Arbiscan |
 | VaultCover | [`0xe6085fF7Bf0d37c0Cd865072cA5B434F2c228997`](https://sepolia.arbiscan.io/address/0xe6085ff7bf0d37c0cd865072ca5b434f2c228997#code) | a perp LP vault's book on chain: guarded opens, free closes, one Treaty layer a week bound on that book, source verified on Arbiscan |
+| Three-table pricer on Robinhood Chain testnet (46630) | [`0x382ede30fc954bf36e0d23f7125ebf9d0f486602`](https://explorer.testnet.chain.robinhood.com/address/0x382ede30fc954bf36e0d23f7125ebf9d0f486602) | the same Stylus build with tables NVDA, AAPL, TSLA, the Stock Tokens with a feed on chain 46630 |
+| OIGuard on Robinhood Chain testnet (46630) | [`0x629B2f9d7B4FEa7b0F0c9F988a106402961D89d5`](https://explorer.testnet.chain.robinhood.com/address/0x629B2f9d7B4FEa7b0F0c9F988a106402961D89d5) | prices the vault book on the Robinhood NVDA, AAPL and TSLA testnet mirror feeds |
 | USDG (Paxos testnet) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) | settlement asset of the USDG book |
 | USDC (Circle testnet) | [`0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`](https://sepolia.arbiscan.io/address/0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d) | settlement asset of the USDC book |
+
+The guard's decisions, on chain:
+
+| Chain | Accepted | Refused |
+|---|---|---|
+| Arbitrum Sepolia, through VaultCover | open SPY +153,309, [`0xbbcf1946...fc07d1e1`](https://sepolia.arbiscan.io/tx/0xbbcf1946cc112a8c026b98f11af7e64475e45939027f5231f0462f43fc07d1e1), status 0x1 | open NVDA −2,000,000, [`0x3da60c23...ba360b5`](https://sepolia.arbiscan.io/tx/0x3da60c238032015b2d7af5562db996708955c5f9521a4c327feac5456ba360b5), status 0x0, `PremiumOverBudget(6,684.63, 4,000, 153.42)` |
+| Robinhood Chain testnet, Stock Token feeds | check TSLA +50,000, [`0x38eb4d4d...ef18a3d5`](https://explorer.testnet.chain.robinhood.com/tx/0x38eb4d4d72dcdfc0d0ae4a90ddc58e8b02252542c5c22909bf05df7eef18a3d5), status 0x1 | check NVDA −2,000,000, [`0xcfb88f20...1227c7017`](https://explorer.testnet.chain.robinhood.com/tx/0xcfb88f20f70fa0dd65542e6328dbb99c494f5f6a9362ce1b4599bcd1227c7017), status 0x0, `PremiumOverBudget(6,887.15, 4,000, 153.42)` |
+
+Both books hold the gUSDC vault's stock legs (NVDA short 23,665, AAPL long 1,569, read from Arbitrum
+One block 511,007,816), whose weekend cover costs only the capital charge, 153.42; a further
+2,000,000 NVDA short would cost more than the 4,000 budget, so the guard refuses it. Each refusal
+decodes by replaying the call at the block before it.
 
 The Treaty and its four vaults share one deploy tx,
 [`0xe2402635...2b02c9b`](https://sepolia.arbiscan.io/tx/0xe24026352f7ba9c7073952c764f756f6ebc7641533b6140543fc777ef2b02c9b),
@@ -87,9 +101,10 @@ USDG, EL 1,051.190476 USDG, TVaR95 20,368 USDG.
 
 Wired for Arbitrum One: the L2 Sequencer Uptime feed
 [`0xFdB631F5EE196F0ed6FAa767959853A9F217697D`](https://arbiscan.io/address/0xFdB631F5EE196F0ed6FAa767959853A9F217697D)
-gates `bind`/`setReference`/`fix`, read live on Arbitrum One via `cast call` and
-exercised in `contracts/test/GapTreaty.fork.t.sol`; the Sepolia deploy above passes `address(0)`
-since Sepolia has no equivalent feed.
+gates `bind`/`setReference`/`fix`/`cancel` whenever it is set, read live on Arbitrum One via
+`cast call` and exercised in `contracts/test/GapTreaty.fork.t.sol` and
+`contracts/test/SequencerFeed.fork.t.sol`; the Sepolia deploy above passes `address(0)` since
+Chainlink lists no uptime feed for Arbitrum Sepolia.
 
 ## Buyer
 
@@ -285,8 +300,12 @@ NodeInterface's `gasEstimateComponents`, ran against a Solidity twin deployed
 at [`0x6aAf1b58939d55d1142a34aE02903bB788E9e771`](https://sepolia.arbiscan.io/address/0x6aAf1b58939d55d1142a34aE02903bB788E9e771)
 for this comparison only (`script/DeployPricerTwin.s.sol`): Stylus 584,865 total gas /
 578,444 L2 execution gas, Solidity 4,639,494 total / 4,632,865 L2 execution, identical
-outputs. Full numbers in `docs/pricing.md` under "Gas". The treaty gates on Arbitrum One's real L2
-Sequencer Uptime feed and settles in real Paxos USDG on testnet
+outputs. Full numbers in `docs/pricing.md` under "Gas". The treaty enforces the L2 sequencer gate
+whenever an uptime feed is set, proven on an Arbitrum One fork against the real feed
+`0xFdB631F5EE196F0ed6FAa767959853A9F217697D` (`contracts/test/SequencerFeed.fork.t.sol`). The
+Arbitrum Sepolia deployment runs with `address(0)` there, because Chainlink publishes no uptime feed
+for Arbitrum Sepolia: its L2 sequencer feeds page lists Arbitrum Mainnet only, and the mainnet address
+holds no code on Sepolia. It settles in real Paxos USDG on testnet
 (`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`).
 
 ### Why Stylus: gas of one `quote()` call at 1, 4 and 8 markets

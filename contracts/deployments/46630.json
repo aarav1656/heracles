@@ -11,12 +11,69 @@
       "block": 127713821,
       "deployedAt": "2026-10-02",
       "status": "0x1",
-      "constructorArgs": { "table_ids": [0, 1, 2, 3, 4, 5] },
+      "constructorArgs": {
+        "table_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
       "size": "28,247 bytes compressed, 2 fragments, 48-byte root (0xeff00200)",
       "activation": "Stylus version 3, programTimeLeft 364 days (scripts/stylus-program.sh), wasm data fee 0.000142 ETH",
       "checks": "tableIdAt(0..5) = 0..5, tableIdAt(6) reverts MissingTable",
       "parity": "scripts/pricer_parity.py: 10 of 10 cases identical to Arbitrum Sepolia under the same overridden feed; flat-feed EUR, XAU and TSLA equal scripts/fx_gold_fair_premium.py figures (evidence/parity/rh-testnet.json)",
       "funding": "0.01 ETH from the Robinhood Chain testnet faucet, claimed by the user"
+    },
+    "PricerStockTokens": {
+      "address": "0x382ede30fc954bf36e0d23f7125ebf9d0f486602",
+      "role": "the same Stylus build with table ids [0,1,3]: NVDA, AAPL, TSLA, the Stock Tokens with a feed on chain 46630",
+      "deployTx": "0xf103f62686fbf0e80945943e101659a3196065af273ff6708a47ea611ee57cc9",
+      "block": 127720378,
+      "status": "0x1",
+      "checks": "tableIdAt(0..2) = 0,1,3, tableIdAt(3) reverts MissingTable; Stylus version 3 active"
+    },
+    "OIGuard": {
+      "address": "0x629B2f9d7B4FEa7b0F0c9F988a106402961D89d5",
+      "deployTx": "0x176876cf3eb4c80eccd324c8030244ff597854c4619f83334ea62c59ee8289f5",
+      "block": 127720768,
+      "status": "0x1",
+      "pricer": "0x382ede30fc954bf36e0d23f7125ebf9d0f486602",
+      "feeds": {
+        "NVDA": "0x7155Cfe07F90c5E34A248396eb01530981998864",
+        "AAPL": "0x7F147A6476F99e38CbB3e08774fc296f694Ff510",
+        "TSLA": "0x6670e08A777BCDAA45092532F62213E1Bf43B9Aa"
+      },
+      "feedSource": "Robinhood testnet mirrors of the mainnet Stock Token feeds, from janus/contracts/deployments/46630.json",
+      "terms": {
+        "retention": 20000000000,
+        "limit": 200000000000,
+        "premiumBudget": 4000000000
+      },
+      "book": {
+        "source": "gUSDC stock legs, Arbitrum One block 511007816",
+        "vector": [
+          -23665000000,
+          1569000000,
+          0
+        ]
+      },
+      "accepted": {
+        "call": "check(book, 2 TSLA, +50000e6)",
+        "tx": "0x38eb4d4d72dcdfc0d0ae4a90ddc58e8b02252542c5c22909bf05df7eef18a3d5",
+        "block": 127720898,
+        "status": "0x1",
+        "premium": 153424657
+      },
+      "refused": {
+        "call": "check(book, 0 NVDA, -2000000e6)",
+        "tx": "0xcfb88f20f70fa0dd65542e6328dbb99c494f5f6a9362ce1b4599bcd1227c7017",
+        "block": 127720921,
+        "status": "0x0",
+        "revert": "PremiumOverBudget(6887146603, 4000000000, 153424657)"
+      }
     }
   }
 }

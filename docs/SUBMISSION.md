@@ -42,7 +42,7 @@ Re Protocol, Nayms (rebranded OnRe), and Ensuro sell tokenized access to real, r
 
 ## Stack
 
-Contracts in Solidity (Foundry), with the pricing core ported to Rust and deployed as a Stylus program on Arbitrum. The writer side is an ERC-4626 vault (`Capacity`) taking Paxos USDG deposits, including gasless deposit via `depositWithPermit`. `bind`, `setReference`, `fix` and `cancel` gate on Arbitrum's L2 Sequencer Uptime feed before trusting any oracle round. The web app is Vite and TypeScript, reading deployed addresses from `contracts/deployments/`.
+Contracts in Solidity (Foundry), with the pricing core ported to Rust and deployed as a Stylus program on Arbitrum. The writer side is an ERC-4626 vault (`Capacity`) taking Paxos USDG deposits, including gasless deposit via `depositWithPermit`. `bind`, `setReference`, `fix` and `cancel` check the L2 Sequencer Uptime feed before trusting any oracle round whenever one is set, proven against Arbitrum One's real feed on a fork; the Arbitrum Sepolia deployment runs without one because Chainlink lists no uptime feed for Arbitrum Sepolia. The web app is Vite and TypeScript, reading deployed addresses from `contracts/deployments/`.
 
 ## Security evidence
 
@@ -80,6 +80,7 @@ https://heracles-virid-seven.vercel.app
 | Pricer (Rust/Stylus) | [0xbe99217180a5fcb83372375b0928c971dfa71f88](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) |
 | Six-table pricer (Rust/Stylus) | [0x1674ecf8d236a91c484c11fd11a21601837f7e37](https://sepolia.arbiscan.io/address/0x1674ecf8d236a91c484c11fd11a21601837f7e37) |
 | Six-table pricer, Robinhood Chain testnet (46630) | [0x01143a467990d06b6481c3d7bef95ad25c36a49b](https://explorer.testnet.chain.robinhood.com/address/0x01143a467990d06b6481c3d7bef95ad25c36a49b), identical quotes to Arbitrum Sepolia in 10 of 10 parity cases |
+| OIGuard, Robinhood Chain testnet (46630) | [0x629B2f9d7B4FEa7b0F0c9F988a106402961D89d5](https://explorer.testnet.chain.robinhood.com/address/0x629B2f9d7B4FEa7b0F0c9F988a106402961D89d5) over the three-table pricer [0x382ede30fc954bf36e0d23f7125ebf9d0f486602](https://explorer.testnet.chain.robinhood.com/address/0x382ede30fc954bf36e0d23f7125ebf9d0f486602) and the Robinhood NVDA, AAPL, TSLA testnet mirror feeds; accepted [0x38eb4d4d...](https://explorer.testnet.chain.robinhood.com/tx/0x38eb4d4d72dcdfc0d0ae4a90ddc58e8b02252542c5c22909bf05df7eef18a3d5), refused [0xcfb88f20...](https://explorer.testnet.chain.robinhood.com/tx/0xcfb88f20f70fa0dd65542e6328dbb99c494f5f6a9362ce1b4599bcd1227c7017) |
 | OIGuard | [0x96BE263EfD057167E01a212BBd076904391217Ce](https://sepolia.arbiscan.io/address/0x96be263efd057167e01a212bbd076904391217ce#code) (Arbiscan verified) |
 | VaultCover | [0xe6085fF7Bf0d37c0Cd865072cA5B434F2c228997](https://sepolia.arbiscan.io/address/0xe6085ff7bf0d37c0cd865072ca5b434f2c228997#code) (Arbiscan verified) |
 | USDG (Paxos testnet) | [0xFFC95faa3d63Cde504a05B567C600B78C0b41892](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) |

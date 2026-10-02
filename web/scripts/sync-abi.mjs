@@ -28,6 +28,8 @@ const oiGuard = deployment.contracts.OIGuard.address;
 const vaultCover = deployment.contracts.VaultCover;
 const feeds = deployment.contracts.Treaty.constructorArgs.feeds;
 const books = deployment.books;
+const rh = JSON.parse(readFileSync(join(root, 'contracts', 'deployments', '46630.json'), 'utf8'));
+const rhGuard = rh.contracts.OIGuard;
 const rpc = deployment.rpc;
 const chainId = deployment.chainId;
 
@@ -70,6 +72,8 @@ export const VAULT_COVER_ADDRESS = ${JSON.stringify(vaultCover.address)} as Addr
 export const VAULT_COVER_DEPLOY_BLOCK = ${vaultCover.block}n;
 /** The guard and VaultCover web/scripts/integrate-vault.sh deployed when it was run as written. */
 export const GUIDE_RUN = ${JSON.stringify(deployment.integrationGuideRun)} as const;
+/** The OIGuard on Robinhood Chain testnet over the Stock Token mirror feeds, and its two recorded checks. */
+export const RH_TESTNET = ${JSON.stringify({ chainId: rh.chainId, rpc: rh.rpc, explorer: 'https://explorer.testnet.chain.robinhood.com', guard: rhGuard.address, pricer: rhGuard.pricer, feeds: rhGuard.feeds, book: rhGuard.book, accepted: rhGuard.accepted, refused: rhGuard.refused })} as const;
 /** The forced open the guard refused on chain (receipt status 0x0). */
 export const VAULT_COVER_REFUSED = ${JSON.stringify(vaultCover.refusedOpen)} as const;
 

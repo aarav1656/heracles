@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePublicClient } from 'wagmi';
 import type { PublicClient } from 'viem';
-import { GUIDE_RUN, OIGUARD_ADDRESS, QUOTE_PRICER_ADDRESS, TREATY_ADDRESS, VAULT_COVER_ADDRESS, VAULT_COVER_REFUSED, oiGuardAbi } from '../abi';
+import { GUIDE_RUN, RH_TESTNET, OIGUARD_ADDRESS, QUOTE_PRICER_ADDRESS, TREATY_ADDRESS, VAULT_COVER_ADDRESS, VAULT_COVER_REFUSED, oiGuardAbi } from '../abi';
 import guide from '../../scripts/integrate-vault.sh?raw';
 import { useQuery } from '@tanstack/react-query';
 import { explorer } from '../chain';
@@ -9,6 +9,8 @@ import { Stamp } from '../components/Stamp';
 import { MARKETS, guardCheck, quoteBook, quoteText, type Book, type GuardCheck, type Quote, type Ticker } from '../lib/book';
 import { fmtStamp, fmtUsdg2, parseExposure, short } from '../lib/format';
 import { readVaultCover } from '../lib/vaultCover';
+import { readRhGuard } from '../lib/rhGuard';
+import { fmtPx } from '../lib/format';
 import { PRICED_MARKETS } from '../lib/quote-core';
 import { explainError } from '../lib/revert';
 
@@ -21,6 +23,7 @@ const whole = (v: bigint) => Math.round(Number(v < 0n ? -v : v) / 1e6).toLocaleS
 const side = (v: bigint) => `${v < 0n ? 'short' : 'long'} ${whole(v)}`;
 const usdArg = (v: bigint) => (Number(v) / 1e6).toString();
 const refused = (VAULT_COVER_REFUSED.revert.match(/\d+/g) ?? []).map((x) => fmtUsdg2(BigInt(x)));
+const rhRefused = (RH_TESTNET.refused.revert.match(/\d+/g) ?? []).map((x) => fmtUsdg2(BigInt(x)));
 const guideRefused = (GUIDE_RUN.output.refused.match(/\d+/g) ?? []).map((x) => fmtUsdg2(BigInt(x)));
 
 type Read = { retention: bigint; limit: bigint; before: Quote; verdict: GuardCheck; open: [Ticker, bigint] };
@@ -184,6 +187,7 @@ guard.check(book, marketIndex, -traderSize); // reverts PremiumOverBudget(premiu
           </section>
 
           <VaultSection />
+          <RobinhoodSection />
 
           <section aria-labelledby="guide-h">
             <h2 id="guide-h" className="section">Wire your vault in one script</h2>
@@ -292,6 +296,54 @@ function VaultSection() {
             </div>
           </div>
           <Stamp block={d.block} />
+        </>
+      )}
+    </section>
+  );
+}
+
+/** The OIGuard on Robinhood Chain testnet over the Stock Token mirror feeds, read live from chain 46630. */
+function RobinhoodSection() {
+  const r = useQuery({ queryKey: ['rh-guard'], queryFn: readRhGuard, refetchInterval: 60_000, retry: 1 });
+  const d = r.data;
+  const rx = (path: string) => `${RH_TESTNET.explorer}/${path}`;
+  const book = RH_TESTNET.book.vector;
+  return (
+    <section aria-labelledby="rh-h">
+      <h2 id="rh-h" className="section">On Robinhood Chain</h2>
+      <p className="prose">
+        The same guard runs on Robinhood Chain testnet at <a href={rx(`address/${RH_TESTNET.guard}`)} target="_blank" rel="noreferrer">{short(RH_TESTNET.guard)}</a>,
+        priced by the same Stylus build at <a href={rx(`address/${RH_TESTNET.pricer}`)} target="_blank" rel="noreferrer">{short(RH_TESTNET.pricer)}</a> with
+        the tables for the three Stock Tokens that have a feed there, NVDA, AAPL and TSLA, each scaled by its own Robinhood testnet mirror of the mainnet
+        Stock Token feed. Its book is the gUSDC vault's stock legs: NVDA short {whole(BigInt(-book[0]))}, AAPL long {whole(BigInt(book[1]))}.
+      </p>
+      {r.isError && <p className="err"><b>Read failed.</b>{explainError(r.error).words}</p>}
+      {!d ? (!r.isError && <p className="pending">Reading Robinhood Chain…</p>) : (
+        <>
+          <div className="rows figs">
+            {d.feeds.map((f) => (
+              <div className="row" key={f.ticker}>
+                <span className="k">{f.ticker} feed<small><a href={rx(`address/${f.address}`)} target="_blank" rel="noreferrer">{short(f.address)}</a>, {fmtStamp(f.updatedAt)}</small></span>
+                <span className="v">{fmtPx(f.price)}</span>
+              </div>
+            ))}
+            <div className="row"><span className="k">Guard premium for this book<small>budget {fmtUsdg2(d.budget)}</small></span><span className="v">{fmtUsdg2(d.bookPremium)}</span></div>
+            <div className="row">
+              <span className="k">2,000,000 more NVDA short, right now<small>{'current' in d.refusedNow ? `refused: PremiumOverBudget, book today ${fmtUsdg2(d.refusedNow.current)}` : 'accepted'}</small></span>
+              <span className="v">{fmtUsdg2(d.refusedNow.premium)}</span>
+            </div>
+          </div>
+          <div className="rows figs">
+            <div className="row">
+              <span className="k">check TSLA +50,000<small>accepted at premium {fmtUsdg2(BigInt(RH_TESTNET.accepted.premium))}</small></span>
+              <span className="v"><a href={rx(`tx/${RH_TESTNET.accepted.tx}`)} target="_blank" rel="noreferrer">{short(RH_TESTNET.accepted.tx)}</a><small>status {RH_TESTNET.accepted.status}</small></span>
+            </div>
+            <div className="row">
+              <span className="k">check NVDA −2,000,000<small>refused: PremiumOverBudget, premium {rhRefused[0]} over budget {rhRefused[1]}, book today {rhRefused[2]}</small></span>
+              <span className="v"><a href={rx(`tx/${RH_TESTNET.refused.tx}`)} target="_blank" rel="noreferrer">{short(RH_TESTNET.refused.tx)}</a><small>status {RH_TESTNET.refused.status}</small></span>
+            </div>
+          </div>
+          <span className="stamp">read on Robinhood Chain testnet at block <a className="num" href={rx(`block/${d.block}`)} target="_blank" rel="noreferrer">#{d.block.toLocaleString('en-US')}</a></span>
         </>
       )}
     </section>
