@@ -5,6 +5,8 @@ const usd2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumF
 
 /** USDG 6dp -> "1,234.56". */
 export const fmtUsdg = (v: bigint) => usd6.format(Number(formatUnits(v, 6)));
+/** USDG 6dp -> "1,234.57", for dense summaries. */
+export const fmtUsdg2 = (v: bigint) => usd2.format(Number(formatUnits(v, 6)));
 /** Chainlink 8dp -> "771.02". */
 export const fmtPx = (v: bigint) => usd2.format(Number(formatUnits(v, 8)));
 

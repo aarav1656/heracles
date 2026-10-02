@@ -5,7 +5,7 @@ import type { PublicClient } from 'viem';
 import { FEED_ADDRESSES, QUOTE_PRICER_ADDRESS, TREATY_ADDRESS, pricerAbi, treatyAbi } from '../abi';
 import { explorer } from '../chain';
 import { Money } from '../components/Money';
-import { fmtUsdg, parseExposure, parseUsdg, short } from '../lib/format';
+import { fmtUsdg, fmtUsdg2, parseExposure, parseUsdg, short } from '../lib/format';
 import { explainError } from '../lib/revert';
 import { gridAxes, buildGrid, type GridCell } from '../lib/grid-core';
 import { readOstium, type OstiumRead } from '../lib/ostium';
@@ -267,8 +267,8 @@ export function QuotePage() {
                     <span role="rowheader" className="pg-ret">{fmtUsdg(row[0].retention)}</span>
                     {row.map((c, l) => (
                       <span role="cell" key={l} className={c.current ? 'pg-cell current' : 'pg-cell'} aria-current={c.current ? 'true' : undefined}>
-                        <b>{gridMode === 'premium' ? fmtUsdg(c.premium) : `${(Number(c.rateBps) / 100).toFixed(2)}%`}</b>
-                        <small>{fmtUsdg(c.el)} expected</small>
+                        <b>{gridMode === 'premium' ? fmtUsdg2(c.premium) : `${(Number(c.rateBps) / 100).toFixed(2)}%`}</b>
+                        <small>{fmtUsdg2(c.el)} expected</small>
                       </span>
                     ))}
                   </div>
