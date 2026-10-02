@@ -14,6 +14,8 @@ export const OIGUARD_ADDRESS = "0x96BE263EfD057167E01a212BBd076904391217Ce" as A
 /** A perp LP vault's book wired to the OIGuard and the Treaty's USDG book. */
 export const VAULT_COVER_ADDRESS = "0xe6085fF7Bf0d37c0Cd865072cA5B434F2c228997" as Address;
 export const VAULT_COVER_DEPLOY_BLOCK = 315026329n;
+/** The guard and VaultCover web/scripts/integrate-vault.sh deployed when it was run as written. */
+export const GUIDE_RUN = {"date":"2026-10-02","script":"web/scripts/integrate-vault.sh","OIGuard":"0x52a2B91E52f104CECB42eF7810DED289625aC621","VaultCover":"0xe3F98A8065c42955A79f7B92846484422c7c8F63","output":{"book":"[0, 0, 100000000000, 0, 0, 0]","refused":"PremiumOverBudget(6529135378, 4000000000, 153424657)","renewCover":"outside the bind window (BadTiming): Monday 00:00 to Thursday 19:30 UTC"},"exit":0} as const;
 /** The forced open the guard refused on chain (receipt status 0x0). */
 export const VAULT_COVER_REFUSED = {"market":"NVDA","delta":-2000000000000,"tx":"0x3da60c238032015b2d7af5562db996708955c5f9521a4c327feac5456ba360b5","block":315026672,"status":"0x0","revert":"PremiumOverBudget(6684626801, 4000000000, 153424657)"} as const;
 

@@ -68,6 +68,8 @@ export const OIGUARD_ADDRESS = ${JSON.stringify(oiGuard)} as Address;
 /** A perp LP vault's book wired to the OIGuard and the Treaty's USDG book. */
 export const VAULT_COVER_ADDRESS = ${JSON.stringify(vaultCover.address)} as Address;
 export const VAULT_COVER_DEPLOY_BLOCK = ${vaultCover.block}n;
+/** The guard and VaultCover web/scripts/integrate-vault.sh deployed when it was run as written. */
+export const GUIDE_RUN = ${JSON.stringify(deployment.integrationGuideRun)} as const;
 /** The forced open the guard refused on chain (receipt status 0x0). */
 export const VAULT_COVER_REFUSED = ${JSON.stringify(vaultCover.refusedOpen)} as const;
 

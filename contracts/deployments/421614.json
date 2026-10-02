@@ -395,5 +395,17 @@
       "firstLoss": "0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB",
       "senior": "0x510e4266C55a58879d3a77eC02e77CCF1602cA39"
     }
-  ]
+  ],
+  "integrationGuideRun": {
+    "date": "2026-10-02",
+    "script": "web/scripts/integrate-vault.sh",
+    "OIGuard": "0x52a2B91E52f104CECB42eF7810DED289625aC621",
+    "VaultCover": "0xe3F98A8065c42955A79f7B92846484422c7c8F63",
+    "output": {
+      "book": "[0, 0, 100000000000, 0, 0, 0]",
+      "refused": "PremiumOverBudget(6529135378, 4000000000, 153424657)",
+      "renewCover": "outside the bind window (BadTiming): Monday 00:00 to Thursday 19:30 UTC"
+    },
+    "exit": 0
+  }
 }

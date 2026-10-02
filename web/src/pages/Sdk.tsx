@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePublicClient } from 'wagmi';
 import type { PublicClient } from 'viem';
-import { OIGUARD_ADDRESS, QUOTE_PRICER_ADDRESS, TREATY_ADDRESS, VAULT_COVER_ADDRESS, VAULT_COVER_REFUSED, oiGuardAbi } from '../abi';
+import { GUIDE_RUN, OIGUARD_ADDRESS, QUOTE_PRICER_ADDRESS, TREATY_ADDRESS, VAULT_COVER_ADDRESS, VAULT_COVER_REFUSED, oiGuardAbi } from '../abi';
+import guide from '../../scripts/integrate-vault.sh?raw';
 import { useQuery } from '@tanstack/react-query';
 import { explorer } from '../chain';
 import { Stamp } from '../components/Stamp';
@@ -20,6 +21,7 @@ const whole = (v: bigint) => Math.round(Number(v < 0n ? -v : v) / 1e6).toLocaleS
 const side = (v: bigint) => `${v < 0n ? 'short' : 'long'} ${whole(v)}`;
 const usdArg = (v: bigint) => (Number(v) / 1e6).toString();
 const refused = (VAULT_COVER_REFUSED.revert.match(/\d+/g) ?? []).map((x) => fmtUsdg2(BigInt(x)));
+const guideRefused = (GUIDE_RUN.output.refused.match(/\d+/g) ?? []).map((x) => fmtUsdg2(BigInt(x)));
 
 type Read = { retention: bigint; limit: bigint; before: Quote; verdict: GuardCheck; open: [Ticker, bigint] };
 
@@ -182,6 +184,19 @@ guard.check(book, marketIndex, -traderSize); // reverts PremiumOverBudget(premiu
           </section>
 
           <VaultSection />
+
+          <section aria-labelledby="guide-h">
+            <h2 id="guide-h" className="section">Wire your vault in one script</h2>
+            <p className="prose">
+              From a clone of the repository, in <span className="file">contracts/</span>, with a funded Arbitrum Sepolia key in <span className="file">PRIVATE_KEY</span>,
+              this deploys your own guard and VaultCover against the live pricer and Treaty, sets the roles and terms, books one position and shows the guard
+              refusing one it cannot cover. It is the file the page shows, run as written on {GUIDE_RUN.date}: it deployed the guard{' '}
+              <a href={`${explorer.address(GUIDE_RUN.OIGuard)}`} target="_blank" rel="noreferrer">{short(GUIDE_RUN.OIGuard)}</a> and the VaultCover{' '}
+              <a href={`${explorer.address(GUIDE_RUN.VaultCover)}`} target="_blank" rel="noreferrer">{short(GUIDE_RUN.VaultCover)}</a>, booked {(Number(GUIDE_RUN.output.book.split(',')[2]) / 1e6).toLocaleString('en-US')} USDC long SPY,
+              and refused a 2,000,000 NVDA short: premium {guideRefused[0]} over budget {guideRefused[1]}, book today {guideRefused[2]}.
+            </p>
+            <pre className="term">{guide}</pre>
+          </section>
         </div>
 
         <aside className="ticket" aria-labelledby="gt-h">
