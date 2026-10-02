@@ -10,6 +10,9 @@ price feed and pays the slice of it above a retention, up to a limit. The payout
 from the feed, not from the vault's own books. A Stylus contract prices the layer on
 chain from 504 historical weekend gaps, USDG writers fund it, and settlement uses the
 first fresh Monday oracle round. No offchain price setter, no claims adjuster. Heracles (contract `Treaty`): `contracts/src/Treaty.sol`.
+A venue wires its vault in with two more contracts: `OIGuard` refuses open interest whose weekend
+cover would cost more than the vault's budget, and `VaultCover` keeps the vault's book on chain and
+binds each week's layer on it (`/sdk` runs both live, and one script deploys your own).
 
 Live app: https://heracles-virid-seven.vercel.app (reads the book below from the chain; screenshots of the book, bind and write routes at 1440 and 390 px in `evidence/web-{book,bind,write}-{1440,390}.png`, and of `/replay` and `/quote` at 1440 px in `evidence/web-{replay,quote}-1440.png`).
 
