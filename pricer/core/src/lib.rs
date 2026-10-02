@@ -460,6 +460,14 @@ mod test {
         assert_eq!(fx_gold_layer(-1_000_000, 5, 5_000, 30_000), (1_498_328_232, 1_106_575_396, 13_397_880_000));
     }
 
+    /// An equity table (TSLA, id 3, whole bps) against the figures the Python pricer computes from
+    /// evidence/gap-tables/TSLA.gaps.txt, so the equity unit is pinned next to the FX unit.
+    #[test]
+    fn test_tsla_fair_premium() {
+        assert_eq!(fx_gold_layer(500_000, 3, 5_000, 30_000), (2_398_667_943, 1_847_519_841, 19_452_000_000));
+        assert_eq!(fx_gold_layer(-500_000, 3, 5_000, 30_000), (3_169_479_609, 2_526_686_507, 23_186_000_000));
+    }
+
     /// The same notional on the same layer prices differently on each table, so ids 4 and 5 are
     /// wired to their own data and not to one shared fallback.
     #[test]

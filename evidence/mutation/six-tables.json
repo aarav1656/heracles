@@ -1,0 +1,375 @@
+{
+  "commit": "3d732df",
+  "runner": "python3 scripts/mutate_six_tables.py",
+  "mutants": [
+    {
+      "id": "S1",
+      "file": "contracts/src/Pricer.sol",
+      "mutant": "if (tableIds[i] > 4) revert BadTableId();",
+      "breaks": "gold table id rejected at deploy",
+      "verdict": "KILLED",
+      "killedBy": [
+        "forge"
+      ],
+      "failing": {
+        "forge": [
+          "[FAIL: BadTableId()] setUp() (gas: 0)",
+          "[FAIL: BadTableId()] setUp() (gas: 0)"
+        ]
+      },
+      "seconds": {
+        "forge": 60.0
+      }
+    },
+    {
+      "id": "S2",
+      "file": "contracts/src/Pricer.sol",
+      "mutant": "if (tableIds[i] > 6) revert BadTableId();",
+      "breaks": "table id 6 accepted, priced on a fallback table",
+      "verdict": "KILLED",
+      "killedBy": [
+        "forge"
+      ],
+      "failing": {
+        "forge": [
+          "[FAIL: next call did not revert as expected] test_constructorRevertsOnBadTableId() (gas: 9429499)",
+          "[FAIL: next call did not revert as expected] test_constructorRevertsOnBadTableId() (gas: 9429499)"
+        ]
+      },
+      "seconds": {
+        "forge": 71.8
+      }
+    },
+    {
+      "id": "S3",
+      "file": "contracts/src/Pricer.sol",
+      "mutant": "if (id == 4) return gapsXAU;",
+      "breaks": "EUR/USD priced on the gold table",
+      "verdict": "KILLED",
+      "killedBy": [
+        "forge"
+      ],
+      "failing": {
+        "forge": [
+          "[FAIL: EUR premium vs python: 4016189408 != 1977298772] test_fxAndGoldTablesMatchRustAndPython() (gas: 4766268)",
+          "[FAIL: EUR premium vs python: 4016189408 != 1977298772] test_fxAndGoldTablesMatchRustAndPython() (gas: 4766268)"
+        ]
+      },
+      "seconds": {
+        "forge": 82.7
+      }
+    },
+    {
+      "id": "S4",
+      "file": "contracts/src/Pricer.sol",
+      "mutant": "if (id == 5) return gapsEUR;",
+      "breaks": "gold priced on the EUR/USD table",
+      "verdict": "KILLED",
+      "killedBy": [
+        "forge"
+      ],
+      "failing": {
+        "forge": [
+          "[FAIL: premium mismatch: 5825683 != 5907739; counterexample: calldata=0xa30e99b4fffffffffffd6d1df9cac75046af716664d06d5f6289f9a8f570d2befb2f1bb50000000000000000000000000000000000000000000000000000000002e7dffb000000000000000000000000000000000000000000000000000000000000015d0000000000000000000000000000000000000000000000000000000000a2a3f5 args=[-1058784010331785301621908355504084678658543181055498627669091403 [-1.058e63], 48750587 [4.875e7], 349, 10658805 [1.065e7]]] testFuzz_fxPriceCoreMatchesRustExactly(int256,uint256,uint256,uint256) (runs: 1, \u03bc: 4743053, ~: 4743053)",
+          "[FAIL: XAU premium vs python: 188775638 != 1635305987] test_fxAndGoldTablesMatchRustAndPython() (gas: 9537595)",
+          "[FAIL: premium mismatch: 5825683 != 5907739; counterexample: calldata=0xa30e99b4fffffffffffd6d1df9cac75046af716664d06d5f6289f9a8f570d2befb2f1bb50000000000000000000000000000000000000000000000000000000002e7dffb000000000000000000000000000000000000000000000000000000000000015d0000000000000000000000000000000000000000000000000000000000a2a3f5 args=[-1058784010331785301621908355504084678658543181055498627669091403 [-1.058e63], 48750587 [4.875e7], 349, 10658805 [1.065e7]]] testFuzz_fxPriceCoreMatchesRustExactly(int256,uint256,uint256,uint256) (runs: 1, \u03bc: 4743053, ~: 4743053)",
+          "[FAIL: XAU premium vs python: 188775638 != 1635305987] test_fxAndGoldTablesMatchRustAndPython() (gas: 9537595)"
+        ]
+      },
+      "seconds": {
+        "forge": 61.6
+      }
+    },
+    {
+      "id": "S5",
+      "file": "contracts/src/Pricer.sol",
+      "mutant": "return tableIdAt(i) >= 5 ? FX_UNIT : int256(1);",
+      "breaks": "EUR/USD gaps read as whole bps, 100x too large",
+      "verdict": "KILLED",
+      "killedBy": [
+        "forge"
+      ],
+      "failing": {
+        "forge": [
+          "[FAIL: EUR premium vs python: 9593616273 != 1977298772] test_fxAndGoldTablesMatchRustAndPython() (gas: 4762423)",
+          "[FAIL: EUR premium vs python: 9593616273 != 1977298772] test_fxAndGoldTablesMatchRustAndPython() (gas: 4762423)"
+        ]
+      },
+      "seconds": {
+        "forge": 79.5
+      }
+    },
+    {
+      "id": "S6",
+      "file": "contracts/src/Pricer.sol",
+      "mutant": "return tableIdAt(i) == 4 ? FX_UNIT : int256(1);",
+      "breaks": "gold gaps read as whole bps, 100x too large",
+      "verdict": "KILLED",
+      "killedBy": [
+        "forge"
+      ],
+      "failing": {
+        "forge": [
+          "[FAIL: premium mismatch: 50479 != 82; counterexample: calldata=0xa30e99b4ffffffffffffffffffffffffffffffffffffffffffffff72768f806fe6bd9df20000000000000000000000000000000000000000000000000000049dd59d7400fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe000000000000000000000000000000000000000000000000000000000001a3ee args=[-2610894470230510297614 [-2.61e21], 5075940242432 [5.075e12], 115792089237316195423570985008687907853269984665640564039457584007913129639934 [1.157e77], 107502 [1.075e5]]] testFuzz_fxPriceCoreMatchesRustExactly(int256,uint256,uint256,uint256) (runs: 3, \u03bc: 4774504, ~: 4776025)",
+          "[FAIL: XAU premium vs python: 13944301395 != 1635305987] test_fxAndGoldTablesMatchRustAndPython() (gas: 9534261)",
+          "[FAIL: premium mismatch: 50479 != 82; counterexample: calldata=0xa30e99b4ffffffffffffffffffffffffffffffffffffffffffffff72768f806fe6bd9df20000000000000000000000000000000000000000000000000000049dd59d7400fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe000000000000000000000000000000000000000000000000000000000001a3ee args=[-2610894470230510297614 [-2.61e21], 5075940242432 [5.075e12], 115792089237316195423570985008687907853269984665640564039457584007913129639934 [1.157e77], 107502 [1.075e5]]] testFuzz_fxPriceCoreMatchesRustExactly(int256,uint256,uint256,uint256) (runs: 3, \u03bc: 4774504, ~: 4776025)",
+          "[FAIL: XAU premium vs python: 13944301395 != 1635305987] test_fxAndGoldTablesMatchRustAndPython() (gas: 9534261)"
+        ]
+      },
+      "seconds": {
+        "forge": 98.0
+      }
+    },
+    {
+      "id": "S7",
+      "file": "contracts/src/Pricer.sol",
+      "mutant": "return tableIdAt(i) >= 3 ? FX_UNIT : int256(1);",
+      "breaks": "TSLA gaps divided by 100",
+      "verdict": "KILLED",
+      "killedBy": [
+        "forge"
+      ],
+      "failing": {
+        "forge": [
+          "[FAIL: TSLA premium vs python: 23013698 != 2398667943] test_tslaTableMatchesRustAndPython() (gas: 4740297)",
+          "[FAIL: TSLA premium vs python: 23013698 != 2398667943] test_tslaTableMatchesRustAndPython() (gas: 4740297)"
+        ]
+      },
+      "seconds": {
+        "forge": 123.1
+      },
+      "firstPass": "SURVIVED",
+      "fixedBy": "test_tslaTableMatchesRustAndPython (Solidity) / test_tsla_fair_premium (Rust), pinning TSLA table 3 to scripts/fx_gold_fair_premium.py integer figures"
+    },
+    {
+      "id": "S8",
+      "file": "contracts/src/Pricer.sol",
+      "mutant": "int256 internal constant FX_UNIT = 10;",
+      "breaks": "FX unit off by 10x",
+      "verdict": "KILLED",
+      "killedBy": [
+        "forge"
+      ],
+      "failing": {
+        "forge": [
+          "[FAIL: premium mismatch: 10962 != 82; counterexample: calldata=0xa30e99b4ffffffffffffffffffffffffffffffffffffffffffffff72768f806fe6bd9df20000000000000000000000000000000000000000000000000000049dd59d7400fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe000000000000000000000000000000000000000000000000000000000001a3ee args=[-2610894470230510297614 [-2.61e21], 5075940242432 [5.075e12], 115792089237316195423570985008687907853269984665640564039457584007913129639934 [1.157e77], 107502 [1.075e5]]] testFuzz_fxPriceCoreMatchesRustExactly(int256,uint256,uint256,uint256) (runs: 0, \u03bc: 0, ~: 0)",
+          "[FAIL: EUR premium vs python: 8368067465 != 1977298772] test_fxAndGoldTablesMatchRustAndPython() (gas: 4759150)",
+          "[FAIL: premium mismatch: 10962 != 82; counterexample: calldata=0xa30e99b4ffffffffffffffffffffffffffffffffffffffffffffff72768f806fe6bd9df20000000000000000000000000000000000000000000000000000049dd59d7400fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe000000000000000000000000000000000000000000000000000000000001a3ee args=[-2610894470230510297614 [-2.61e21], 5075940242432 [5.075e12], 115792089237316195423570985008687907853269984665640564039457584007913129639934 [1.157e77], 107502 [1.075e5]]] testFuzz_fxPriceCoreMatchesRustExactly(int256,uint256,uint256,uint256) (runs: 0, \u03bc: 0, ~: 0)",
+          "[FAIL: EUR premium vs python: 8368067465 != 1977298772] test_fxAndGoldTablesMatchRustAndPython() (gas: 4759150)"
+        ]
+      },
+      "seconds": {
+        "forge": 104.3
+      }
+    },
+    {
+      "id": "S9",
+      "file": "contracts/src/Pricer.sol",
+      "mutant": "int256 pnl = (exposure[i] * gap) / BPS;",
+      "breaks": "unit dropped from the loss division",
+      "verdict": "KILLED",
+      "killedBy": [
+        "forge"
+      ],
+      "failing": {
+        "forge": [
+          "[FAIL: premium mismatch: 50479 != 82; counterexample: calldata=0xa30e99b4ffffffffffffffffffffffffffffffffffffffffffffff72768f806fe6bd9df20000000000000000000000000000000000000000000000000000049dd59d7400fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe000000000000000000000000000000000000000000000000000000000001a3ee args=[-2610894470230510297614 [-2.61e21], 5075940242432 [5.075e12], 115792089237316195423570985008687907853269984665640564039457584007913129639934 [1.157e77], 107502 [1.075e5]]] testFuzz_fxPriceCoreMatchesRustExactly(int256,uint256,uint256,uint256) (runs: 0, \u03bc: 0, ~: 0)",
+          "[FAIL: EUR premium vs python: 9593616273 != 1977298772] test_fxAndGoldTablesMatchRustAndPython() (gas: 4533610)",
+          "[FAIL: premium mismatch: 50479 != 82; counterexample: calldata=0xa30e99b4ffffffffffffffffffffffffffffffffffffffffffffff72768f806fe6bd9df20000000000000000000000000000000000000000000000000000049dd59d7400fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe000000000000000000000000000000000000000000000000000000000001a3ee args=[-2610894470230510297614 [-2.61e21], 5075940242432 [5.075e12], 115792089237316195423570985008687907853269984665640564039457584007913129639934 [1.157e77], 107502 [1.075e5]]] testFuzz_fxPriceCoreMatchesRustExactly(int256,uint256,uint256,uint256) (runs: 0, \u03bc: 0, ~: 0)",
+          "[FAIL: EUR premium vs python: 9593616273 != 1977298772] test_fxAndGoldTablesMatchRustAndPython() (gas: 4533610)"
+        ]
+      },
+      "seconds": {
+        "forge": 185.8
+      }
+    },
+    {
+      "id": "R1",
+      "file": "pricer/core/src/lib.rs",
+      "mutant": "4 => (XAU_GAPS[s] as i128, FX_UNIT),",
+      "breaks": "EUR/USD priced on the gold table",
+      "verdict": "KILLED",
+      "killedBy": [
+        "core"
+      ],
+      "failing": {
+        "core": [
+          "thread 'test::test_eur_usd_fair_premium' (4093267) panicked at src/lib.rs:452:9:",
+          "thread 'test::test_fx_and_gold_in_one_layer_use_their_own_tables' (4093268) panicked at src/lib.rs:483:9:",
+          "thread 'test::test_fx_gold_tables_are_distinct_from_each_other_and_from_equities' (4093270) panicked at src/lib.rs:470:17:",
+          "test result: FAILED. 15 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+        ]
+      },
+      "seconds": {
+        "core": 4.4
+      }
+    },
+    {
+      "id": "R2",
+      "file": "pricer/core/src/lib.rs",
+      "mutant": "5 => (EUR_GAPS[s] as i128, FX_UNIT),",
+      "breaks": "gold priced on the EUR/USD table",
+      "verdict": "KILLED",
+      "killedBy": [
+        "core"
+      ],
+      "failing": {
+        "core": [
+          "thread 'test::test_fx_and_gold_in_one_layer_use_their_own_tables' (4093614) panicked at src/lib.rs:483:9:",
+          "thread 'test::test_fx_gold_tables_are_distinct_from_each_other_and_from_equities' (4093616) panicked at src/lib.rs:470:17:",
+          "thread 'test::test_xau_usd_fair_premium' (4093629) panicked at src/lib.rs:459:9:",
+          "test result: FAILED. 15 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s"
+        ]
+      },
+      "seconds": {
+        "core": 1.9
+      }
+    },
+    {
+      "id": "R3",
+      "file": "pricer/core/src/lib.rs",
+      "mutant": "4 => (EUR_GAPS[s] as i128, 1),",
+      "breaks": "EUR/USD gaps read as whole bps",
+      "verdict": "KILLED",
+      "killedBy": [
+        "core"
+      ],
+      "failing": {
+        "core": [
+          "thread 'test::test_eur_usd_fair_premium' (4094633) panicked at src/lib.rs:452:9:",
+          "test result: FAILED. 17 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s"
+        ]
+      },
+      "seconds": {
+        "core": 5.8
+      }
+    },
+    {
+      "id": "R4",
+      "file": "pricer/core/src/lib.rs",
+      "mutant": "5 => (XAU_GAPS[s] as i128, 1),",
+      "breaks": "gold gaps read as whole bps",
+      "verdict": "KILLED",
+      "killedBy": [
+        "core"
+      ],
+      "failing": {
+        "core": [
+          "thread 'test::test_xau_usd_fair_premium' (4095769) panicked at src/lib.rs:459:9:",
+          "test result: FAILED. 17 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s"
+        ]
+      },
+      "seconds": {
+        "core": 4.2
+      }
+    },
+    {
+      "id": "R5",
+      "file": "pricer/core/src/lib.rs",
+      "mutant": "3 => (TSLA_GAPS[s] as i128, FX_UNIT),",
+      "breaks": "TSLA gaps divided by 100",
+      "verdict": "KILLED",
+      "killedBy": [
+        "core"
+      ],
+      "failing": {
+        "core": [
+          "thread 'test::test_tsla_fair_premium' (4134719) panicked at src/lib.rs:467:9:",
+          "test result: FAILED. 18 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s"
+        ]
+      },
+      "seconds": {
+        "core": 3.7
+      },
+      "firstPass": "SURVIVED",
+      "fixedBy": "test_tslaTableMatchesRustAndPython (Solidity) / test_tsla_fair_premium (Rust), pinning TSLA table 3 to scripts/fx_gold_fair_premium.py integer figures"
+    },
+    {
+      "id": "R6",
+      "file": "pricer/core/src/lib.rs",
+      "mutant": "pub const FX_UNIT: i128 = 10;",
+      "breaks": "FX unit off by 10x",
+      "verdict": "KILLED",
+      "killedBy": [
+        "core"
+      ],
+      "failing": {
+        "core": [
+          "thread 'test::test_eur_usd_fair_premium' (4096745) panicked at src/lib.rs:452:9:",
+          "thread 'test::test_xau_usd_fair_premium' (4096758) panicked at src/lib.rs:459:9:",
+          "test result: FAILED. 16 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s"
+        ]
+      },
+      "seconds": {
+        "core": 1.8
+      }
+    },
+    {
+      "id": "R7",
+      "file": "pricer/core/src/lib.rs",
+      "mutant": "pub const MAX_TABLE_ID: u8 = 6;",
+      "breaks": "table id 6 accepted, priced on NVDA",
+      "verdict": "KILLED",
+      "killedBy": [
+        "stylus"
+      ],
+      "failing": {
+        "stylus": [
+          "thread 'test::test_constructor_reverts_on_bad_table_id' (4099213) panicked at src/lib.rs:374:9:",
+          "test result: FAILED. 10 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s"
+        ]
+      },
+      "seconds": {
+        "core": 5.2,
+        "stylus": 12.6
+      }
+    },
+    {
+      "id": "R8",
+      "file": "pricer/core/src/lib.rs",
+      "mutant": "pub const MAX_TABLE_ID: u8 = 4;",
+      "breaks": "gold table id rejected",
+      "verdict": "KILLED",
+      "killedBy": [
+        "core",
+        "stylus"
+      ],
+      "failing": {
+        "core": [
+          "thread 'test::test_fx_and_gold_in_one_layer_use_their_own_tables' (4099814) panicked at src/lib.rs:480:111:",
+          "thread 'test::test_xau_usd_fair_premium' (4099826) panicked at src/lib.rs:446:10:",
+          "thread 'test::test_fx_gold_tables_are_distinct_from_each_other_and_from_equities' (4099816) panicked at src/lib.rs:446:10:",
+          "test result: FAILED. 15 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s"
+        ],
+        "stylus": [
+          "thread 'test::test_quote_prices_the_eur_and_xau_tables' (4101095) panicked at src/lib.rs:323:49:",
+          "test result: FAILED. 10 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s"
+        ]
+      },
+      "seconds": {
+        "core": 2.5,
+        "stylus": 8.5
+      }
+    },
+    {
+      "id": "R9",
+      "file": "pricer/core/src/lib.rs",
+      "mutant": ".checked_div(bps)",
+      "breaks": "unit dropped from the loss division",
+      "verdict": "KILLED",
+      "killedBy": [
+        "core"
+      ],
+      "failing": {
+        "core": [
+          "thread 'test::test_eur_usd_fair_premium' (4102028) panicked at src/lib.rs:452:9:",
+          "thread 'test::test_xau_usd_fair_premium' (4102041) panicked at src/lib.rs:459:9:",
+          "test result: FAILED. 16 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+        ]
+      },
+      "seconds": {
+        "core": 3.5
+      }
+    }
+  ]
+}

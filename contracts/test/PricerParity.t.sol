@@ -15,6 +15,7 @@ contract PricerParityTest is Test {
     Pricer spyPricer;
     Pricer eurPricer;
     Pricer xauPricer;
+    Pricer tslaPricer;
     string constant CLI_BIN = "../pricer/pricer_cli/target/release/pricer-cli";
 
     function setUp() public {
@@ -28,6 +29,9 @@ contract PricerParityTest is Test {
         uint8[] memory xauIds = new uint8[](1);
         xauIds[0] = 5;
         xauPricer = new Pricer(xauIds);
+        uint8[] memory tslaIds = new uint8[](1);
+        tslaIds[0] = 3;
+        tslaPricer = new Pricer(tslaIds);
         string[] memory build = new string[](5);
         build[0] = "cargo";
         build[1] = "build";
@@ -155,6 +159,23 @@ contract PricerParityTest is Test {
         assertEq(p, rp, "XAU premium Sol/Rust");
         assertEq(el, rel, "XAU el Sol/Rust");
         assertEq(tv, rtv, "XAU tvar95 Sol/Rust");
+    }
+
+    /// An equity table (TSLA, id 3, whole bps) against the same Python pricer, which reads
+    /// evidence/gap-tables/TSLA.gaps.txt directly: pins the equity unit next to the FX unit.
+    function test_tslaTableMatchesRustAndPython() public {
+        uint256[] memory scale = new uint256[](1);
+        scale[0] = 1_000_000;
+        int256[] memory exposure = new int256[](1);
+        exposure[0] = 500_000_000_000;
+        (uint256 p, uint256 el, uint256 tv) = tslaPricer.priceCore(exposure, scale, 5_000_000_000, 30_000_000_000);
+        (uint256 rp, uint256 rel, uint256 rtv) = _runCli(500_000_000_000, 1_000_000, 5_000_000_000, 30_000_000_000, "3");
+        assertEq(p, 2_398_667_943, "TSLA premium vs python");
+        assertEq(el, 1_847_519_841, "TSLA el vs python");
+        assertEq(tv, 19_452_000_000, "TSLA tvar95 vs python");
+        assertEq(p, rp, "TSLA premium Sol/Rust");
+        assertEq(el, rel, "TSLA el Sol/Rust");
+        assertEq(tv, rtv, "TSLA tvar95 Sol/Rust");
     }
 
     /// Fuzzed parity on the FX table at scales other than 1.0x, where the unit division order matters.
