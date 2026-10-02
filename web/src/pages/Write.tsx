@@ -137,7 +137,7 @@ export function Write() {
             The writer's running result on the example cover, long {usd0.format(REFERENCE.exposure)} of SPY with a {usd0.format(REFERENCE.retention)} retention
             and a {usd0.format(REFERENCE.limit)} limit, across all {SPY_WEEKENDS.length} SPY weekends recorded from {fmtDay(SPY_WEEKENDS[0].friday)} to{' '}
             {fmtDay(SPY_WEEKENDS[SPY_WEEKENDS.length - 1].friday)}, Friday close to Monday open (<span className="file">evidence/gap-tables/SPY.json</span>).
-            The premium is the Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>'s
+            The premium is the Treaty's Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>'s
             quote at the latest block, priced from these same weekends: their average payout, a load on the worst 5% and a capital charge on the
             limit (<a href="/docs/pricing.md" target="_blank" rel="noreferrer">method</a>).
             The line is the path a writer takes through them: each drawdown and the weekends that paid the most.

@@ -388,8 +388,8 @@ a, .btn, .key, .markets button, .top nav a, .field input { transition: color 120
 @media (max-width: 720px) {
   .wrap { padding: 0 20px; }
   .top-in { height: auto; min-height: 56px; flex-wrap: wrap; gap: 0 20px; padding-top: 10px; }
-  .top nav { order: 3; width: 100%; height: 44px; gap: 22px; overflow-x: auto; }
-  .top nav a { font-size: 14px; white-space: nowrap; }
+  .top nav { order: 3; width: 100%; height: auto; flex-wrap: wrap; gap: 0 20px; padding-bottom: 4px; }
+  .top nav a { font-size: 14px; white-space: nowrap; min-height: 40px; }
   .display { font-size: 38px; line-height: 42px; letter-spacing: -0.8px; }
   .title { font-size: 30px; line-height: 36px; letter-spacing: -0.6px; }
   .desk { padding-top: 28px; }

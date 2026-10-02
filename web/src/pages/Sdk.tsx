@@ -253,7 +253,7 @@ function VaultSection() {
         book after it first; <span className="file">close</span> only moves a market toward zero and never waits on the pricer. Once a week a
         keeper calls <span className="file">renewCover</span>, which binds a layer on the Treaty <a href={explorer.address(TREATY_ADDRESS)} target="_blank" rel="noreferrer">{short(TREATY_ADDRESS)}</a> on
         the book as it stands, paid from the contract's premium budget, and until that layer's Monday open the covered legs cannot grow past
-        what it covers. The book below is gTrade's gUSDC vault as read from Arbitrum One block 511,007,816, opened leg by leg through the live guard.
+        what it covers. The book below is gTrade's gUSDC vault as read from Arbitrum One block 511,007,816, opened leg by leg through the live guard; /quote reads the same vault at the latest block, so its figures move with the market.
       </p>
       {v.isError && <p className="err"><b>Read failed.</b>{explainError(v.error).words}</p>}
       {!d ? (!v.isError && <p className="pending">Reading the vault…</p>) : (

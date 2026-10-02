@@ -264,10 +264,15 @@ export function Bind() {
           <SimPanel title="Simulation before you sign" sim={sim} />
 
           {closed && win ? (
-            <p className="err" role="status">
-              <b>Closed</b> Buying cover for this weekend closed at {fmtClock(win.bindDeadline)} UTC. Cover for
-              next week opens Monday 00:00 UTC, in {fmtCountdown((reopensAt ?? win.expiry) - now)}.
-            </p>
+            <div className="bindbox">
+              <p className="err" role="status">
+                <b>Closed</b> Buying cover for this weekend closed at {fmtClock(win.bindDeadline)} UTC. Cover for
+                next week opens Monday 00:00 UTC, in {fmtCountdown((reopensAt ?? win.expiry) - now)}.
+              </p>
+              <div className="acts">
+                <button className="btn" disabled>Opens Monday 00:00 UTC, in {fmtCountdown((reopensAt ?? win.expiry) - now)}</button>
+              </div>
+            </div>
           ) : (
             <div className="bindbox">
               {!me.address && <Wallet />}
@@ -303,7 +308,7 @@ export function Bind() {
               {floorApplies
                 ? `Raised to the minimum price, ${floorPct}% of the cap; the pricer quoted ${fmtUsdg(quote.premium)}. `
                 : `Above the minimum price of ${usd2(floor)} USDG (${floorPct}% of the cap). `}
-              Quoted by the Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a> at
+              Quoted by the Treaty's Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a> at
               block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">#{quote.block.toLocaleString('en-US')}</a>.
             </p>
           )}

@@ -88,8 +88,10 @@ and 10.5 USDC into the senior vault, and layer 0 bound against the book, long 20
 SPY with retention 2 and limit 10 USDC (3 locked in the first-loss vault, 7 in the senior
 vault) for a 0.195737 USDC premium, bind tx
 [`0x770752c7...3b85b70`](https://sepolia.arbiscan.io/tx/0x770752c7522caf31ce5d493693e48f8bed71726607be0351b835669eb3b85b70).
-The Friday reference opens Fri 2026-10-02 20:00 UTC and the Monday fix Mon 2026-10-05
-13:30 UTC.
+Its Friday reference is set: the round in effect at the 20:00 UTC close (13:30:50 UTC, SPY 770.38), tx
+[`0x85cdb338...7d163cbd`](https://sepolia.arbiscan.io/tx/0x85cdb3380d4d4750fcce04e787761f7c653a6fd1e8007da022699cfa7d163cbd),
+status 0x1, sent by `scripts/settle-layer.sh 0`, which fixes and settles it after the Monday
+13:30 UTC open on 2026-10-05.
 
 A live quote at
 block 313,690,038, long 2,000,000 USDG of SPY with a 20,000 USDG retention and a 60,000

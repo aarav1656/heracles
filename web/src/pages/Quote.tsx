@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePublicClient } from 'wagmi';
@@ -232,7 +233,8 @@ export function QuotePage() {
               <a href={`https://arbiscan.io/block/${read.block}`} target="_blank" rel="noreferrer">#{read.block.toLocaleString('en-US')}</a>:{' '}
               <span className="file">getPairOiAfterV10Collateral(3, pair)</span> plus <span className="file">getPairOisBeforeV10Collateral(3, pair)</span> on gTrade's
               Diamond <a href={`https://arbiscan.io/address/${GAINS_DIAMOND}`} target="_blank" rel="noreferrer">{short(GAINS_DIAMOND)}</a>, collateral 3 being USDC,
-              position size at open in USDC.
+              position size at open in USDC. This page reads the book at the latest block; the VaultCover on <Link to="/sdk">/sdk</Link> holds
+              the read saved at block {SNAPSHOT.block.toLocaleString('en-US')}, the block it was opened from, so the two differ as the vault trades.
               {status && <> {status}.</>}
               {book.isError && <> Showing the saved read.</>}
             </p>
@@ -272,7 +274,7 @@ export function QuotePage() {
             )}
             {grid && (
               <p className="src">
-                USDG. Priced by <a href={explorer.address(QUOTE_PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(QUOTE_PRICER_ADDRESS)}</a> at
+                USDG. Priced by the six-table Stylus pricer <a href={explorer.address(QUOTE_PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(QUOTE_PRICER_ADDRESS)}</a> at
                 block <a href={explorer.block(grid.block)} target="_blank" rel="noreferrer">#{grid.block.toLocaleString('en-US')}</a>; premiums below the treaty minimum rate are shown raised to it.
               </p>
             )}
@@ -355,7 +357,7 @@ export function QuotePage() {
               </div>
               <p className="note">Opens your mail program with the quote as plain text. Nothing is sent from this page.</p>
               <p className="src">
-                Priced by the Stylus pricer <a href={explorer.address(QUOTE_PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(QUOTE_PRICER_ADDRESS)}</a> at
+                Priced by the six-table Stylus pricer <a href={explorer.address(QUOTE_PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(QUOTE_PRICER_ADDRESS)}</a> at
                 Arbitrum Sepolia block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">#{quote.block.toLocaleString('en-US')}</a>.
                 The call sets the pricer's table ids for the markets above (NVDA 0, AAPL 1, SPY 2, TSLA 3, EUR/USD 4, XAU/USD 5) and reads volatility from the
                 SPY/USD feed <a href={explorer.address(FEED_ADDRESSES[0])} target="_blank" rel="noreferrer">{short(FEED_ADDRESSES[0])}</a>.

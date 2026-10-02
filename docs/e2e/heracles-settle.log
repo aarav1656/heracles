@@ -1,3 +1,8 @@
 2026-10-02T16:50:05Z layer 0: state 1 (1 Bound, 2 Settled, 3 Cancelled), close 2026-10-02T20:00:00Z, expiry 2026-10-05T13:30:00Z, chain time 2026-10-02T16:50:03Z
 2026-10-02T16:50:08Z layer 0: market 0: reference opens after the close
 2026-10-02T16:50:09Z layer 0: now state 1, payout 0, claimed false
+2026-10-02T20:05:36Z layer 0: state 1 (1 Bound, 2 Settled, 3 Cancelled), close 2026-10-02T20:00:00Z, expiry 2026-10-05T13:30:00Z, chain time 2026-10-02T20:05:35Z
+2026-10-02T20:05:41Z layer 0: market 0: round in effect at close 18446744073709553985 (updatedAt 2026-10-02T13:30:50Z)
+2026-10-02T20:05:47Z layer 0: market 0: setReference tx 0x85cdb3380d4d4750fcce04e787761f7c653a6fd1e8007da022699cfa7d163cbd status 0x1, referenceSet true, fridayPrice 77038000000
+2026-10-02T20:05:48Z layer 0: market 0: fix opens at expiry
+2026-10-02T20:05:49Z layer 0: now state 1, payout 0, claimed false

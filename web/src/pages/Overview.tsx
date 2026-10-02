@@ -110,7 +110,7 @@ export function Overview() {
           <section aria-labelledby="priced-h">
             <h2 id="priced-h" className="section">How the price is worked out</h2>
             <p className="prose">
-              The example's price is one read of the Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>:
+              The example's price is one read of the Treaty's Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>:
               it runs the cover over the same 504 SPY weekends drawn above, scaled by the live volatility, and returns the
               price, the average payout and the average of the worst 25 weekends. At settlement the payout comes from the
               same kind of arithmetic: the Monday gap on the feed times the position the vault declared, minus the part the vault

@@ -49,7 +49,7 @@ export function App() {
             <p>Heracles: parametric cover for the weekend gap, for the LP vaults of stock perp exchanges. Arbitrum Sepolia, USDG and USDC books.</p>
             <p>
               Treaty <a href={explorer.address(TREATY_ADDRESS)} target="_blank" rel="noreferrer">{short(TREATY_ADDRESS)}</a>
-              {' · '}pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>
+              {' · '}Treaty's pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>
               {' · '}{BOOKS[0].symbol} first loss <a href={explorer.address(BOOKS[0].firstLoss)} target="_blank" rel="noreferrer">{short(BOOKS[0].firstLoss)}</a>
               {' · '}{BOOKS[0].symbol} senior <a href={explorer.address(BOOKS[0].senior)} target="_blank" rel="noreferrer">{short(BOOKS[0].senior)}</a>
               {' · '}{BOOKS[1].symbol} first loss <a href={explorer.address(BOOKS[1].firstLoss)} target="_blank" rel="noreferrer">{short(BOOKS[1].firstLoss)}</a>
