@@ -24,6 +24,7 @@ Live app: https://heracles-virid-seven.vercel.app (reads the book below from the
 | USDC senior vault | [`0x510e4266C55a58879d3a77eC02e77CCF1602cA39`](https://sepolia.arbiscan.io/address/0x510e4266C55a58879d3a77eC02e77CCF1602cA39) | ERC-4626, takes the other 70% |
 | Pricer (Rust/Stylus) | [`0xbe99217180a5fcb83372375b0928c971dfa71f88`](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) | on-chain premium, measured 8.01x less L2 execution gas than the Solidity twin |
 | Six-table pricer (Rust/Stylus) | [`0x1674ecf8d236a91c484c11fd11a21601837f7e37`](https://sepolia.arbiscan.io/address/0x1674ecf8d236a91c484c11fd11a21601837f7e37) | prices equities, EUR/USD and XAU/USD on chain; the `/quote` desk reads it |
+| OIGuard | [`0x96BE263EfD057167E01a212BBd076904391217Ce`](https://sepolia.arbiscan.io/address/0x96be263efd057167e01a212bbd076904391217ce#code) | a perp venue's open-interest check over the six-table pricer, source verified on Arbiscan |
 | USDG (Paxos testnet) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) | settlement asset of the USDG book |
 | USDC (Circle testnet) | [`0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`](https://sepolia.arbiscan.io/address/0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d) | settlement asset of the USDC book |
 
@@ -194,6 +195,32 @@ FX and gold are priced from 504 real weekends each, measured at the Treaty's own
 2026-09-25 and XAU/USD 2016-06-03 to 2026-09-25, with holiday weekends left out rather than
 filled. Against a second source (Yahoo Finance hourly bars, 20 sampled weekends each) the largest
 difference is 11.3 bps for EUR/USD and 29.29 bps for gold, the latter against COMEX futures.
+
+## Build on the pricer: OIGuard and heracles-sdk
+
+The Stylus pricer has a second onchain consumer. `contracts/src/OIGuard.sol` is a guard a perp
+venue calls before it accepts new open interest: `check(book, market, size)` prices weekend-gap
+cover on the LP vault's book after the trade and reverts
+`PremiumOverBudget(premium, budget, currentPremium)` when that premium passes the budget the vault
+owner set. A trade that lowers the premium always passes, so a vault over budget can hedge back
+down. Its fork tests on Arbitrum Sepolia reach the live Stylus pricer through `vm.rpc("eth_call")`
+and match the Solidity twin to the unit on the same book.
+
+`sdk/` is heracles-sdk, a typed viem client (`quote`, `guardCheck`, `bindPreview`, `treatyState`,
+ABIs `as const` from the contract build) and the `heracles-quote` CLI:
+
+```
+$ npx heracles-quote --exposure NVDA=1000000,EUR=-400000,XAU=250000 --retention 20000 --limit 200000 --open NVDA=600000
+  premium        3,817.10
+  expected loss  2,423.87
+  worst 5% avg   43,750.64
+
+OIGuard 0x96BE263EfD057167E01a212BBd076904391217Ce, open NVDA long 600,000.00
+  REFUSED        PremiumOverBudget: premium after the trade 7,780.37, budget 4,000.00, book today 3,817.10
+```
+
+The `/sdk` page runs the same check live with a market and size of your choosing, and prints what
+the CLI prints at the stamped block.
 
 ## Why Arbitrum
 
