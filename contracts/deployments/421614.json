@@ -119,6 +119,32 @@
     "USDC": {
       "address": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
       "role": "second book asset (Circle testnet, 6dp)"
+    },
+    "OIGuard": {
+      "address": "0x96BE263EfD057167E01a212BBd076904391217Ce",
+      "role": "open-interest guard for a perp LP vault: check(book, market, size) prices weekend cover on the resulting book with PricerSixTables and reverts PremiumOverBudget(premium, budget, currentPremium) above the owner budget; premium-lowering trades pass",
+      "deployTx": "0x0ed02a3c50772d158ee39418dd71ec387c151a0ab4b12de3f5caf2bda5ffb428",
+      "block": 314941446,
+      "deployedAt": "2026-10-02",
+      "verification": {
+        "method": "etherscan (arbiscan)",
+        "status": "Pass - Verified"
+      },
+      "constructorArgs": {
+        "pricer": "0x1674ECf8D236A91C484C11Fd11a21601837F7e37",
+        "feeds": [
+          "0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06",
+          "0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06",
+          "0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06",
+          "0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06",
+          "0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06",
+          "0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06"
+        ],
+        "owner": "0x39ef83fbB0BA61A5b4169fF5ce21Fd89e25aab37",
+        "retention": 20000000000,
+        "limit": 200000000000,
+        "premiumBudget": 4000000000
+      }
     }
   },
   "constructorArgs": {
