@@ -79,19 +79,36 @@ next trading day's open (Monday, or later on a holiday Monday) and compute
   `{NVDA,AAPL,SPY,TSLA}_GAPS` consts).
 - 504 scenarios per market (10 years of Fridays), matching `SCENARIOS`.
 
+**FX and gold tables (ids 4 and 5).** Source: Dukascopy 1-minute BID candles, the open of the bar
+starting at the Treaty's Friday 16:00 ET and at Monday 9:30 ET (DST from each instant's own date),
+`gap_bps = round((monday - friday) / friday * 10000, 2)`. Script:
+`scripts/generate_fx_gold_gap_tables.py`; output `evidence/gap-tables/{EUR,XAU}.json` and
+`.gaps.txt`. Each table holds 504 real weekends: EUR/USD 2016-12-23 to 2026-09-25 (6 holiday
+weekends skipped), XAU/USD 2016-06-03 to 2026-09-25 (35 skipped); a holiday weekend is left out,
+never interpolated. Cross-check against Yahoo Finance hourly bars on 20 sampled weekends
+(`EUR.crosscheck.json`, `XAU.crosscheck.json`): the largest difference is 11.3 bps for EUR/USD
+and 29.29 bps for XAU/USD, which Yahoo only carries as COMEX futures. The pricer stores both in
+hundredths of a basis point (`FX_UNIT = 100`), so the two-decimal values load exactly and gold's
+-404.88 bps fits; the equity tables stay in whole bps. A Rust test compares each compiled table to
+its `.gaps.txt`, and `scripts/fx_gold_fair_premium.py` prices known layers from the files with no
+code shared with either pricer: long $2,000,000 EUR/USD, retention $2,000, limit $20,000 is
+1,977.298772 USDG (expected payout 1,648.960317, TVaR95 12,082.16); long $1,000,000 XAU/USD,
+retention $5,000, limit $30,000 is 1,635.305987 USDG (expected payout 1,173.676587, TVaR95
+15,794.20). Solidity, Rust and the deployed pricer return those figures exactly.
+
 `_tableFor`/`table_for` selects by an explicit per-market table id (`marketTableIds` in
 Solidity, `table_ids` in Rust), a constructor-supplied array, not by exposure array
 position (docs/security/capacity-review.md "Re-review (2026-09-28)" P2: the testnet
 deploy has a single SPY feed at index 0, and position-based selection priced it on the
-NVDA table). Table id 0 = NVDA, 1 = AAPL, 2 = SPY, 3 = TSLA.
+NVDA table). Table id 0 = NVDA, 1 = AAPL, 2 = SPY, 3 = TSLA, 4 = EUR/USD, 5 = XAU/USD.
 
 **Fail closed, no fallback (P2 re-review, docs/security/capacity-review.md "Re-review
 (2026-09-28)").** The positional fallback (`_defaultTableId`/`default_table_id`) and the
-id-value fallback to NVDA for any id > 3 have both been deleted; there is no longer any
+id-value fallback to NVDA for any id > 5 have both been deleted; there is no longer any
 path that silently reprices an unmapped or misconfigured market. In both languages:
 
 - Constructor/`price_core` reverts (`BadTableId` in Solidity, an `Err` in Rust) if
-  `tableIds`/`table_ids` is empty or any entry is not 0-3.
+  `tableIds`/`table_ids` is empty or any entry is not 0-5.
 - `tableIdAt`/`table_id_at` reverts (`MissingTable`) if `i` is past the configured
   array, instead of returning `_defaultTableId(i)`. `_tableFor`/`priceCore`/`quote` in
   Solidity route through this same getter, so a quote spanning more markets than the

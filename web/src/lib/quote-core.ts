@@ -1,24 +1,37 @@
-// The quote desk's pure pieces: which Ostium pair feeds which pricer table, the storage word that
+// The quote desk's pure pieces: which Ostium pair feeds which pricer table and asset class, the storage word that
 // sets the pricer's per-market table ids for one call, and the plain-text quote for a mail.
 
-export type PricedMarket = { ticker: 'SPY' | 'NVDA' | 'AAPL' | 'TSLA'; tableId: number; ostium: string; name: string };
+export type PricedClass = 'equities' | 'fx' | 'gold_metals';
+export type PricedMarket = { ticker: 'SPY' | 'NVDA' | 'AAPL' | 'TSLA' | 'EUR' | 'XAU'; tableId: number; ostium: string; bucket: PricedClass; name: string };
 
-/** Table ids as deployed in pricer/core: 0 NVDA, 1 AAPL, 2 SPY, 3 TSLA. Ostium carries SPX, not SPY. */
-export const PRICED_MARKETS: readonly PricedMarket[] = [
-  { ticker: 'SPY', tableId: 2, ostium: 'SPX', name: 'S&P 500 (Ostium SPX)' },
-  { ticker: 'NVDA', tableId: 0, ostium: 'NVDA', name: 'NVIDIA' },
-  { ticker: 'AAPL', tableId: 1, ostium: 'AAPL', name: 'Apple' },
-  { ticker: 'TSLA', tableId: 3, ostium: 'TSLA', name: 'Tesla' },
+/** The asset classes the pricer holds a scenario table for, in the order the quote desk lists them. */
+export const PRICED_CLASSES: readonly { key: PricedClass; name: string }[] = [
+  { key: 'equities', name: 'Equities and indices' },
+  { key: 'fx', name: 'FX' },
+  { key: 'gold_metals', name: 'Gold' },
 ];
+
+/** Table ids as deployed in pricer/core: 0 NVDA, 1 AAPL, 2 SPY, 3 TSLA, 4 EUR/USD, 5 XAU/USD. Ostium carries SPX, not SPY. */
+export const PRICED_MARKETS: readonly PricedMarket[] = [
+  { ticker: 'SPY', tableId: 2, ostium: 'SPX', bucket: 'equities', name: 'S&P 500 (Ostium SPX)' },
+  { ticker: 'NVDA', tableId: 0, ostium: 'NVDA', bucket: 'equities', name: 'NVIDIA' },
+  { ticker: 'AAPL', tableId: 1, ostium: 'AAPL', bucket: 'equities', name: 'Apple' },
+  { ticker: 'TSLA', tableId: 3, ostium: 'TSLA', bucket: 'equities', name: 'Tesla' },
+  { ticker: 'EUR', tableId: 4, ostium: 'EUR', bucket: 'fx', name: 'Euro / US dollar' },
+  { ticker: 'XAU', tableId: 5, ostium: 'XAU', bucket: 'gold_metals', name: 'Gold / US dollar' },
+];
+
+/** Highest table id the deployed pricer holds. */
+export const MAX_TABLE_ID = 5;
 
 /**
  * Storage slot 0 of the Stylus pricer is `table_ids`, a Solidity-layout `bytes`: for 31 bytes or
- * fewer the ids sit left-aligned and the last byte is length * 2. The deployed pricer holds
- * `0x02 00..00 02` (one market, SPY); a quote over more markets sets this word in the call's state.
+ * fewer the ids sit left-aligned and the last byte is length * 2. The six-table pricer holds
+ * `0x000102030405 00..00 0c`; a quote over other markets sets this word in the call's state.
  */
 export function tableIdsSlot(ids: readonly number[]): `0x${string}` {
   if (ids.length === 0 || ids.length > 31) throw new Error('1 to 31 markets');
-  if (ids.some((i) => !Number.isInteger(i) || i < 0 || i > 3)) throw new Error('table ids are 0 to 3');
+  if (ids.some((i) => !Number.isInteger(i) || i < 0 || i > MAX_TABLE_ID)) throw new Error(`table ids are 0 to ${MAX_TABLE_ID}`);
   const data = ids.map((i) => i.toString(16).padStart(2, '0')).join('');
   return `0x${data.padEnd(62, '0')}${(ids.length * 2).toString(16).padStart(2, '0')}`;
 }

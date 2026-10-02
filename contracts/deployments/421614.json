@@ -85,6 +85,28 @@
         "reason": "Sourcify's Solidity route does not take Stylus/WASM bytecode; cargo stylus verify needs a reproducible Docker build, and no Docker daemon was available for this deploy."
       }
     },
+    "PricerSixTables": {
+      "address": "0x1674ecf8d236a91c484c11fd11a21601837f7e37",
+      "role": "on-chain premium (Rust/Stylus) with six scenario tables: ids [0 NVDA, 1 AAPL, 2 SPY, 3 TSLA, 4 EUR/USD, 5 XAU/USD]; equity tables in whole bps, EUR/USD and XAU/USD in hundredths of a bp. Priced by the /quote page; the Treaty keeps the Pricer above.",
+      "deployTx": "0xde0087850f9f0d24b01b5075b41092c983d91f92f341a6e1ddd93f2da62156c0",
+      "block": 314878472,
+      "deployedAt": "2026-10-02",
+      "constructorArgs": {
+        "table_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "size": "28,233 bytes compressed, 2 fragments",
+      "verification": {
+        "method": "unverified",
+        "reason": "Sourcify's Solidity route does not take Stylus/WASM bytecode; cargo stylus verify needs a reproducible Docker build, and no Docker daemon was available for this deploy."
+      }
+    },
     "PricerSolidityTwin": {
       "address": "0x6aAf1b58939d55d1142a34aE02903bB788E9e771",
       "role": "Solidity twin of the pricer, deployed only for the gas comparison in docs/pricing.md; Treaty does not use it",

@@ -3,7 +3,7 @@
 import { parseAbi } from 'viem';
 
 export { treatyAbi, capacityAbi, pricerAbi } from './generated';
-export { TREATY_ADDRESS, PRICER_ADDRESS, FEED_ADDRESSES, BOOKS } from './generated';
+export { TREATY_ADDRESS, PRICER_ADDRESS, QUOTE_PRICER_ADDRESS, FEED_ADDRESSES, BOOKS } from './generated';
 export type { BookConfig } from './generated';
 
 export const erc20Abi = parseAbi([

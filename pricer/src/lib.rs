@@ -25,7 +25,7 @@
 //! Per-market table ids: `table_ids` (constructor-supplied, `bytes`-backed storage) picks each
 //! market's scenario table explicitly, matching `Pricer.sol`'s `marketTableIds` array
 //! (docs/security/capacity-review.md "Re-review (2026-09-28)" P2). Table id 0 NVDA, 1 AAPL, 2
-//! SPY, 3 TSLA. The constructor reverts if `table_ids` is empty or any entry is not 0-3, and
+//! SPY, 3 TSLA, 4 EUR/USD, 5 XAU/USD. The constructor reverts if `table_ids` is empty or any entry is not 0-5, and
 //! `price_core` itself (../core/src/lib.rs) reverts with `MissingTable` if a market index has no
 //! entry in the stored array: there is no positional or id-value fallback left that could
 //! silently price an unmapped or out-of-range market on the NVDA table.
@@ -60,7 +60,7 @@ sol_storage! {
 impl Pricer {
     /// `table_ids[i]` picks market i's scenario table explicitly (docs/security/capacity-review
     /// .md "Re-review (2026-09-28)" P2). Fails closed at deploy time: `table_ids` must be
-    /// nonempty and every entry must be a real table id (0 NVDA, 1 AAPL, 2 SPY, 3 TSLA), so a
+    /// nonempty and every entry must be a real table id (0 NVDA, 1 AAPL, 2 SPY, 3 TSLA, 4 EUR/USD, 5 XAU/USD), so a
     /// misconfigured deploy reverts immediately instead of silently mis-pricing on the first
     /// quote.
     #[constructor]
@@ -68,7 +68,7 @@ impl Pricer {
         if table_ids.is_empty() {
             return Err(b"BadTableId".to_vec());
         }
-        if table_ids.iter().any(|&id| id > 3) {
+        if table_ids.iter().any(|&id| id > pricer_core::MAX_TABLE_ID) {
             return Err(b"BadTableId".to_vec());
         }
         self.table_ids.set_bytes(&table_ids);
@@ -313,6 +313,36 @@ mod test {
         assert_eq!(premium, U256::from(1_676_722_158u64), "must be the SPY acceptance number, not NVDA's");
     }
 
+    /// The deployed entrypoint prices FX and gold: constructor ids [4, 5] (EUR/USD, XAU/USD), one
+    /// quote over both, equal to the two standalone figures from scripts/fx_gold_fair_premium.py
+    /// when the second market is flat, and the long EUR layer equal to the Python premium.
+    #[test]
+    fn test_quote_prices_the_eur_and_xau_tables() {
+        let vm = TestVM::default();
+        let mut contract = Pricer::from(&vm);
+        contract.constructor(alloc::vec![4, 5]).unwrap();
+        assert_eq!(contract.table_id_at(U256::from(1u64)).unwrap(), 5u8);
+
+        let feed_addr = Address::from([9u8; 20]);
+        vm.mock_static_call(
+            feed_addr,
+            latest_round_data_calldata(),
+            Ok(encode_round_data(U256::from(1u64), I256::try_from(500_000_000i128).unwrap(), U256::ZERO, U256::ZERO, U256::from(1u64))),
+        );
+        let ret = U256::from(2_000_000_000u64);
+        let lim = U256::from(20_000_000_000u64);
+        let eur = I256::try_from(2_000_000_000_000i128).unwrap();
+        let (premium, el, tvar95) =
+            contract.quote(alloc::vec![eur, I256::ZERO], alloc::vec![feed_addr, feed_addr], ret, lim).unwrap();
+        assert_eq!((premium, el, tvar95), (U256::from(1_977_298_772u64), U256::from(1_648_960_317u64), U256::from(12_082_160_000u64)));
+
+        let xau = I256::try_from(1_000_000_000_000i128).unwrap();
+        let (premium, ..) = contract
+            .quote(alloc::vec![I256::ZERO, xau], alloc::vec![feed_addr, feed_addr], U256::from(5_000_000_000u64), U256::from(30_000_000_000u64))
+            .unwrap();
+        assert_eq!(premium, U256::from(1_635_305_987u64));
+    }
+
     #[test]
     fn test_table_id_at_reverts_out_of_range() {
         let vm = TestVM::default();
@@ -334,14 +364,14 @@ mod test {
         assert!(result.is_err(), "empty table_ids must revert the constructor");
     }
 
-    /// P2 re-review: any table id above 3 must revert the constructor, not silently price that
+    /// P2 re-review: any table id above 5 must revert the constructor, not silently price that
     /// market on NVDA (the old catch-all fallback).
     #[test]
     fn test_constructor_reverts_on_bad_table_id() {
         let vm = TestVM::default();
         let mut contract = Pricer::from(&vm);
-        let result = contract.constructor(alloc::vec![0, 4]);
-        assert!(result.is_err(), "table id 4 must revert the constructor, not silently price on NVDA");
+        let result = contract.constructor(alloc::vec![0, 6]);
+        assert!(result.is_err(), "table id 6 must revert the constructor, not silently price on NVDA");
     }
 
     /// P2 re-review: a quote spanning more markets than the deployed `table_ids` covers must

@@ -6,6 +6,8 @@ export const CHAIN_ID = 421614 as const;
 export const RPC_URL = "https://sepolia-rollup.arbitrum.io/rpc" as const;
 export const TREATY_ADDRESS = "0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807" as Address;
 export const PRICER_ADDRESS = "0xbe99217180a5fcb83372375b0928c971dfa71f88" as Address;
+/** The six-table Stylus pricer the quote desk prices on: equities, EUR/USD and XAU/USD. */
+export const QUOTE_PRICER_ADDRESS = "0x1674ecf8d236a91c484c11fd11a21601837f7e37" as Address;
 export const FEED_ADDRESSES = ["0x4fB44FC4FA132d1a846Bd4143CcdC5a9f1870b06"] as Address[];
 
 export type BookConfig = {

@@ -13,12 +13,27 @@ test('table-id slot matches what the deployed pricer holds and what the override
   assert.equal(tableIdsSlot([2]), '0x0200000000000000000000000000000000000000000000000000000000000002');
   // The four-table override used to price [SPY, NVDA, AAPL, TSLA] through the live pricer.
   assert.equal(tableIdsSlot([0, 1, 2, 3]), '0x0001020300000000000000000000000000000000000000000000000000000008');
-  assert.throws(() => tableIdsSlot([4]));
+  // cast storage 0x1674ecf8d236a91c484c11fd11a21601837f7e37 0 on Arbitrum Sepolia, 2026-10-02: the six-table pricer.
+  assert.equal(tableIdsSlot([0, 1, 2, 3, 4, 5]), '0x000102030405000000000000000000000000000000000000000000000000000c');
+  assert.equal(tableIdsSlot([4, 5]), '0x0405000000000000000000000000000000000000000000000000000000000004');
+  assert.throws(() => tableIdsSlot([6]));
   assert.throws(() => tableIdsSlot([]));
 });
 
 test('priced markets map to the pricer table ids', () => {
-  assert.deepEqual(PRICED_MARKETS.map((m) => [m.ticker, m.tableId]), [['SPY', 2], ['NVDA', 0], ['AAPL', 1], ['TSLA', 3]]);
+  assert.deepEqual(PRICED_MARKETS.map((m) => [m.ticker, m.tableId]), [['SPY', 2], ['NVDA', 0], ['AAPL', 1], ['TSLA', 3], ['EUR', 4], ['XAU', 5]]);
+  assert.deepEqual(PRICED_MARKETS.map((m) => m.bucket), ['equities', 'equities', 'equities', 'equities', 'fx', 'gold_metals']);
+});
+
+test('every priced market, FX and gold included, has an Ostium pair in the committed read with a non-zero vault side', () => {
+  const snap = JSON.parse(readFileSync(new URL('../data/ostium-oi-by-group.json', import.meta.url), 'utf8'));
+  for (const m of PRICED_MARKETS) {
+    const p = snap.pairs.find((x: { from: string; subgraphGroup: string }) => x.from === m.ostium && bucketOf(x.subgraphGroup, x.from) === m.bucket);
+    assert.ok(p, `${m.ticker}: no Ostium pair in bucket ${m.bucket}`);
+    assert.notEqual(vaultExposureUsd(p.longOI_usd, p.shortOI_usd), 0, m.ticker);
+  }
+  const eur = snap.pairs.find((x: { from: string }) => x.from === 'EUR');
+  assert.equal(Math.round(vaultExposureUsd(eur.longOI_usd, eur.shortOI_usd)), -2_483_100); // traders net long, vault short
 });
 
 test('grouping the committed Ostium snapshot reproduces its own group totals', () => {

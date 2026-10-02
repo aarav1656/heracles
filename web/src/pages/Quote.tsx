@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePublicClient } from 'wagmi';
 import type { PublicClient } from 'viem';
-import { FEED_ADDRESSES, PRICER_ADDRESS, TREATY_ADDRESS, pricerAbi, treatyAbi } from '../abi';
+import { FEED_ADDRESSES, QUOTE_PRICER_ADDRESS, TREATY_ADDRESS, pricerAbi, treatyAbi } from '../abi';
 import { explorer } from '../chain';
 import { Money } from '../components/Money';
 import { fmtUsdg, parseExposure, parseUsdg, short } from '../lib/format';
 import { explainError } from '../lib/revert';
 import { readOstium, type OstiumRead } from '../lib/ostium';
 import { bucketOf, groupOi, vaultExposureUsd, type Bucket, type PairOi } from '../lib/ostium-core';
-import { PRICED_MARKETS, composeQuoteMail, tableIdsSlot } from '../lib/quote-core';
+import { PRICED_CLASSES, PRICED_MARKETS, composeQuoteMail, tableIdsSlot, type PricedClass, type PricedMarket } from '../lib/quote-core';
 import snapshot from '../data/ostium-oi-by-group.json';
 
 const CLASSES: { key: Bucket; name: string }[] = [
@@ -29,10 +29,10 @@ const SNAPSHOT: OstiumRead = { block: BigInt(snapshot.block), pairs: snapPairs, 
 const whole = (v: number) => Math.round(v).toLocaleString('en-US');
 const usd = (v: bigint) => Number(v) / 1e6;
 
-/** Exposure inputs for the four priced names from one Ostium read: the vault's side, whole dollars. */
+/** Exposure inputs for the priced markets from one Ostium read: the vault's side, whole dollars. */
 function prefill(read: OstiumRead): string[] {
   return PRICED_MARKETS.map((m) => {
-    const p = read.pairs.find((x) => x.from === m.ostium && x.bucket === 'equities');
+    const p = read.pairs.find((x) => x.from === m.ostium && x.bucket === m.bucket);
     return whole(p ? vaultExposureUsd(p.longUsd, p.shortUsd) : 0);
   });
 }
@@ -44,7 +44,8 @@ function defaultTerms(exposures: string[]) {
   return { retention: whole(round(gross * 0.0025, 100)), limit: whole(round(gross * 0.02, 1000)) };
 }
 
-type Quote = { premium: bigint; premiumJunior: bigint; el: bigint; tvar: bigint; block: bigint; floor: bigint; jun: bigint };
+type ClassQuote = { key: PricedClass; name: string; premium: bigint; el: bigint; exposure: bigint };
+type Quote = { premium: bigint; premiumJunior: bigint; el: bigint; tvar: bigint; block: bigint; floor: bigint; jun: bigint; classes: ClassQuote[] };
 
 export function QuotePage() {
   useEffect(() => { document.title = 'Heracles: quote a weekend layer'; }, []);
@@ -89,7 +90,7 @@ export function QuotePage() {
       const exp = exposures.map((x) => parseExposure(x.replace(/,/g, '')));
       const ret = parseUsdg(retention.replace(/,/g, ''));
       const lim = parseUsdg(limit.replace(/,/g, ''));
-      if (exp.every((e) => e === 0n)) return { error: 'Enter a non-zero exposure for at least one name.' };
+      if (exp.every((e) => e === 0n)) return { error: 'Enter a non-zero exposure for at least one market.' };
       if (lim === 0n) return { error: 'The limit must be above zero.' };
       const share = terms.data?.juniorShareBps ?? 3000n;
       const jun = (lim * share) / 10000n;
@@ -107,18 +108,27 @@ export function QuotePage() {
   useEffect(() => {
     if (!client || parsed.error || !parsed.exp) { setQuote(undefined); setQuoteError(undefined); return; }
     const used = parsed.exp.map((e, i) => ({ e, m: PRICED_MARKETS[i] })).filter((x) => x.e !== 0n);
-    const exp = used.map((x) => x.e);
-    const feeds = used.map(() => FEED_ADDRESSES[0]);
-    // The deployed pricer holds one table id on chain; this call sets the ids for the names quoted.
-    const stateOverride = [{ address: PRICER_ADDRESS, stateDiff: [{ slot: `0x${'0'.repeat(64)}` as const, value: tableIdsSlot(used.map((x) => x.m.tableId)) }] }];
+    // The deployed pricer holds its six table ids on chain; each call sets the ids for the markets it quotes.
+    const price = (subset: { e: bigint; m: PricedMarket }[], block: bigint, limitArg: bigint) =>
+      client.readContract({
+        address: QUOTE_PRICER_ADDRESS, abi: pricerAbi, functionName: 'quote',
+        args: [subset.map((x) => x.e), subset.map(() => FEED_ADDRESSES[0]), parsed.ret!, limitArg], blockNumber: block,
+        stateOverride: [{ address: QUOTE_PRICER_ADDRESS, stateDiff: [{ slot: `0x${'0'.repeat(64)}` as const, value: tableIdsSlot(subset.map((x) => x.m.tableId)) }] }],
+      });
     setQuoting(true);
     const t = setTimeout(async () => {
       try {
         const block = await client.getBlockNumber();
-        const q = (limitArg: bigint) => client.readContract({ address: PRICER_ADDRESS, abi: pricerAbi, functionName: 'quote', args: [exp, feeds, parsed.ret!, limitArg], blockNumber: block, stateOverride });
-        const [total, junior] = await Promise.all([q(parsed.lim!), q(parsed.jun!)]);
+        const present = PRICED_CLASSES.map((c) => ({ ...c, subset: used.filter((x) => x.m.bucket === c.key) })).filter((c) => c.subset.length > 0);
+        const [total, junior, ...byClass] = await Promise.all([
+          price(used, block, parsed.lim!), price(used, block, parsed.jun!), ...present.map((c) => price(c.subset, block, parsed.lim!)),
+        ]);
         const floor = (parsed.lim! * (terms.data?.minRateBps ?? 50n)) / 10000n;
-        setQuote({ premium: total[0], premiumJunior: junior[0], el: total[1], tvar: total[2], block, floor, jun: parsed.jun! });
+        const classes = present.map((c, i) => ({
+          key: c.key, name: c.name, premium: byClass[i][0] >= floor ? byClass[i][0] : floor, el: byClass[i][1],
+          exposure: c.subset.reduce((sum, x) => sum + (x.e < 0n ? -x.e : x.e), 0n),
+        }));
+        setQuote({ premium: total[0], premiumJunior: junior[0], el: total[1], tvar: total[2], block, floor, jun: parsed.jun!, classes });
         setQuoteError(undefined);
       } catch (e) {
         setQuote(undefined);
@@ -140,7 +150,7 @@ export function QuotePage() {
       premium: usd(premium), expectedLoss: usd(quote.el), tvar95: usd(quote.tvar),
       firstLossPremium: usd(premiumJunior), seniorPremium: usd(premium - premiumJunior),
       firstLossLimit: usd(quote.jun), seniorLimit: usd(parsed.lim - quote.jun),
-      pricer: PRICER_ADDRESS, block: quote.block.toLocaleString('en-US'), page: `${window.location.origin}/quote`,
+      pricer: QUOTE_PRICER_ADDRESS, block: quote.block.toLocaleString('en-US'), page: `${window.location.origin}/quote`,
     });
   }, [quote, premium, premiumJunior, parsed]);
 
@@ -168,9 +178,11 @@ export function QuotePage() {
             </p>
             <div className="xrows">
               {PRICED_MARKETS.map((m, i) => {
-                const p = read.pairs.find((x) => x.from === m.ostium && x.bucket === 'equities');
+                const p = read.pairs.find((x) => x.from === m.ostium && x.bucket === m.bucket);
+                const first = PRICED_MARKETS.findIndex((x) => x.bucket === m.bucket) === i;
                 return (
                   <div className="xrow" key={m.ticker}>
+                    {first && <h3 className="xclass">{PRICED_CLASSES.find((c) => c.key === m.bucket)?.name}</h3>}
                     <div className="field">
                       <label htmlFor={`x-${m.ticker}`}>{m.ticker} <span className="xname">{m.name}</span></label>
                       <input
@@ -229,7 +241,7 @@ export function QuotePage() {
                 );
               })}
             </div>
-            <p className="src">USD, same read as above. The pricer's scenario tables are the four equity names, each from 504 real weekends.</p>
+            <p className="src">USD, same read as above. The pricer holds six scenario tables, four equity names plus EUR/USD and XAU/USD, each from 504 real weekends.</p>
           </section>
         </div>
 
@@ -248,6 +260,16 @@ export function QuotePage() {
                 <div className="row"><span className="k" title="Expected loss">Expected payout a weekend</span><span className="v"><Money v={usd(quote.el)} /></span></div>
                 <div className="row"><span className="k" title="TVaR95: the mean payout over the worst 25 of 504 weekends">Average in the worst 5% of weekends</span><span className="v"><Money v={usd(quote.tvar)} /></span></div>
               </div>
+              <h3 className="label sub">By asset class</h3>
+              <div className="rows figs">
+                {quote.classes.map((c) => (
+                  <div className="row" key={c.key}>
+                    <span className="k">{c.name}<small>{fmtUsdg(c.exposure)} gross exposure, expected payout {usd(c.el).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</small></span>
+                    <span className="v"><Money v={usd(c.premium)} /></span>
+                  </div>
+                ))}
+              </div>
+              <p className="src">Each class priced alone on the same retention and limit.</p>
               <h3 className="label sub">Tranche split</h3>
               <div className="rows figs">
                 <div className="row"><span className="k">First-loss tranche<small>takes the first {fmtUsdg(quote.jun)} of any payout</small></span><span className="v"><Money v={usd(premiumJunior)} /></span></div>
@@ -262,9 +284,9 @@ export function QuotePage() {
               </div>
               <p className="note">Opens your mail program with the quote as plain text. Nothing is sent from this page.</p>
               <p className="src">
-                Priced by the Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a> at
+                Priced by the Stylus pricer <a href={explorer.address(QUOTE_PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(QUOTE_PRICER_ADDRESS)}</a> at
                 Arbitrum Sepolia block <a href={explorer.block(quote.block)} target="_blank" rel="noreferrer">#{quote.block.toLocaleString('en-US')}</a>.
-                The call sets the pricer's table ids for the names above (NVDA 0, AAPL 1, SPY 2, TSLA 3) and reads volatility from the
+                The call sets the pricer's table ids for the markets above (NVDA 0, AAPL 1, SPY 2, TSLA 3, EUR/USD 4, XAU/USD 5) and reads volatility from the
                 SPY/USD feed <a href={explorer.address(FEED_ADDRESSES[0])} target="_blank" rel="noreferrer">{short(FEED_ADDRESSES[0])}</a>.
               </p>
             </>

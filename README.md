@@ -23,6 +23,7 @@ Live app: https://heracles-virid-seven.vercel.app (reads the book below from the
 | USDC first-loss vault | [`0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB`](https://sepolia.arbiscan.io/address/0xb293E54AffE056708FCc54D0D1d16A7B7aD1FebB) | ERC-4626, takes the first 30% of every USDC layer |
 | USDC senior vault | [`0x510e4266C55a58879d3a77eC02e77CCF1602cA39`](https://sepolia.arbiscan.io/address/0x510e4266C55a58879d3a77eC02e77CCF1602cA39) | ERC-4626, takes the other 70% |
 | Pricer (Rust/Stylus) | [`0xbe99217180a5fcb83372375b0928c971dfa71f88`](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) | on-chain premium, measured 8.01x less L2 execution gas than the Solidity twin |
+| Six-table pricer (Rust/Stylus) | [`0x1674ecf8d236a91c484c11fd11a21601837f7e37`](https://sepolia.arbiscan.io/address/0x1674ecf8d236a91c484c11fd11a21601837f7e37) | prices equities, EUR/USD and XAU/USD on chain; the `/quote` desk reads it |
 | USDG (Paxos testnet) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) | settlement asset of the USDG book |
 | USDC (Circle testnet) | [`0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`](https://sepolia.arbiscan.io/address/0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d) | settlement asset of the USDC book |
 
@@ -42,6 +43,13 @@ Every wiring read on the Treaty checks out live: `pricer()` points at the Pricer
 (USDC), `markets(0)` is the SPY/USD feed, `juniorShareBps()` reads 3000 and
 `minRateOnLineBps()` reads 50. The Pricer itself reads back its one configured market:
 `tableIdAt(0)` returns `2` (SPY), `tableIdAt(1)` reverts `MissingTable`.
+
+The six-table pricer is deploy tx
+[`0xde008785...a62156c0`](https://sepolia.arbiscan.io/tx/0xde0087850f9f0d24b01b5075b41092c983d91f92f341a6e1ddd93f2da62156c0),
+block 314,878,472 (2026-10-02), constructed with table ids `[0,1,2,3,4,5]`: NVDA, AAPL, SPY, TSLA,
+EUR/USD and XAU/USD. `tableIdAt(0..5)` read back `0..5` and `tableIdAt(6)` reverts `MissingTable`.
+`scripts/verify_pricer_fx_gold.py` reads its live EUR/USD and XAU/USD quotes and matches them to the
+micro-USDG against `scripts/fx_gold_fair_premium.py`, which prices from the `.gaps.txt` files alone.
 
 Live cycle on the USDC book (2026-10-01): a writer deposited 4.5 USDC into the first-loss vault
 and 10.5 USDC into the senior vault, and layer 0 bound against the book, long 200 USDC of
@@ -174,12 +182,18 @@ block 314,660,728, and the native build of the same `pricer_core` returns the id
 triple. `scripts/replay_weekend.py` regenerates `web/src/data/replay.json` from the chain,
 and `web/src/lib/replay.test.ts` recomputes the result from the stored rounds.
 
-`/quote` takes a vault's net weekend exposure on the four names the pricer holds tables
-for, prefilled from Ostium's live open interest (the same read as
+`/quote` takes a vault's net weekend exposure on the six markets the pricer holds tables
+for (four equity names, EUR/USD and gold), prefilled from Ostium's live open interest (the same read as
 `evidence/gap-tables/ostium-oi-by-group.json`, repeated in the browser, with a Refresh
 button), plus a retention and a limit. It calls the deployed Stylus pricer for the premium,
-the expected payout and TVaR95, quotes the first-loss slice of the limit separately for the
+the expected payout and TVaR95, shows the premium and expected payout of each asset class priced alone on the same terms, quotes the first-loss slice of the limit separately for the
 tranche split, and builds a plain-text `mailto:` quote that makes no network call.
+
+FX and gold are priced from 504 real weekends each, measured at the Treaty's own fixing minutes
+(Friday 16:00 ET to Monday 9:30 ET) from Dukascopy 1-minute bars: EUR/USD spans 2016-12-23 to
+2026-09-25 and XAU/USD 2016-06-03 to 2026-09-25, with holiday weekends left out rather than
+filled. Against a second source (Yahoo Finance hourly bars, 20 sampled weekends each) the largest
+difference is 11.3 bps for EUR/USD and 29.29 bps for gold, the latter against COMEX futures.
 
 ## Why Arbitrum
 

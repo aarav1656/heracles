@@ -214,11 +214,11 @@ contract PricerTest is Test {
         new Pricer(new uint8[](0));
     }
 
-    /// P2 re-review: any configured table id above 3 must revert the constructor, not silently
+    /// P2 re-review: any configured table id above 5 must revert the constructor, not silently
     /// fall back to pricing that market on NVDA.
     function test_constructorRevertsOnBadTableId() public {
         vm.expectRevert(Pricer.BadTableId.selector);
-        new Pricer(_ids1(4));
+        new Pricer(_ids1(6));
     }
 
     /// P2 re-review: `tableIdAt` must revert past the configured array, not fall back to the old

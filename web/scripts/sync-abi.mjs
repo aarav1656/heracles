@@ -23,13 +23,14 @@ const deployment = JSON.parse(
 
 const treaty = deployment.contracts.Treaty.address;
 const pricer = deployment.contracts.Pricer.address;
+const quotePricer = deployment.contracts.PricerSixTables.address;
 const feeds = deployment.contracts.Treaty.constructorArgs.feeds;
 const books = deployment.books;
 const rpc = deployment.rpc;
 const chainId = deployment.chainId;
 
 const isAddr = (a) => /^0x[0-9a-fA-F]{40}$/.test(a);
-for (const [label, a] of Object.entries({ treaty, pricer })) {
+for (const [label, a] of Object.entries({ treaty, pricer, quotePricer })) {
   if (!isAddr(a)) throw new Error(`Bad ${label} address in 421614.json: ${a}`);
 }
 if (!Array.isArray(feeds) || feeds.length === 0) throw new Error('No feeds in 421614.json');
@@ -55,6 +56,8 @@ export const CHAIN_ID = ${chainId} as const;
 export const RPC_URL = ${JSON.stringify(rpc)} as const;
 export const TREATY_ADDRESS = ${JSON.stringify(treaty)} as Address;
 export const PRICER_ADDRESS = ${JSON.stringify(pricer)} as Address;
+/** The six-table Stylus pricer the quote desk prices on: equities, EUR/USD and XAU/USD. */
+export const QUOTE_PRICER_ADDRESS = ${JSON.stringify(quotePricer)} as Address;
 export const FEED_ADDRESSES = ${JSON.stringify(feeds)} as Address[];
 
 export type BookConfig = {

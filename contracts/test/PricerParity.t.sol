@@ -13,6 +13,8 @@ import {oneTableId} from "./utils/TableIdsFixture.sol";
 contract PricerParityTest is Test {
     Pricer pricer;
     Pricer spyPricer;
+    Pricer eurPricer;
+    Pricer xauPricer;
     string constant CLI_BIN = "../pricer/pricer_cli/target/release/pricer-cli";
 
     function setUp() public {
@@ -20,6 +22,12 @@ contract PricerParityTest is Test {
         uint8[] memory spyIds = new uint8[](1);
         spyIds[0] = 2;
         spyPricer = new Pricer(spyIds);
+        uint8[] memory eurIds = new uint8[](1);
+        eurIds[0] = 4;
+        eurPricer = new Pricer(eurIds);
+        uint8[] memory xauIds = new uint8[](1);
+        xauIds[0] = 5;
+        xauPricer = new Pricer(xauIds);
         string[] memory build = new string[](5);
         build[0] = "cargo";
         build[1] = "build";
@@ -119,6 +127,53 @@ contract PricerParityTest is Test {
         assertEq(spyPremium, rsSpyPremium, "SPY Sol/Rust premium mismatch");
         assertEq(spyEl, rsSpyEl, "SPY Sol/Rust el mismatch");
         assertEq(spyTvar, rsSpyTvar, "SPY Sol/Rust tvar95 mismatch");
+    }
+
+    /// FX and gold tables (ids 4 and 5, centi-bps): Solidity equals Rust exactly, and both equal the
+    /// figures scripts/fx_gold_fair_premium.py computes from the .gaps.txt files with no shared code.
+    function test_fxAndGoldTablesMatchRustAndPython() public {
+        uint256[] memory scale = new uint256[](1);
+        scale[0] = 1_000_000;
+        int256[] memory exposure = new int256[](1);
+
+        exposure[0] = 2_000_000_000_000;
+        (uint256 p, uint256 el, uint256 tv) = eurPricer.priceCore(exposure, scale, 2_000_000_000, 20_000_000_000);
+        (uint256 rp, uint256 rel, uint256 rtv) = _runCli(2_000_000_000_000, 1_000_000, 2_000_000_000, 20_000_000_000, "4");
+        assertEq(p, 1_977_298_772, "EUR premium vs python");
+        assertEq(el, 1_648_960_317, "EUR el vs python");
+        assertEq(tv, 12_082_160_000, "EUR tvar95 vs python");
+        assertEq(p, rp, "EUR premium Sol/Rust");
+        assertEq(el, rel, "EUR el Sol/Rust");
+        assertEq(tv, rtv, "EUR tvar95 Sol/Rust");
+
+        exposure[0] = 1_000_000_000_000;
+        (p, el, tv) = xauPricer.priceCore(exposure, scale, 5_000_000_000, 30_000_000_000);
+        (rp, rel, rtv) = _runCli(1_000_000_000_000, 1_000_000, 5_000_000_000, 30_000_000_000, "5");
+        assertEq(p, 1_635_305_987, "XAU premium vs python");
+        assertEq(el, 1_173_676_587, "XAU el vs python");
+        assertEq(tv, 15_794_200_000, "XAU tvar95 vs python");
+        assertEq(p, rp, "XAU premium Sol/Rust");
+        assertEq(el, rel, "XAU el Sol/Rust");
+        assertEq(tv, rtv, "XAU tvar95 Sol/Rust");
+    }
+
+    /// Fuzzed parity on the FX table at scales other than 1.0x, where the unit division order matters.
+    function testFuzz_fxPriceCoreMatchesRustExactly(int256 rawExposure, uint256 volScalePpm, uint256 retention, uint256 limit)
+        public
+    {
+        int256 exposure = _boundMag(rawExposure, 5_000_000_000_000);
+        volScalePpm = bound(volScalePpm, 1_000_000, 3_000_000);
+        retention = bound(retention, 0, 1_000_000_000_000);
+        limit = bound(limit, 0, 1_000_000_000_000);
+        int256[] memory expArr = new int256[](1);
+        expArr[0] = exposure;
+        uint256[] memory scaleArr = new uint256[](1);
+        scaleArr[0] = volScalePpm;
+        (uint256 a, uint256 b, uint256 c) = xauPricer.priceCore(expArr, scaleArr, retention, limit);
+        (uint256 ra, uint256 rb, uint256 rc) = _runCli(exposure, volScalePpm, retention, limit, "5");
+        assertEq(a, ra, "premium mismatch");
+        assertEq(b, rb, "el mismatch");
+        assertEq(c, rc, "tvar95 mismatch");
     }
 
     /// Fuzzed single-market parity across exposure, retention, limit and volatility scale, bounded

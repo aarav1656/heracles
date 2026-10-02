@@ -414,6 +414,7 @@ a, .btn, .key, .markets button, .top nav a, .field input { transition: color 120
 .xrows { margin-top: 16px; border-top: 2px solid var(--ink); }
 .xrow { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 4px 24px; align-items: end; padding: 14px 0; border-bottom: 1px solid var(--rule); }
 .xrow .hint { padding-bottom: 12px; }
+.xclass { grid-column: 1 / -1; margin: 0; font: 600 11.5px/16px var(--sans); letter-spacing: 0.6px; text-transform: uppercase; color: var(--ink-3); }
 .xname { font: 400 13px/16px var(--sans); letter-spacing: 0; text-transform: none; color: var(--ink-3); margin-left: 6px; }
 .xterms { margin-top: 20px; max-width: 560px; }
 .xterms + .src { margin-top: 12px; }
