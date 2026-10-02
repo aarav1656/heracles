@@ -48,6 +48,7 @@ const s = await treatyState(client);
 | `guardCheck` | `OIGuard.check`, decoding `PremiumOverBudget(premium, budget, currentPremium)` |
 | `bindPreview` | simulates `Treaty.bind` from any account; `maxPremium` defaults to the premium the Treaty charges, floor included |
 | `treatyState` | Treaty terms plus `totalAssets` and `locked` of all four vaults |
+| `vaultCoverState` | the deployed VaultCover: book, covered legs and their bound, guard premium against budget, premium funds, `renewCover` simulated from the owner, every open and close |
 
 ABIs are typed `as const` from the contract build, so argument and return types follow the Solidity signatures. They, the addresses and the plain-word error glosses are generated from `contracts/deployments/421614.json` and `contracts/out` by `web/scripts/sync-abi.mjs` and bundled at build time, the same source the web app reads.
 

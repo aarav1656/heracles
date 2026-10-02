@@ -96,6 +96,7 @@ export function Overview() {
             <p className="src">Live quote from the Stylus pricer at block <a href={explorer.block(quote.data.block)} target="_blank" rel="noreferrer">#{quote.data.block.toLocaleString('en-US')}</a>.</p>
           )}
           <p className="note">Have USDG? <Link to="/write">Back this cover and earn its premium</Link>.</p>
+          <p className="note">Run a perp venue? <Link to="/sdk">Wire your LP vault's book to the guard and a weekly cover</Link>.</p>
         </aside>
       </div>
 

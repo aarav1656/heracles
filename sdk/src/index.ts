@@ -16,11 +16,13 @@ import {
   pricerAbi,
   treatyAbi,
 } from '../../web/src/abi/generated';
+export { readVaultCover as vaultCoverState, type VaultCoverRead, type BookMove } from '../../web/src/lib/vaultCover';
 export { MARKETS, bookVector, guardCheck, quoteBook as quote, quoteText, type Book, type GuardCheck, type Quote, type Ticker } from '../../web/src/lib/book';
 import { explainError, type Explained } from '../../web/src/lib/revert';
 import { ERROR_WORDS } from '../../web/src/lib/treaty';
 
 export { BOOKS, FEED_ADDRESSES, OIGUARD_ADDRESS, PRICER_ADDRESS, QUOTE_PRICER_ADDRESS, TREATY_ADDRESS };
+export { VAULT_COVER_ADDRESS, vaultCoverAbi } from '../../web/src/abi/generated';
 export { capacityAbi, oiGuardAbi, pricerAbi, treatyAbi, ERROR_WORDS };
 export type { Explained };
 export { parseExposure, parseUsdg, fmtUsdg2 } from '../../web/src/lib/format';

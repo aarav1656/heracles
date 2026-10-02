@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ERROR_WORDS, FEED_ADDRESSES, MARKETS, OIGUARD_ADDRESS, PRICER_ADDRESS, QUOTE_PRICER_ADDRESS, TREATY_ADDRESS,
-  bindPreview, bookVector, guardCheck, heraclesClient, pricerAbi, quote, treatyAbi, treatyState,
+  bindPreview, bookVector, guardCheck, heraclesClient, pricerAbi, quote, treatyAbi, treatyState, vaultCoverState, VAULT_COVER_ADDRESS,
 } from '../dist/index.mjs';
 
 const client = heraclesClient();
@@ -105,4 +105,19 @@ test('bindPreview decodes the Treaty revert into words', async () => {
   if (timestamp >= cutoff - 86_400n) assert.equal(real.ok === false && real.name, 'BadTiming');
   else assert.notEqual(real.ok === false && real.name, 'BadTiming');
   assert.ok(real.maxPremium >= (10_000_000_000n * 50n) / 10_000n);
+});
+
+test('vaultCoverState reads the deployed VaultCover: the gUSDC book, the covered SPY leg and the renew clock', async () => {
+  const v = await vaultCoverState(client);
+  assert.equal(v.net.length, 6);
+  assert.equal(v.net[2], 153_309_000_000n, 'SPY leg mirrored from the gUSDC book');
+  assert.deepEqual(v.coverIndex, [2n]);
+  assert.deepEqual(v.coverExposure, [v.net[2]]);
+  assert.ok(v.moves.filter((m) => m.kind === 'open').length >= 5, 'five legs opened through the guard');
+  assert.ok(v.bookPremium > 0n && v.bookPremium <= v.budget);
+  const { timestamp } = await client.getBlock({ blockNumber: v.block });
+  const [cutoff] = await client.readContract({ address: '0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807', abi: treatyAbi, functionName: 'weekWindow', args: [timestamp] });
+  const windowOpen = timestamp < cutoff - 86_400n && v.coveredUntil <= timestamp;
+  if (!windowOpen) assert.equal(v.renew.ok === false && v.renew.name, v.coveredUntil > timestamp ? 'AlreadyCovered' : 'BadTiming');
+  assert.equal(VAULT_COVER_ADDRESS, '0xe6085fF7Bf0d37c0Cd865072cA5B434F2c228997');
 });
