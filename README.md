@@ -25,6 +25,7 @@ Live app: https://heracles-virid-seven.vercel.app (reads the book below from the
 | Pricer (Rust/Stylus) | [`0xbe99217180a5fcb83372375b0928c971dfa71f88`](https://sepolia.arbiscan.io/address/0xbe99217180a5fcb83372375b0928c971dfa71f88) | on-chain premium, 4.29x to 8.00x less L2 execution gas than the Solidity twin from eight markets to one, block 314,661,533, `python3 scripts/measure_pricer_gas.py` |
 | Six-table pricer (Rust/Stylus) | [`0x1674ecf8d236a91c484c11fd11a21601837f7e37`](https://sepolia.arbiscan.io/address/0x1674ecf8d236a91c484c11fd11a21601837f7e37) | prices equities, EUR/USD and XAU/USD on chain; the `/quote` desk reads it |
 | OIGuard | [`0x96BE263EfD057167E01a212BBd076904391217Ce`](https://sepolia.arbiscan.io/address/0x96be263efd057167e01a212bbd076904391217ce#code) | a perp venue's open-interest check over the six-table pricer, source verified on Arbiscan |
+| VaultCover | [`0xe6085fF7Bf0d37c0Cd865072cA5B434F2c228997`](https://sepolia.arbiscan.io/address/0xe6085ff7bf0d37c0cd865072ca5b434f2c228997#code) | a perp LP vault's book on chain: guarded opens, free closes, one Treaty layer a week bound on that book, source verified on Arbiscan |
 | USDG (Paxos testnet) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/address/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) | settlement asset of the USDG book |
 | USDC (Circle testnet) | [`0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`](https://sepolia.arbiscan.io/address/0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d) | settlement asset of the USDC book |
 
@@ -243,6 +244,20 @@ OIGuard 0x96BE263EfD057167E01a212BBd076904391217Ce, open NVDA long 600,000.00
 
 The `/sdk` page runs the same check live with a market and size of your choosing, and prints what
 the CLI prints at the stamped block.
+
+`contracts/src/VaultCover.sol` wires a vault end to end. The venue reports every change to the
+vault's net exposure: `open` asks the OIGuard first and records it only inside the owner's premium
+budget, and `close` only moves a market toward zero and never calls the pricer, so a stalled pricer
+cannot stop a vault from closing risk. Once a week a keeper calls `renewCover`, which binds one
+Treaty layer on the book as it stands, pays the premium from the contract up to the owner's
+ceiling, and holds each covered leg to the size and side the layer bound until its Monday open
+(`BeyondCover(market, next, bound)` otherwise). `claimCover` sends payouts and refunds to the
+owner. The deployed VaultCover carries gTrade's gUSDC book as read from Arbitrum One block
+511,007,816, opened leg by leg through the live guard by `scripts/mirror-gusdc-book.sh` (five
+opens, each receipt `0x1` with the `net()` move asserted), plus a forced open of 2,000,000 more
+NVDA short that the guard refused on chain (status `0x0`, `PremiumOverBudget(6,684.63, 4,000,
+153.42)`), a close, and a 10 USDG premium budget. `renewCover` binds once the bind window opens on
+Monday 00:00 UTC. 15 tests run on the real Treaty and vaults, and 10 of 10 mutants are killed.
 
 ## Why Arbitrum
 

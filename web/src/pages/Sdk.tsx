@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePublicClient } from 'wagmi';
 import type { PublicClient } from 'viem';
-import { OIGUARD_ADDRESS, QUOTE_PRICER_ADDRESS, oiGuardAbi } from '../abi';
+import { OIGUARD_ADDRESS, QUOTE_PRICER_ADDRESS, TREATY_ADDRESS, VAULT_COVER_ADDRESS, VAULT_COVER_REFUSED, oiGuardAbi } from '../abi';
+import { useQuery } from '@tanstack/react-query';
 import { explorer } from '../chain';
 import { Stamp } from '../components/Stamp';
 import { MARKETS, guardCheck, quoteBook, quoteText, type Book, type GuardCheck, type Quote, type Ticker } from '../lib/book';
-import { fmtUsdg2, parseExposure, short } from '../lib/format';
+import { fmtStamp, fmtUsdg2, parseExposure, short } from '../lib/format';
+import { readVaultCover } from '../lib/vaultCover';
 import { PRICED_MARKETS } from '../lib/quote-core';
 import { explainError } from '../lib/revert';
 
@@ -17,6 +19,7 @@ const name = (t: Ticker) => PRICED_MARKETS.find((m) => m.ticker === t)!.name;
 const whole = (v: bigint) => Math.round(Number(v < 0n ? -v : v) / 1e6).toLocaleString('en-US');
 const side = (v: bigint) => `${v < 0n ? 'short' : 'long'} ${whole(v)}`;
 const usdArg = (v: bigint) => (Number(v) / 1e6).toString();
+const refused = (VAULT_COVER_REFUSED.revert.match(/\d+/g) ?? []).map((x) => fmtUsdg2(BigInt(x)));
 
 type Read = { retention: bigint; limit: bigint; before: Quote; verdict: GuardCheck; open: [Ticker, bigint] };
 
@@ -177,6 +180,8 @@ export function SdkPage() {
 int256[] memory book = vaultNetExposure();   // six markets, table order
 guard.check(book, marketIndex, -traderSize); // reverts PremiumOverBudget(premium, budget, currentPremium)`}</pre>
           </section>
+
+          <VaultSection />
         </div>
 
         <aside className="ticket" aria-labelledby="gt-h">
@@ -209,5 +214,71 @@ guard.check(book, marketIndex, -traderSize); // reverts PremiumOverBudget(premiu
         </aside>
       </div>
     </>
+  );
+}
+
+/** VaultCover on Arbitrum Sepolia, read live: the book, the leg the Treaty covers, the guard and the weekly renew. */
+function VaultSection() {
+  const client = usePublicClient() as PublicClient | undefined;
+  const v = useQuery({ queryKey: ['vault-cover'], enabled: !!client, queryFn: () => readVaultCover(client!), refetchInterval: 60_000, retry: 1 });
+  const d = v.data;
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  const held = d ? d.coveredUntil > now : false;
+  const coveredBy = (i: number) => (d ? d.coverIndex.findIndex((x) => Number(x) === i) : -1);
+  return (
+    <section aria-labelledby="vc-h">
+      <h2 id="vc-h" className="section">A vault wired end to end</h2>
+      <p className="prose">
+        VaultCover <a href={`${explorer.address(VAULT_COVER_ADDRESS)}#code`} target="_blank" rel="noreferrer">{short(VAULT_COVER_ADDRESS)}</a> holds
+        a perp LP vault's book on chain. The venue calls <span className="file">open</span> for every new position, so the OIGuard prices the
+        book after it first; <span className="file">close</span> only moves a market toward zero and never waits on the pricer. Once a week a
+        keeper calls <span className="file">renewCover</span>, which binds a layer on the Treaty <a href={explorer.address(TREATY_ADDRESS)} target="_blank" rel="noreferrer">{short(TREATY_ADDRESS)}</a> on
+        the book as it stands, paid from the contract's premium budget, and until that layer's Monday open the covered legs cannot grow past
+        what it covers. The book below is gTrade's gUSDC vault as read from Arbitrum One block 511,007,816, opened leg by leg through the live guard.
+      </p>
+      {v.isError && <p className="err"><b>Read failed.</b>{explainError(v.error).words}</p>}
+      {!d ? (!v.isError && <p className="pending">Reading the vault…</p>) : (
+        <>
+          <div className="rows figs">
+            {MARKETS.map((t, i) => {
+              const n = d.net[i];
+              const ci = coveredBy(i);
+              if (n === 0n && ci < 0) return null;
+              return (
+                <div className="row" key={t}>
+                  <span className="k">{t}<small>{ci >= 0 ? `covered by Treaty market ${ci}` : 'not listed on the Treaty, guarded only'}</small></span>
+                  <span className="v">
+                    {n === 0n ? 'flat' : side(n)}
+                    {ci >= 0 && <small>{held ? `bound ${side(d.bound[i])} until ${fmtStamp(d.coveredUntil)}` : `layer would bind ${side(d.coverExposure[ci])}`}</small>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="rows figs">
+            <div className="row"><span className="k">Guard premium for this book<small>budget {fmtUsdg2(d.budget)}</small></span><span className="v">{fmtUsdg2(d.bookPremium)}</span></div>
+            <div className="row"><span className="k">Weekly layer<small>vault keeps the first {fmtUsdg2(d.retention)}</small></span><span className="v">{fmtUsdg2(d.limit)} of cover</span></div>
+            <div className="row"><span className="k">Premium budget held<small>ceiling {fmtUsdg2(d.maxPremium)} a week</small></span><span className="v">{fmtUsdg2(d.funds)} USDG</span></div>
+            <div className="row">
+              <span className="k">renewCover right now<small>{d.renew.ok ? 'simulated from the owner' : d.renew.words}</small></span>
+              <span className="v">{d.renew.ok ? `binds layer ${d.renew.id}` : d.renew.name}</span>
+            </div>
+          </div>
+          <div className="rows figs">
+            {d.moves.map((m) => (
+              <div className="row" key={m.tx}>
+                <span className="k">{m.kind} {MARKETS[m.market]} {m.delta < 0n ? '−' : '+'}{whole(m.delta)}<small>{m.premium !== undefined ? `guard premium ${fmtUsdg2(m.premium)}` : 'no pricer call'}</small></span>
+                <span className="v"><a href={explorer.tx(m.tx)} target="_blank" rel="noreferrer">{short(m.tx)}</a><small>net {side(m.net)}</small></span>
+              </div>
+            ))}
+            <div className="row">
+              <span className="k">open {VAULT_COVER_REFUSED.market} −{whole(BigInt(-VAULT_COVER_REFUSED.delta))}<small>refused on chain: PremiumOverBudget, premium {refused[0]} over budget {refused[1]}, book today {refused[2]}</small></span>
+              <span className="v"><a href={explorer.tx(VAULT_COVER_REFUSED.tx)} target="_blank" rel="noreferrer">{short(VAULT_COVER_REFUSED.tx)}</a><small>status 0x0</small></span>
+            </div>
+          </div>
+          <Stamp block={d.block} />
+        </>
+      )}
+    </section>
   );
 }

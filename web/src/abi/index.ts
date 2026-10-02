@@ -2,8 +2,8 @@
 // contract ABIs). Regenerate generated.ts with: npm run sync-abi
 import { parseAbi } from 'viem';
 
-export { treatyAbi, capacityAbi, pricerAbi, oiGuardAbi } from './generated';
-export { TREATY_ADDRESS, PRICER_ADDRESS, QUOTE_PRICER_ADDRESS, OIGUARD_ADDRESS, FEED_ADDRESSES, BOOKS } from './generated';
+export { treatyAbi, capacityAbi, pricerAbi, oiGuardAbi, vaultCoverAbi } from './generated';
+export { TREATY_ADDRESS, PRICER_ADDRESS, QUOTE_PRICER_ADDRESS, OIGUARD_ADDRESS, VAULT_COVER_ADDRESS, VAULT_COVER_DEPLOY_BLOCK, VAULT_COVER_REFUSED, FEED_ADDRESSES, BOOKS } from './generated';
 export type { BookConfig } from './generated';
 
 export const erc20Abi = parseAbi([

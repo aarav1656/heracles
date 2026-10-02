@@ -145,6 +145,169 @@
         "limit": 200000000000,
         "premiumBudget": 4000000000
       }
+    },
+    "VaultCoverSuperseded": {
+      "address": "0xB459AC78fD74468e5F3FaD8EDCdA4909098BEc83",
+      "role": "a perp LP vault's book on chain: open asks the OIGuard, close only moves toward zero, a keeper's renewCover binds one Treaty layer a week on that book up to maxPremium, claimCover pays the owner",
+      "deployTx": "0xcddd6bf61a8e7ccfa34a35cc6731188530a111b823e770b33d9967f25c53e49c",
+      "block": 315024397,
+      "deployedAt": "2026-10-02",
+      "verification": {
+        "method": "etherscan (arbiscan)",
+        "status": "Pass - Verified"
+      },
+      "constructorArgs": {
+        "treaty": "0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807",
+        "guard": "0x96BE263EfD057167E01a212BBd076904391217Ce",
+        "book": 0,
+        "coverIndex": [
+          2
+        ],
+        "owner": "0x39ef83fbB0BA61A5b4169fF5ce21Fd89e25aab37"
+      },
+      "setup": {
+        "venue": "deployer",
+        "keeper": "deployer",
+        "retention": 3000000000,
+        "limit": 80000000,
+        "maxPremium": 10000000
+      },
+      "gusdcBookMirror": {
+        "source": "web/src/data/gains-gusdc-book.json, Arbitrum One block 511007816",
+        "script": "scripts/mirror-gusdc-book.sh",
+        "opens": [
+          {
+            "market": "NVDA",
+            "delta": -23665000000,
+            "tx": "0x786858dcc5c3aa5e029cc7f5a965907cb5d257c5f482590c343e210aefa3358d",
+            "block": 315024734
+          },
+          {
+            "market": "AAPL",
+            "delta": 1569000000,
+            "tx": "0xc354ad7ff94c2177577812553753d114ee304a84e7f6556c504f7931fd54236e",
+            "block": 315024828
+          },
+          {
+            "market": "SPY",
+            "delta": 153309000000,
+            "tx": "0x114f40e9350001ffb7910f4f3f14e515da2ac4d490e39c9487ad7d2ee0070ab5",
+            "block": 315024854
+          },
+          {
+            "market": "EUR",
+            "delta": -3000000000,
+            "tx": "0x7ceaa6f60dbd9bcd9f19045bf19bd32e9a01c05c8817958af297a55f6f05b3f9",
+            "block": 315024885
+          },
+          {
+            "market": "XAU",
+            "delta": -10093000000,
+            "tx": "0x90beba91cac58c9a003eedfd1b643dc138a47f5f405867b8b0e09ed9fcabbd80",
+            "block": 315024920
+          }
+        ]
+      },
+      "refusedOpen": {
+        "market": "NVDA",
+        "delta": -2000000000000,
+        "tx": "0xfa6a43a4ddb9a2b40216f834062ebcf89ecb5d3eba68cf94392b28b4ae4d9667",
+        "block": 315025002,
+        "status": "0x0",
+        "revert": "PremiumOverBudget(6684626801, 4000000000, 153424657)"
+      },
+      "close": {
+        "market": "XAU",
+        "delta": 5000000000,
+        "tx": "0xd50970aab7e82f119b4cc0044e5bdc6a80a367ae47524ab9be803f1187d12d65",
+        "block": 315025030
+      },
+      "supersededBy": "0xe6085fF7Bf0d37c0Cd865072cA5B434F2c228997 (commit 2fc9262: covered legs held to the bound layer until expiry)"
+    },
+    "VaultCover": {
+      "address": "0xe6085fF7Bf0d37c0Cd865072cA5B434F2c228997",
+      "commit": "2fc9262",
+      "role": "a perp LP vault's book on chain: open asks the OIGuard, close only moves toward zero, a keeper's renewCover binds one Treaty layer a week on that book up to maxPremium, claimCover pays the owner; from a renew until that layer's Monday expiry, covered legs stay within the bound size and side (BeyondCover)",
+      "deployTx": "0x7f4865607c85f6db4a098fa5cd36af3c616c6a500f429e76b353d5f2501be8ae",
+      "block": 315026329,
+      "deployedAt": "2026-10-02",
+      "verification": {
+        "method": "etherscan (arbiscan)",
+        "status": "Pass - Verified"
+      },
+      "constructorArgs": {
+        "treaty": "0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807",
+        "guard": "0x96BE263EfD057167E01a212BBd076904391217Ce",
+        "book": 0,
+        "coverIndex": [
+          2
+        ],
+        "owner": "0x39ef83fbB0BA61A5b4169fF5ce21Fd89e25aab37"
+      },
+      "setup": {
+        "venue": "deployer",
+        "keeper": "deployer",
+        "retention": 3000000000,
+        "limit": 80000000,
+        "maxPremium": 10000000
+      },
+      "gusdcBookMirror": {
+        "source": "web/src/data/gains-gusdc-book.json, Arbitrum One block 511007816",
+        "script": "scripts/mirror-gusdc-book.sh",
+        "opens": [
+          {
+            "market": "NVDA",
+            "delta": -23665000000,
+            "tx": "0x3a0f2fd6bf165411ed69fe9315017a9b598a67f7e534a75e53e735d2a61cd9fc",
+            "block": 315026519
+          },
+          {
+            "market": "AAPL",
+            "delta": 1569000000,
+            "tx": "0xe3a941bc5e47b471cdc53c8e9363e59b286b47bbbf27c48e3ed7fc0d2241f452",
+            "block": 315026553
+          },
+          {
+            "market": "SPY",
+            "delta": 153309000000,
+            "tx": "0xbbcf1946cc112a8c026b98f11af7e64475e45939027f5231f0462f43fc07d1e1",
+            "block": 315026584
+          },
+          {
+            "market": "EUR",
+            "delta": -3000000000,
+            "tx": "0xdcd9eeb9fe77858659ad3ed6c93342a80380bafb64c7b5cb0c0fc9a09c8581dc",
+            "block": 315026622
+          },
+          {
+            "market": "XAU",
+            "delta": -10093000000,
+            "tx": "0x01e930bb0e7999619db2d96f074baddb3abf76895f3fb852c1cf0a6c93e467c7",
+            "block": 315026647
+          }
+        ]
+      },
+      "refusedOpen": {
+        "market": "NVDA",
+        "delta": -2000000000000,
+        "tx": "0x3da60c238032015b2d7af5562db996708955c5f9521a4c327feac5456ba360b5",
+        "block": 315026672,
+        "status": "0x0",
+        "revert": "PremiumOverBudget(6684626801, 4000000000, 153424657)"
+      },
+      "close": {
+        "market": "XAU",
+        "delta": 5000000000,
+        "tx": "0x7e95d3c7d87ebc8ffe7c2e9ae0adede23ea88f94f291c81e72bddcf6bbf1bbfd",
+        "block": 315026702
+      },
+      "premiumBudget": {
+        "amount": 10000000,
+        "tx": "0x2850486860496e29bd373a59ce323fdeb46685077ce324dc6ebd740bc5ec3667",
+        "from": "deployer, faucet USDG",
+        "note": "the team's premium budget for the first renewCover"
+      },
+      "renew": "eth_call renewCover reverts BadTiming until the bind window opens Mon 2026-10-05 00:00 UTC"
     }
   },
   "constructorArgs": {
