@@ -12,9 +12,9 @@ Named for the hero whose labours carried a weight beyond his own strength, Herac
 
 ## Problem
 
-Ostium's OLP and affiliate buffer carry $10,970,922 of Arbitrum TVL against $12,672,734 of Arbitrum open interest, and Gains Network's gTrade gUSDC vault carries $11,982,353 of Arbitrum TVL against $32,852,654 of all-chain open interest (`api.llama.fi/protocol/ostium`, `api.llama.fi/summary/open-interest/ostium`, `api.llama.fi/protocol/gains-network`, read 2026-09-26).
+When a stock, index or FX perp gaps over the weekend, someone on the venue holds first loss. On gTrade it is the gUSDC vault: "Vaults serve as a counterparty to all trades made on the platform" (docs.gains.trade). At Arbitrum One block 511,007,816 that vault was long 153,309 USDC of SPY and short 23,665 of NVDA, 10,093 of gold and 3,000 of EUR/USD, against 4,569,046 USDC of `totalAssets()` (gTrade Diamond `getPairOiAfterV10Collateral` and `getPairOisBeforeV10Collateral` for USDC, collateral 3). On Ostium it is the junior buffer posted by "Ostium affiliates and strategic partners", which absorbs trader PnL "first, in full" while directional flow is hedged offchain (docs.ostium.com/vault/overview). Ostium's OLP "is not a counterparty to directional flow" (docs.ostium.com/protocol/how-ostium-works).
 
-Ostium's open interest already runs 1.16x its Arbitrum TVL. A single concentrated weekend gap on one market can exceed the buffer that is supposed to absorb trader PnL first. Ostium's own docs describe exactly this failure mode: the buffer "absorbs trader PnL first, in full," and once it is gone the vault "enters UC state and automatically blocks new deposits" (docs.ostium.com/vault/overview). There is no third party standing behind that buffer today. Heracles is that party: a portfolio layer bought by the vault treasury itself, not a single-ticker note sold to a pool operator covering only its own inventory.
+gTrade carries $7,464,963 of Arbitrum TVL against $2,394,444 of open interest, and Ostium $8,589,418 against $10,298,257 (`api.llama.fi/protocol/<name>`, `api.llama.fi/summary/open-interest/<name>`, read 2026-10-02). Neither the gUSDC vault nor the buffer has a third party standing behind its weekend gap today. Heracles is that party: a portfolio layer bought by the holder of first loss, priced on chain, paid by itself at the Monday round.
 
 ## How it works
 
@@ -62,8 +62,8 @@ Built by aarav1656.
 
 https://heracles-virid-seven.vercel.app
 
-- `/replay`: the weekend of 25 September 2026 run through the layer math. Ostium's vault loses 10,910.41 on the gap, a 3,000 retention and 20,000 limit layer pays 7,910.41 (6,000.00 first-loss, 1,910.41 senior), and the Stylus pricer quotes 3,025.37 for it.
-- `/quote`: a risk lead's net weekend exposure, prefilled from Ostium's live open interest, priced by the deployed Stylus pricer with the tranche split and a plain-text quote to send.
+- `/replay`: the weekend of 25 September 2026 run through the layer math. The side opposite Ostium's traders, whose PnL Ostium's junior buffer pays first, loses 10,910.41 on the gap, a 3,000 retention and 20,000 limit layer pays 7,910.41 (6,000.00 first-loss, 1,910.41 senior), and the Stylus pricer quotes 3,025.37 for it.
+- `/quote`: a risk lead's net weekend exposure, prefilled from the gTrade gUSDC vault's live book on Arbitrum One, priced by the deployed Stylus pricer with the tranche split and a plain-text quote to send.
 
 ## Deployed (Arbitrum Sepolia)
 

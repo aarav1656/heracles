@@ -88,20 +88,30 @@ since Sepolia has no equivalent feed.
 
 ## Buyer
 
-The risk lead of a stock or RWA perp exchange's LP vault on Arbitrum One: the vault or
-first-loss buffer is the counterparty to stock, index and FX positions carried through
-the weekend.
+Whoever holds first loss when a perp venue's stock, index and FX positions gap over the
+weekend, on Arbitrum One. Two venues, two different holders:
 
-| Buyer | Arbitrum TVL | Open interest | Source |
+- **gTrade's gUSDC vault.** Gains' docs: "Vaults serve as a counterparty to all trades made on
+  the platform" (docs.gains.trade/liquidity-farming-pools/gtoken-vaults). The vault holds the
+  opposite of what traders hold net on every pair, so a Monday gap against it is paid out of
+  gUSDC. Its book is on chain and `/quote` opens with it: at Arbitrum One block 511,007,816,
+  `getPairOiAfterV10Collateral(3, pair)` plus `getPairOisBeforeV10Collateral(3, pair)` on
+  the gTrade Diamond `0xFF162c694eAA571f685030649814282eA457f169` put the vault long 153,309
+  USDC of SPY, short 23,665 of NVDA, short 10,093 of gold, short 3,000 of EUR/USD and long
+  1,569 of AAPL, and gUSDC `0xd3443ee1e91aF28e5FB858Fbd0D72A63bA8046E0` holds 4,569,046 USDC
+  (`totalAssets()`, same block; `npm run save-gains` in `web/` re-reads it).
+- **Ostium's buffer providers.** Ostium's OLP "is not a counterparty to directional flow";
+  directional flow is hedged offchain through partners such as Jump, and "a buffer of junior
+  capital posted by Ostium affiliates and strategic partners" absorbs trader PnL "first, in
+  full" before any loss reaches OLP (docs.ostium.com/protocol/how-ostium-works,
+  docs.ostium.com/vault/overview). The buffer carries the gap between a Monday open and the
+  daily settlement that brings the hedge's matching gain back on chain, and any shortfall
+  in that hedge. That is the layer a buffer provider buys.
+
+| Venue | Arbitrum TVL | Open interest | Source |
 |---|---|---|---|
-| Ostium (OLP senior + affiliate buffer junior) | $10,970,922 | $12,672,734 (Arbitrum only) | `api.llama.fi/protocol/ostium`, `api.llama.fi/summary/open-interest/ostium`, read 2026-09-26 |
-| Gains Network gTrade (gUSDC vault) | $11,982,353 on Arbitrum | $32,852,654 all chains | same endpoints, `gains-network` |
-
-Ostium's open interest already exceeds its Arbitrum TVL, 1.16x, on the buyer table above:
-a single concentrated weekend gap can exceed the buffer that is supposed to absorb trader
-PnL before it does. Ostium's own docs say the buffer "absorbs trader PnL first, in full";
-once it is gone the vault "enters UC state and automatically blocks new deposits"
-(docs.ostium.com/vault/overview).
+| Gains Network gTrade (gUSDC vault) | $7,464,963 | $2,394,444 | `api.llama.fi/protocol/gains-network`, `api.llama.fi/summary/open-interest/gains-network`, read 2026-10-02 14:14 UTC |
+| Ostium (junior buffer under OLP) | $8,589,418 | $10,298,257 | same endpoints, `ostium` |
 
 Not a single-ticker note sold to a pool operator covering that pool's own inventory.
 Heracles sells a portfolio excess-of-loss layer to a vault treasury on Arbitrum One
@@ -112,13 +122,13 @@ instrument, a cross-market design rather than a single-ticker one.
 
 ## Why would a vault buy this
 
-Ostium and Gains Network gTrade are the named buyers, sized from their public TVL and
-open-interest numbers above.
+The gUSDC vault and Ostium's buffer providers are the named buyers, sized from the chain
+reads and the TVL and open-interest numbers above.
 
 **What they use today, and why it does not close the gap:**
 
-- **Ostium's own affiliate buffer capital** absorbs trader PnL first, but it is sized off
-  the pool's own capital, not off a weekend-gap distribution; once the buffer is spent the
+- **Junior buffer capital** (Ostium's affiliates and strategic partners) absorbs trader
+  PnL first, but it is sized for "expected daily PnL swings", not off a weekend-gap distribution; once the buffer is spent the
   vault "enters UC state and automatically blocks new deposits"
   (docs.ostium.com/vault/overview). It is the same capital taking every other risk the
   pool already carries, not capital set aside specifically for the Friday-to-Monday gap.
@@ -181,7 +191,7 @@ bound, matching the live on-chain quote (1,676.722158 USDG) to the last cent. Ag
 ## Replay and quote
 
 `/replay` runs the weekend of Friday 25 September 2026 through the Treaty's layer math. The
-vault is Ostium's LP vault, the other side of every trader. Open interest on SPX, NVDA, TSLA
+side opposite Ostium's traders, whose PnL Ostium's junior buffer pays first. Open interest on SPX, NVDA, TSLA
 and AAPL is read from TradingStorage at Arbitrum One block 508,866,731 (Friday 20:00:00 UTC),
 each side valued at Ostium's last trade before the close. The Chainlink round in effect at the
 close and the first round at or after Monday's 13:30 UTC open give the gap per name: SPY
@@ -196,9 +206,9 @@ triple. `scripts/replay_weekend.py` regenerates `web/src/data/replay.json` from 
 and `web/src/lib/replay.test.ts` recomputes the result from the stored rounds.
 
 `/quote` takes a vault's net weekend exposure on the six markets the pricer holds tables
-for (four equity names, EUR/USD and gold), prefilled from Ostium's live open interest (the same read as
-`evidence/gap-tables/ostium-oi-by-group.json`, repeated in the browser, with a Refresh
-button), plus a retention and a limit. It calls the deployed Stylus pricer for the premium,
+for (four equity names, EUR/USD and gold), prefilled from the gTrade gUSDC vault's live book on Arbitrum One (the
+read above, repeated in the browser at the latest block with a Refresh button, and saved in
+`web/src/data/gains-gusdc-book.json`), plus a retention and a limit. It calls the deployed Stylus pricer for the premium,
 the expected payout and TVaR95, shows the premium and expected payout of each asset class priced alone on the same terms, quotes the first-loss slice of the limit separately for the
 tranche split, and builds a plain-text `mailto:` quote that makes no network call.
 

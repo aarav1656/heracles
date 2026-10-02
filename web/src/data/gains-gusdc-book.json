@@ -1,0 +1,48 @@
+{
+  "chain": "Arbitrum One (42161)",
+  "block": 511007816,
+  "readAt": "2026-10-02T14:12:36.061Z",
+  "diamond": "0xFF162c694eAA571f685030649814282eA457f169",
+  "gToken": "0xd3443ee1e91aF28e5FB858Fbd0D72A63bA8046E0",
+  "collateralIndex": 3,
+  "calls": "pairs(i), getPairOiAfterV10Collateral(3, i) + getPairOisBeforeV10Collateral(3, i) on the Diamond; totalAssets() on gUSDC",
+  "vaultAssetsUsd": 4569046.092605,
+  "pairs": [
+    {
+      "ticker": "SPY",
+      "pairIndex": 86,
+      "longUsd": 1281.400092,
+      "shortUsd": 154590.423795
+    },
+    {
+      "ticker": "NVDA",
+      "pairIndex": 65,
+      "longUsd": 23664.800081,
+      "shortUsd": 0.000037
+    },
+    {
+      "ticker": "AAPL",
+      "pairIndex": 58,
+      "longUsd": 30.500001,
+      "shortUsd": 1600
+    },
+    {
+      "ticker": "TSLA",
+      "pairIndex": 63,
+      "longUsd": 0,
+      "shortUsd": 0
+    },
+    {
+      "ticker": "EUR",
+      "pairIndex": 21,
+      "longUsd": 3000.006313,
+      "shortUsd": 0.007808
+    },
+    {
+      "ticker": "XAU",
+      "pairIndex": 90,
+      "longUsd": 189896.030406,
+      "shortUsd": 179803.196582
+    }
+  ]
+}

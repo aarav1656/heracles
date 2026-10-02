@@ -1,8 +1,8 @@
-// The quote desk's pure pieces: which Ostium pair feeds which pricer table and asset class, the storage word that
+// The quote desk's pure pieces: which pricer table and asset class each market prices on, the storage word that
 // sets the pricer's per-market table ids for one call, and the plain-text quote for a mail.
 
 export type PricedClass = 'equities' | 'fx' | 'gold_metals';
-export type PricedMarket = { ticker: 'SPY' | 'NVDA' | 'AAPL' | 'TSLA' | 'EUR' | 'XAU'; tableId: number; ostium: string; bucket: PricedClass; name: string };
+export type PricedMarket = { ticker: 'SPY' | 'NVDA' | 'AAPL' | 'TSLA' | 'EUR' | 'XAU'; tableId: number; bucket: PricedClass; name: string };
 
 /** The asset classes the pricer holds a scenario table for, in the order the quote desk lists them. */
 export const PRICED_CLASSES: readonly { key: PricedClass; name: string }[] = [
@@ -11,14 +11,14 @@ export const PRICED_CLASSES: readonly { key: PricedClass; name: string }[] = [
   { key: 'gold_metals', name: 'Gold' },
 ];
 
-/** Table ids as deployed in pricer/core: 0 NVDA, 1 AAPL, 2 SPY, 3 TSLA, 4 EUR/USD, 5 XAU/USD. Ostium carries SPX, not SPY. */
+/** Table ids as deployed in pricer/core: 0 NVDA, 1 AAPL, 2 SPY, 3 TSLA, 4 EUR/USD, 5 XAU/USD. */
 export const PRICED_MARKETS: readonly PricedMarket[] = [
-  { ticker: 'SPY', tableId: 2, ostium: 'SPX', bucket: 'equities', name: 'S&P 500 (Ostium SPX)' },
-  { ticker: 'NVDA', tableId: 0, ostium: 'NVDA', bucket: 'equities', name: 'NVIDIA' },
-  { ticker: 'AAPL', tableId: 1, ostium: 'AAPL', bucket: 'equities', name: 'Apple' },
-  { ticker: 'TSLA', tableId: 3, ostium: 'TSLA', bucket: 'equities', name: 'Tesla' },
-  { ticker: 'EUR', tableId: 4, ostium: 'EUR', bucket: 'fx', name: 'Euro / US dollar' },
-  { ticker: 'XAU', tableId: 5, ostium: 'XAU', bucket: 'gold_metals', name: 'Gold / US dollar' },
+  { ticker: 'SPY', tableId: 2, bucket: 'equities', name: 'S&P 500 ETF' },
+  { ticker: 'NVDA', tableId: 0, bucket: 'equities', name: 'NVIDIA' },
+  { ticker: 'AAPL', tableId: 1, bucket: 'equities', name: 'Apple' },
+  { ticker: 'TSLA', tableId: 3, bucket: 'equities', name: 'Tesla' },
+  { ticker: 'EUR', tableId: 4, bucket: 'fx', name: 'Euro / US dollar' },
+  { ticker: 'XAU', tableId: 5, bucket: 'gold_metals', name: 'Gold / US dollar' },
 ];
 
 /** Highest table id the deployed pricer holds. */

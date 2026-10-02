@@ -30,7 +30,7 @@ export function Replay() {
     <>
       <header className="argument row">
         <h1 className="title">Replay: weekend of {day(weekend.friday)}</h1>
-        <p className="lede">Ostium's LP vault carried this book through the weekend. Here is what the gap cost it, what a layer would have paid, and what the Stylus pricer quotes for that layer.</p>
+        <p className="lede">Ostium's traders held this book through the weekend, and Ostium's junior buffer pays their PnL first, in full, before its offchain hedge settles. Here is what the gap cost the side opposite them, what a layer would have paid, and what the Stylus pricer quotes for that layer.</p>
       </header>
 
       <div className="desk">
@@ -110,7 +110,7 @@ export function Replay() {
               <a href={`https://arbiscan.io/block/${snapshot.block}`} target="_blank" rel="noreferrer">#{snapshot.block.toLocaleString('en-US')}</a>{' '}
               ({fmtStamp(snapshot.blockTimestamp)}), read from TradingStorage{' '}
               <a href={`https://arbiscan.io/address/${snapshot.contract}`} target="_blank" rel="noreferrer">{short(snapshot.contract)}</a>, each side valued at Ostium's last trade before the close.
-              The vault is the other side of every trader, so its position is the opposite of the traders' net. A name that gains on the gap adds nothing to the loss: the layer sums only the legs that moved against the vault.
+              The side opposite the traders holds the reverse of their net, and on Ostium that PnL lands on the junior buffer first (docs.ostium.com/vault/overview). A name that gains on the gap adds nothing to the loss: the layer sums only the legs that moved against the vault.
             </p>
           </section>
 

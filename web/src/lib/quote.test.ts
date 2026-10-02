@@ -1,4 +1,4 @@
-// Guards the quote desk's pure pieces against the chain and the committed Ostium snapshot.
+// Guards the quote desk's pure pieces against the chain and the committed gUSDC book read.
 //   node --test --experimental-strip-types src/lib/quote.test.ts
 
 import assert from 'node:assert/strict';
@@ -6,7 +6,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 
 const { tableIdsSlot, composeQuoteMail, PRICED_MARKETS } = await import('./quote-core.ts');
-const { bucketOf, groupOi, vaultExposureUsd } = await import('./ostium-core.ts');
+const { vaultExposureUsd, GAINS_PAIRS } = await import('./gains.ts');
 
 test('table-id slot matches what the deployed pricer holds and what the override test priced', () => {
   // cast storage 0xbe99...1f88 0 on Arbitrum Sepolia, 2026-10-01: one market, SPY (id 2).
@@ -25,36 +25,24 @@ test('priced markets map to the pricer table ids', () => {
   assert.deepEqual(PRICED_MARKETS.map((m) => m.bucket), ['equities', 'equities', 'equities', 'equities', 'fx', 'gold_metals']);
 });
 
-test('every priced market, FX and gold included, has an Ostium pair in the committed read with a non-zero vault side', () => {
-  const snap = JSON.parse(readFileSync(new URL('../data/ostium-oi-by-group.json', import.meta.url), 'utf8'));
-  for (const m of PRICED_MARKETS) {
-    const p = snap.pairs.find((x: { from: string; subgraphGroup: string }) => x.from === m.ostium && bucketOf(x.subgraphGroup, x.from) === m.bucket);
-    assert.ok(p, `${m.ticker}: no Ostium pair in bucket ${m.bucket}`);
-    assert.notEqual(vaultExposureUsd(p.longOI_usd, p.shortOI_usd), 0, m.ticker);
-  }
-  const eur = snap.pairs.find((x: { from: string }) => x.from === 'EUR');
-  assert.equal(Math.round(vaultExposureUsd(eur.longOI_usd, eur.shortOI_usd)), -2_483_100); // traders net long, vault short
-});
-
-test('grouping the committed Ostium snapshot reproduces its own group totals', () => {
-  const snap = JSON.parse(readFileSync(new URL('../data/ostium-oi-by-group.json', import.meta.url), 'utf8'));
-  assert.ok(snap.pairs.length >= 80, 'snapshot must hold the real pair list');
-  const pairs = snap.pairs.map((p: { pairIndex: number; from: string; to: string; subgraphGroup: string; longOI_usd: number; shortOI_usd: number }) => ({
-    pairIndex: p.pairIndex, from: p.from, to: p.to, bucket: bucketOf(p.subgraphGroup, p.from), longUsd: p.longOI_usd, shortUsd: p.shortOI_usd,
-  }));
-  const g = groupOi(pairs);
-  for (const [name, want] of Object.entries(snap.groups) as [string, { net_usd: number; pairs: number }][]) {
-    assert.ok(Math.abs((g as Record<string, { netUsd: number }>)[name].netUsd - want.net_usd) < 0.01, name);
-    assert.equal((g as Record<string, { pairs: number }>)[name].pairs, want.pairs, name);
-  }
-  assert.equal(bucketOf('commodities', 'XAU'), 'gold_metals');
-  assert.equal(bucketOf('commodities', 'BRENT'), 'commodities');
-  assert.equal(bucketOf('etf', 'XLE'), 'equities');
+test('every priced market has its gTrade pair in the committed gUSDC read', () => {
+  const snap = JSON.parse(readFileSync(new URL('../data/gains-gusdc-book.json', import.meta.url), 'utf8'));
+  assert.ok(snap.block > 511_000_000, 'an Arbitrum One block');
+  assert.deepEqual(snap.pairs.map((p: { ticker: string }) => p.ticker), PRICED_MARKETS.map((m) => m.ticker));
+  assert.deepEqual(GAINS_PAIRS.map((p) => [p.ticker, p.pairIndex]), [['SPY', 86], ['NVDA', 65], ['AAPL', 58], ['TSLA', 63], ['EUR', 21], ['XAU', 90]]);
+  const side = (t: string) => {
+    const p = snap.pairs.find((x: { ticker: string }) => x.ticker === t);
+    return Math.round(vaultExposureUsd(p.longUsd, p.shortUsd));
+  };
+  // gTrade Diamond at Arbitrum One block 511,007,816: traders net short SPY, net long NVDA.
+  assert.equal(side('SPY'), 153_309);
+  assert.equal(side('NVDA'), -23_665);
+  assert.ok(snap.vaultAssetsUsd > 1_000_000, 'gUSDC totalAssets');
 });
 
 test('the vault holds the opposite side of the traders', () => {
   assert.equal(vaultExposureUsd(453_222 + 1_278, 1_278), -453_222); // traders net long NVDA, vault short
-  assert.equal(vaultExposureUsd(91_201, 524_812), 433_611); // traders net short SPX, vault long
+  assert.equal(vaultExposureUsd(91_201, 524_812), 433_611); // traders net short SPY, vault long
 });
 
 test('the mail carries the figures and is a mailto link', () => {

@@ -8,32 +8,19 @@ import { Money } from '../components/Money';
 import { fmtUsdg, fmtUsdg2, parseExposure, parseUsdg, short } from '../lib/format';
 import { explainError } from '../lib/revert';
 import { gridAxes, buildGrid, type GridCell } from '../lib/grid-core';
-import { readOstium, type OstiumRead } from '../lib/ostium';
-import { bucketOf, groupOi, vaultExposureUsd, type Bucket, type PairOi } from '../lib/ostium-core';
+import { GAINS_DIAMOND, GUSDC, readGains, vaultExposureUsd, type GainsRead } from '../lib/gains';
 import { PRICED_CLASSES, PRICED_MARKETS, composeQuoteMail, tableIdsSlot, type PricedClass, type PricedMarket } from '../lib/quote-core';
-import snapshot from '../data/ostium-oi-by-group.json';
+import snapshot from '../data/gains-gusdc-book.json';
 
-const CLASSES: { key: Bucket; name: string }[] = [
-  { key: 'equities', name: 'Equities and indices' },
-  { key: 'fx', name: 'FX' },
-  { key: 'gold_metals', name: 'Gold and metals' },
-  { key: 'commodities', name: 'Commodities' },
-  { key: 'crypto', name: 'Crypto' },
-];
-
-type SnapRow = { pairIndex: number; from: string; to: string; subgraphGroup: string; longOI_usd: number; shortOI_usd: number };
-const snapPairs: PairOi[] = (snapshot.pairs as SnapRow[]).map((p) => ({
-  pairIndex: p.pairIndex, from: p.from, to: p.to, bucket: bucketOf(p.subgraphGroup, p.from), longUsd: p.longOI_usd, shortUsd: p.shortOI_usd,
-}));
-const SNAPSHOT: OstiumRead = { block: BigInt(snapshot.block), pairs: snapPairs, groups: groupOi(snapPairs) };
+const SNAPSHOT: GainsRead = { block: BigInt(snapshot.block), vaultAssetsUsd: snapshot.vaultAssetsUsd, pairs: snapshot.pairs };
 
 const whole = (v: number) => Math.round(v).toLocaleString('en-US');
 const usd = (v: bigint) => Number(v) / 1e6;
 
-/** Exposure inputs for the priced markets from one Ostium read: the vault's side, whole dollars. */
-function prefill(read: OstiumRead): string[] {
+/** Exposure inputs for the priced markets from one gUSDC book read: the vault's side, whole dollars. */
+function prefill(read: GainsRead): string[] {
   return PRICED_MARKETS.map((m) => {
-    const p = read.pairs.find((x) => x.from === m.ostium && x.bucket === m.bucket);
+    const p = read.pairs.find((x) => x.ticker === m.ticker);
     return whole(p ? vaultExposureUsd(p.longUsd, p.shortUsd) : 0);
   });
 }
@@ -52,9 +39,9 @@ export function QuotePage() {
   useEffect(() => { document.title = 'Heracles: quote a weekend layer'; }, []);
   const client = usePublicClient() as PublicClient | undefined;
 
-  const ostium = useQuery({ queryKey: ['ostium-oi'], queryFn: readOstium, staleTime: Infinity, retry: 1, refetchOnWindowFocus: false });
-  const read = ostium.data ?? SNAPSHOT;
-  const live = !!ostium.data;
+  const book = useQuery({ queryKey: ['gains-gusdc-book'], queryFn: () => readGains(), staleTime: Infinity, retry: 1, refetchOnWindowFocus: false });
+  const read = book.data ?? SNAPSHOT;
+  const live = !!book.data;
 
   const [exposures, setExposures] = useState<string[]>(() => prefill(SNAPSHOT));
   const [retention, setRetention] = useState(() => defaultTerms(prefill(SNAPSHOT)).retention);
@@ -63,14 +50,14 @@ export function QuotePage() {
 
   // The live read replaces the snapshot's figures once, and again each time "Refresh" re-reads it.
   useEffect(() => {
-    if (!ostium.data || ostium.data.block === filledFrom) return;
-    const next = prefill(ostium.data);
+    if (!book.data || book.data.block === filledFrom) return;
+    const next = prefill(book.data);
     const t = defaultTerms(next);
     setExposures(next);
     setRetention(t.retention);
     setLimit(t.limit);
-    setFilledFrom(ostium.data.block);
-  }, [ostium.data, filledFrom]);
+    setFilledFrom(book.data.block);
+  }, [book.data, filledFrom]);
 
   const terms = useQuery({
     queryKey: ['treaty-terms'],
@@ -184,7 +171,7 @@ export function QuotePage() {
     });
   }, [quote, premium, premiumJunior, parsed]);
 
-  const status = ostium.isFetching ? 'Reading Ostium' : ostium.isError ? 'Ostium read failed' : null;
+  const status = book.isFetching ? 'Reading gTrade' : book.isError ? 'gTrade read failed' : null;
 
   return (
     <>
@@ -198,17 +185,18 @@ export function QuotePage() {
           <section aria-labelledby="exp-h">
             <div className="exhibit-head">
               <h2 id="exp-h" className="chart-title">Net weekend exposure</h2>
-              <button type="button" className="key" onClick={() => ostium.refetch()} disabled={ostium.isFetching}>
-                {ostium.isFetching ? 'Reading Ostium…' : 'Refresh from Ostium'}
+              <button type="button" className="key" onClick={() => book.refetch()} disabled={book.isFetching}>
+                {book.isFetching ? 'Reading gTrade…' : 'Refresh from gTrade'}
               </button>
             </div>
             <p className="caveat">
-              Ostium's vault is the other side of every trader, so it holds the opposite of what traders hold net. Positive is long
-              (a lower Monday open is the risk), negative is short. The figures start from Ostium's open interest and you can set your own.
+              gTrade's gUSDC vault is the counterparty to every trade on gTrade, so it holds the opposite of what traders hold net.
+              Positive is long (a lower Monday open is the risk), negative is short. The figures start from the vault's book on
+              Arbitrum One and you can set your own.
             </p>
             <div className="xrows">
               {PRICED_MARKETS.map((m, i) => {
-                const p = read.pairs.find((x) => x.from === m.ostium && x.bucket === m.bucket);
+                const p = read.pairs.find((x) => x.ticker === m.ticker);
                 const first = PRICED_MARKETS.findIndex((x) => x.bucket === m.bucket) === i;
                 return (
                   <div className="xrow" key={m.ticker}>
@@ -221,7 +209,7 @@ export function QuotePage() {
                       />
                     </div>
                     <p className="hint">
-                      {p ? <>Ostium traders: long {whole(p.longUsd)}, short {whole(p.shortUsd)} USD.</> : 'No Ostium pair with this name.'}
+                      {p ? <>gTrade traders: long {whole(p.longUsd)}, short {whole(p.shortUsd)} USDC.</> : 'No gTrade pair with this name.'}
                     </p>
                   </div>
                 );
@@ -238,12 +226,13 @@ export function QuotePage() {
               </div>
             </div>
             <p className="src">
-              {live ? 'Ostium open interest' : 'Ostium open interest, saved read'} at Arbitrum One block{' '}
-              <a href={`https://arbiscan.io/block/${read.block}`} target="_blank" rel="noreferrer">#{read.block.toLocaleString('en-US')}</a>,
-              TradingStorage <a href={`https://arbiscan.io/address/0xcCd5891083A8acD2074690F65d3024E7D13d66E7`} target="_blank" rel="noreferrer">{short('0xcCd5891083A8acD2074690F65d3024E7D13d66E7')}</a>,
-              each side priced at the pair's last Ostium trade price.
+              {live ? 'The gUSDC vault book' : 'The gUSDC vault book, saved read'} at Arbitrum One block{' '}
+              <a href={`https://arbiscan.io/block/${read.block}`} target="_blank" rel="noreferrer">#{read.block.toLocaleString('en-US')}</a>:{' '}
+              <span className="file">getPairOiAfterV10Collateral(3, pair)</span> plus <span className="file">getPairOisBeforeV10Collateral(3, pair)</span> on gTrade's
+              Diamond <a href={`https://arbiscan.io/address/${GAINS_DIAMOND}`} target="_blank" rel="noreferrer">{short(GAINS_DIAMOND)}</a>, collateral 3 being USDC,
+              position size at open in USDC.
               {status && <> {status}.</>}
-              {ostium.isError && <> Showing the saved read.</>}
+              {book.isError && <> Showing the saved read.</>}
             </p>
           </section>
 
@@ -288,30 +277,33 @@ export function QuotePage() {
           </section>
 
           <section aria-labelledby="oi-h">
-            <h2 id="oi-h" className="section">Ostium open interest by class</h2>
-            <div className="ledger" role="table" aria-label="Ostium open interest by asset class">
+            <h2 id="oi-h" className="section">The gUSDC vault's book</h2>
+            <div className="ledger" role="table" aria-label="gTrade open interest and the gUSDC vault's side, by market">
               <div className="ledger-head oi-grid" role="row">
-                <span role="columnheader">Class</span>
+                <span role="columnheader">Market</span>
                 <span role="columnheader">Traders long</span>
                 <span role="columnheader">Traders short</span>
-                <span role="columnheader">Gross</span>
+                <span role="columnheader">Vault position</span>
               </div>
-              {CLASSES.map((c) => {
-                const g = read.groups[c.key];
-                if (!g) return null;
+              {read.pairs.map((p) => {
+                const v = vaultExposureUsd(p.longUsd, p.shortUsd);
                 return (
-                  <div className="ledger-row" role="row" key={c.key}>
+                  <div className="ledger-row" role="row" key={p.ticker}>
                     <div className="ledger-grid oi-grid">
-                      <span role="cell" data-k="Class">{c.name} <span className="xname">{g.pairs} pairs</span></span>
-                      <span role="cell" data-k="Traders long">{whole(g.longUsd)}</span>
-                      <span role="cell" data-k="Traders short">{whole(g.shortUsd)}</span>
-                      <span role="cell" data-k="Gross">{whole(g.grossUsd)}</span>
+                      <span role="cell" data-k="Market">{p.ticker} <span className="xname">gTrade pair {p.pairIndex}</span></span>
+                      <span role="cell" data-k="Traders long">{whole(p.longUsd)}</span>
+                      <span role="cell" data-k="Traders short">{whole(p.shortUsd)}</span>
+                      <span role="cell" data-k="Vault position">{Math.round(v) === 0 ? 'flat' : `${v > 0 ? 'long' : 'short'} ${whole(Math.abs(v))}`}</span>
                     </div>
                   </div>
                 );
               })}
             </div>
-            <p className="src">USD, same read as above. The pricer holds six scenario tables, four equity names plus EUR/USD and XAU/USD, each from 504 real weekends.</p>
+            <p className="src">
+              USDC, same read as above. The vault behind that book, <a href={`https://arbiscan.io/address/${GUSDC}`} target="_blank" rel="noreferrer">gUSDC {short(GUSDC)}</a>,
+              holds {whole(read.vaultAssetsUsd)} USDC (<span className="file">totalAssets()</span>, same block). The pricer holds six scenario tables, four equity names
+              plus EUR/USD and XAU/USD, each from 504 real weekends.
+            </p>
           </section>
         </div>
 
