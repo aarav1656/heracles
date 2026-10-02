@@ -94,6 +94,7 @@ export const ERROR_WORDS: Record<string, string> = {
   BadFeeds: "The pricer's feeds/scaling array doesn't match the exposure array's length.",
   BadTableId: 'A configured pricing table id is not 0-3. This is a deploy-time configuration error.',
   MissingTable: 'The pricer has no pricing table configured for one of the requested markets.',
+  PremiumOverBudget: "The weekend cover premium for the vault's book after this trade is above the owner's budget and above the premium for the book as it stands, so the guard refuses the new open interest.",
   ERC20InsufficientAllowance: 'Allowance too low. Approve the amount first, then retry.',
   ERC20InsufficientBalance: 'Your balance of this asset is too low for this amount.',
   ERC4626ExceededMaxDeposit: 'This deposit exceeds the vault maximum.',

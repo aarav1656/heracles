@@ -1,0 +1,25 @@
+{
+  "name": "heracles-sdk",
+  "version": "0.1.0",
+  "description": "Typed client for the Heracles weekend-gap pricer, Treaty and OIGuard on Arbitrum",
+  "type": "module",
+  "license": "MIT",
+  "bin": { "heracles-quote": "dist/cli.mjs" },
+  "exports": {
+    ".": { "types": "./dist/index.d.mts", "import": "./dist/index.mjs" }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "viem": "2.56.9"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsdown": "0.23.0",
+    "typescript": "^5.9.0"
+  }
+}

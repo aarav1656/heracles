@@ -1,6 +1,6 @@
 // Source of truth for every address and ABI in this app.
 //   Addresses: contracts/deployments/421614.json
-//   Treaty / Capacity / IPricer ABIs: contracts/out/*/*.json (field "abi")
+//   Treaty / Capacity / IPricer / OIGuard ABIs: contracts/out/*/*.json (field "abi")
 // Nothing in src/ may carry a hand-copied address. Run: npm run sync-abi
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -24,13 +24,14 @@ const deployment = JSON.parse(
 const treaty = deployment.contracts.Treaty.address;
 const pricer = deployment.contracts.Pricer.address;
 const quotePricer = deployment.contracts.PricerSixTables.address;
+const oiGuard = deployment.contracts.OIGuard.address;
 const feeds = deployment.contracts.Treaty.constructorArgs.feeds;
 const books = deployment.books;
 const rpc = deployment.rpc;
 const chainId = deployment.chainId;
 
 const isAddr = (a) => /^0x[0-9a-fA-F]{40}$/.test(a);
-for (const [label, a] of Object.entries({ treaty, pricer, quotePricer })) {
+for (const [label, a] of Object.entries({ treaty, pricer, quotePricer, oiGuard })) {
   if (!isAddr(a)) throw new Error(`Bad ${label} address in 421614.json: ${a}`);
 }
 if (!Array.isArray(feeds) || feeds.length === 0) throw new Error('No feeds in 421614.json');
@@ -44,6 +45,7 @@ books.forEach((b, i) => {
 const treatyAbi = loadAbi(join('Treaty.sol', 'Treaty.json').replace(/\\/g, '/'));
 const capacityAbi = loadAbi('Capacity.sol/Capacity.json');
 const pricerAbi = loadAbi('IPricer.sol/IPricer.json');
+const oiGuardAbi = loadAbi('OIGuard.sol/OIGuard.json');
 
 const dest = join(here, '..', 'src', 'abi', 'generated.ts');
 mkdirSync(dirname(dest), { recursive: true });
@@ -59,6 +61,8 @@ export const PRICER_ADDRESS = ${JSON.stringify(pricer)} as Address;
 /** The six-table Stylus pricer the quote desk prices on: equities, EUR/USD and XAU/USD. */
 export const QUOTE_PRICER_ADDRESS = ${JSON.stringify(quotePricer)} as Address;
 export const FEED_ADDRESSES = ${JSON.stringify(feeds)} as Address[];
+/** Open-interest guard over the six-table pricer, markets in its table order. */
+export const OIGUARD_ADDRESS = ${JSON.stringify(oiGuard)} as Address;
 
 export type BookConfig = {
   index: number;
@@ -75,10 +79,11 @@ export const BOOKS: readonly BookConfig[] = ${JSON.stringify(books.map(({ index,
 export const treatyAbi = ${JSON.stringify(treatyAbi)} as const;
 export const capacityAbi = ${JSON.stringify(capacityAbi)} as const;
 export const pricerAbi = ${JSON.stringify(pricerAbi)} as const;
+export const oiGuardAbi = ${JSON.stringify(oiGuardAbi)} as const;
 `;
 writeFileSync(dest, body);
 console.log(
-  `wrote src/abi/generated.ts (chain ${chainId}, treaty ${treatyAbi.length} + capacity ${capacityAbi.length} + pricer ${pricerAbi.length} ABI entries, ${feeds.length} feed(s), ${books.length} book(s))`,
+  `wrote src/abi/generated.ts (chain ${chainId}, treaty ${treatyAbi.length} + capacity ${capacityAbi.length} + pricer ${pricerAbi.length} + guard ${oiGuardAbi.length} ABI entries, ${feeds.length} feed(s), ${books.length} book(s))`,
 );
 
 // The four weekend-gap tables the first screen charts, copied in so web/ builds on its own.
