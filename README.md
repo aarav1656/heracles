@@ -3,6 +3,15 @@
 Named for the hero whose labours go beyond ordinary strength: this layer carries loss
 beyond the vault's own capital.
 
+The Monday gap cost gTrade's LP vault money on 7 of its last 12 weekends; the worst, 25
+September 2026, cost 2,035.10 USDC (`scripts/gusdc_weekends.py`, read from Arbitrum One).
+Heracles prices that gap on chain, refuses open interest a vault cannot afford to cover, and pays
+the vault from the price feed when the gap lands. The landing page,
+https://heracles-virid-seven.vercel.app, shows it in a minute with no wallet: both guards, on
+Arbitrum Sepolia and Robinhood Chain testnet, read live refusing 2,000,000 more NVDA short, each
+step of a live cover with its transaction, and the Stylus pricer giving the same answer on both
+chains.
+
 Parametric excess-of-loss cover for the LP vaults of stock and RWA perp exchanges on
 Arbitrum. A vault declares its position size per market; if a market opens Monday far
 from Friday's close, Heracles works out the loss those positions would take from the
