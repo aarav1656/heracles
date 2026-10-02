@@ -121,7 +121,7 @@ covering the sum of each losing market's gap across the markets it lists at bind
 against a gain on another leg in the same layer): a different buyer, a different
 instrument, a cross-market design rather than a single-ticker one.
 
-Vigil, the other weekend-gap entry in this field, protects Morpho lenders: it ramps a haircut into the collateral price before each weekend closure and covers bad debt from a first-loss vault inside liquidation. Heracles covers the other side of a perp venue, the LP vault's own net book, and pays on the Monday gap above a retention whether or not anything is liquidated.
+Heracles covers the net weekend book of a perp venue's LP vault, the party that carries trader PnL across the weekend gap, not a lender's collateral. It pays on the Monday gap above a retention whether or not any position is liquidated. At Arbitrum One block 511,007,816 that book, for gTrade's gUSDC vault, was long 153,309 USDC of SPY and short 23,665 of NVDA.
 
 ## Why would a vault buy this
 
