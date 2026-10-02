@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.."
 export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
 ID=$1
 R=${RPC:-https://sepolia-rollup.arbitrum.io/rpc}
-T=0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807
+T=${TREATY:-0x95D180568c9FcA8632AF3f8349e1f2A4bA4fb807}
 LOG=docs/e2e/heracles-settle.log
 first() { awk '{print $1}'; }
 say() { echo "$(date -u +%FT%TZ) layer $ID: $*" | tee -a "$LOG"; }

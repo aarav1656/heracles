@@ -18,7 +18,7 @@ function loadAbi(rel) {
 }
 
 const deployment = JSON.parse(
-  readFileSync(join(root, 'contracts', 'deployments', '421614.json'), 'utf8'),
+  readFileSync(join(root, 'contracts', 'deployments', `${process.env.HERACLES_CHAIN ?? '421614'}.json`), 'utf8'),
 );
 
 const treaty = deployment.contracts.Treaty.address;
