@@ -1,6 +1,6 @@
 # Security
 
-Heracles (`Treaty`, `Capacity`, the Senior and First-loss vaults, the Stylus `Pricer`) went through eight adversarial review rounds by an internal second-pass reviewer, a separate session from the one that wrote the code: the original Treaty review, the Capacity permit review, four re-reviews of the Capacity gate, the Round 6 review of the v3 books and tranches, and an independent v3 review of the Thursday bind deadline and the void proofs.
+Heracles (`Treaty`, `Capacity`, the Senior and First-loss vaults, the Stylus `Pricer`) went through eight adversarial review rounds by an internal second-pass reviewer, a separate session from the one that wrote the code: the original Treaty review, the Capacity permit review, four re-reviews of the Capacity gate, the Round 6 review of the v3 books and tranches, and a further v3 review of the Thursday bind deadline and the void proofs.
 
 Every finding was resolved, and each one ships with a test that fails without the fix. The full Foundry suite passed 196 tests across 34 suites on 2026-10-02, and the VaultCover invariant suite below adds 3 invariants.
 
