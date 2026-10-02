@@ -26,9 +26,8 @@ Friday close to next open, 504 weekends per ticker, 2016-09-26 to 2026-09-26, fr
 
 `contracts/src/Pricer.sol` and `pricer/src/lib.rs` currently apply only the NVDA
 504-scenario series (in basis points) as a shared weekend shock to every bound market;
-this is a disclosed simplification (README "What we cut"), not fabricated data. The
-AAPL/SPY/TSLA rows above are the sourced-but-not-yet-wired per-market tables the
-Roadmap references.
+this is a sourced series, not fabricated data. The AAPL/SPY/TSLA rows above are the
+sourced per-market tables.
 
 ## 2. The reference rule
 
