@@ -16,6 +16,10 @@ import {OIGuard} from "./OIGuard.sol";
 /// and refunds go to the owner, and anyone can trigger them.
 /// The book is held in the OIGuard's market order; `coverIndex[i]` names the book market the
 /// Treaty's market i covers, so a Treaty listing fewer markets covers those legs of the book.
+/// From a renew until that layer's Monday expiry, `open` keeps each covered leg on the side and
+/// within the size the layer bound, so the weekend never carries covered-market exposure the
+/// layer does not pay on; reductions stay free. A keeper therefore renews late in the week,
+/// close to the Thursday 19:30 UTC bind deadline.
 contract VaultCover is Ownable {
     using SafeERC20 for IERC20;
 
@@ -36,12 +40,19 @@ contract VaultCover is Ownable {
     /// `fridayCutoff` of the week the last layer was bound for: one layer per week.
     uint256 public lastCutoff;
     uint256[] internal _layers;
+    /// Each book market's net exposure when the current layer bound; read only for covered markets.
+    int256[] internal _bound;
+    bool[] internal _covered;
+    /// Expiry (Monday open) of the last bound layer; covered legs are held to `_bound` until then.
+    uint256 public coveredUntil;
 
     error NotVenue();
     error NotKeeper();
     error NotReducing();
     error AlreadyCovered(uint256 fridayCutoff);
     error BadParams();
+    /// `next` is the covered leg's net after the open, `bound` its size in the layer covering it.
+    error BeyondCover(uint256 market, int256 next, int256 bound);
 
     event VenueSet(address venue, bool allowed);
     event KeeperSet(address keeper, bool allowed);
@@ -67,6 +78,11 @@ contract VaultCover is Ownable {
         book = book_;
         asset = IERC20(treaty_.bookAsset(book_));
         _net = new int256[](markets);
+        _bound = new int256[](markets);
+        _covered = new bool[](markets);
+        for (uint256 i; i < coverIndex_.length; i++) {
+            _covered[coverIndex_[i]] = true;
+        }
         _coverIndex = coverIndex_;
     }
 
@@ -80,6 +96,11 @@ contract VaultCover is Ownable {
 
     function layers() external view returns (uint256[] memory) {
         return _layers;
+    }
+
+    /// The book as the current layer bound it (covered markets), in book order.
+    function bound() external view returns (int256[] memory) {
+        return _bound;
     }
 
     /// The exposure `renewCover` would bind right now, in the Treaty's market order.
@@ -111,6 +132,10 @@ contract VaultCover is Ownable {
     function open(uint256 market, int256 delta) external onlyVenue returns (uint256 premium) {
         premium = guard.check(_net, market, delta);
         int256 next = _net[market] + delta;
+        if (block.timestamp < coveredUntil && _covered[market]) {
+            int256 b = _bound[market];
+            if (b >= 0 ? (next < 0 || next > b) : (next > 0 || next < b)) revert BeyondCover(market, next, b);
+        }
         _net[market] = next;
         emit Opened(market, delta, next, premium);
     }
@@ -129,9 +154,13 @@ contract VaultCover is Ownable {
     function renewCover() external returns (uint256 id) {
         if (!isKeeper[msg.sender] && msg.sender != owner()) revert NotKeeper();
         if (limit == 0) revert BadParams();
-        (uint256 cutoff,) = treaty.weekWindow(block.timestamp);
+        (uint256 cutoff, uint256 expiry) = treaty.weekWindow(block.timestamp);
         if (cutoff == lastCutoff) revert AlreadyCovered(cutoff);
         lastCutoff = cutoff;
+        coveredUntil = expiry;
+        for (uint256 i; i < _coverIndex.length; i++) {
+            _bound[_coverIndex[i]] = _net[_coverIndex[i]];
+        }
         int256[] memory exposure = coverExposure();
         uint256 before = asset.balanceOf(address(this));
         asset.forceApprove(address(treaty), maxPremium);

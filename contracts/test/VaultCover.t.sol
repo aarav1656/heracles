@@ -232,6 +232,57 @@ contract VaultCoverTest is Test, TreatyFixture {
         cover.claimCover(id);
     }
 
+    /// After a renew, the covered leg stays inside what the layer bound until its Monday expiry.
+    function test_openAfterRenewCannotGrowTheCoveredLegPastTheBound() public {
+        _bigBudget();
+        _open(1, 2_000_000e6);
+        vm.prank(keeper);
+        cover.renewCover();
+        assertEq(cover.coveredUntil(), EXPIRY);
+        assertEq(cover.bound()[1], 2_000_000e6);
+
+        vm.prank(venue);
+        vm.expectRevert(abi.encodeWithSelector(VaultCover.BeyondCover.selector, 1, int256(2_000_000e6 + 1), int256(2_000_000e6)));
+        cover.open(1, 1);
+        _open(1, -500_000e6); // a reduction through open is free
+        _open(1, 500_000e6); // and so is growing back up to the bound
+        vm.prank(venue);
+        vm.expectRevert(abi.encodeWithSelector(VaultCover.BeyondCover.selector, 1, -int256(500_000e6), int256(2_000_000e6)));
+        cover.open(1, -2_500_000e6); // flipping to the uncovered side
+        _open(0, 300_000e6); // a leg the Treaty does not list answers to the guard only
+        assertEq(cover.net()[1], 2_000_000e6);
+    }
+
+    function test_theCoveredLegIsFreeAgainAfterExpiry() public {
+        _bigBudget();
+        _open(1, 2_000_000e6);
+        vm.prank(keeper);
+        cover.renewCover();
+        vm.warp(EXPIRY - 1);
+        vm.prank(venue);
+        vm.expectRevert(abi.encodeWithSelector(VaultCover.BeyondCover.selector, 1, int256(2_000_000e6 + 1), int256(2_000_000e6)));
+        cover.open(1, 1);
+        vm.warp(EXPIRY);
+        _open(1, 1);
+        assertEq(cover.net()[1], 2_000_000e6 + 1);
+    }
+
+    function test_claimCoverOnALayerItDidNotBuyReverts() public {
+        usdg.mint(address(this), 100_000e6);
+        usdg.approve(address(treaty), type(uint256).max);
+        int256[] memory e = new int256[](1);
+        e[0] = 2_000_000e6;
+        uint256 id = treaty.bind(0, e, RETENTION, LIMIT, type(uint256).max);
+        feed.set(2, FRIDAY_PRICE, REF_TIME);
+        vm.warp(REF_TIME + 1);
+        treaty.setReference(id, 0, 2);
+        feed.set(3, MONDAY_PRICE, EXPIRY + 10);
+        vm.warp(EXPIRY + 20);
+        treaty.fix(id, 0, 3);
+        vm.expectRevert(Treaty.NothingToClaim.selector);
+        cover.claimCover(id);
+    }
+
     function test_withdrawReturnsPremiumFundsToTheOwner() public {
         vm.prank(owner);
         cover.withdraw(4_000e6);
