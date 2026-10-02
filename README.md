@@ -52,6 +52,18 @@ EUR/USD and XAU/USD. `tableIdAt(0..5)` read back `0..5` and `tableIdAt(6)` rever
 `scripts/verify_pricer_fx_gold.py` reads its live EUR/USD and XAU/USD quotes and matches them to the
 micro-USDG against `scripts/fx_gold_fair_premium.py`, which prices from the `.gaps.txt` files alone.
 
+Live cycle on the USDG book (2026-10-02): 100 USDG from the Paxos testnet faucet, tx
+[`0x26d68393...35ea9c376`](https://sepolia.arbiscan.io/tx/0x26d683933299ef0213c4a03929bf963b691ebd9c970ecc9c56f7a9935ea9c376),
+went into the USDG book through `depositWithPermit`, one signed permit and one transaction per
+vault: 30 USDG into the first-loss vault, tx
+[`0x6f699bc2...d113f2035`](https://sepolia.arbiscan.io/tx/0x6f699bc27e533d009c68d814dbef5a13c43813d663e2f050a1f7aa3d113f2035)
+(block 315,005,337, `totalAssets` 0 to 30,000,000), and 60 USDG into the senior vault, tx
+[`0x5c31098e...42bcfd68d`](https://sepolia.arbiscan.io/tx/0x5c31098eb61c9834c7f608c1562e63d1378d0f7221fac7ece78078b42bcfd68d)
+(block 315,005,426, `totalAssets` 0 to 60,000,000). `scripts/permit-deposit.sh <vault> <amount>`
+signs the permit, sends the deposit and asserts receipt status `0x1`, the `totalAssets` move and
+the minted shares. That capacity carries a USDG layer of up to 85 USDG of limit; binding opens each
+Monday 00:00 UTC and closes Thursday 19:30 UTC, one feed heartbeat before the Friday cutoff.
+
 Live cycle on the USDC book (2026-10-01): a writer deposited 4.5 USDC into the first-loss vault
 and 10.5 USDC into the senior vault, and layer 0 bound against the book, long 200 USDC of
 SPY with retention 2 and limit 10 USDC (3 locked in the first-loss vault, 7 in the senior

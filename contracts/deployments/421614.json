@@ -170,7 +170,41 @@
       "approveTreaty": "0x16c405370228f3251c9e908a3d2ad6189e64b3b2a94ad2bcf81953f2e955df6b",
       "bind": "0x770752c7522caf31ce5d493693e48f8bed71726607be0351b835669eb3b85b70"
     },
-    "bindBlock": 314559779
+    "bindBlock": 314559779,
+    "usdgBook": {
+      "date": "2026-10-02",
+      "faucet": {
+        "source": "Paxos sandbox faucet, POST api.sandbox.paxos.com/v2/treasury/faucet/transfers {network: ARBITRUM_ONE, token: USDG}",
+        "tx": "0x26d683933299ef0213c4a03929bf963b691ebd9c970ecc9c56f7a9935ea9c376",
+        "block": 315005080,
+        "from": "0xcc9644ec26a647de0b9b86f1560d5180232f70a3",
+        "amount": 100000000
+      },
+      "deposits": [
+        {
+          "vault": "usdgFirstLoss",
+          "method": "depositWithPermit",
+          "tx": "0x6f699bc27e533d009c68d814dbef5a13c43813d663e2f050a1f7aa3d113f2035",
+          "block": 315005337,
+          "status": "0x1",
+          "amount": 30000000,
+          "totalAssetsBefore": 0,
+          "totalAssetsAfter": 30000000
+        },
+        {
+          "vault": "usdgSenior",
+          "method": "depositWithPermit",
+          "tx": "0x5c31098eb61c9834c7f608c1562e63d1378d0f7221fac7ece78078b42bcfd68d",
+          "block": 315005426,
+          "status": "0x1",
+          "amount": 60000000,
+          "totalAssetsBefore": 0,
+          "totalAssetsAfter": 60000000
+        }
+      ],
+      "bindWindow": "weekWindow(now) at block time 1790950003 (Fri 2026-10-02 14:06 UTC): cutoff Fri 19:30 UTC, bind closed since Thu 2026-10-01 19:30 UTC; next window Mon 2026-10-05 00:00 UTC to Thu 2026-10-08 19:30 UTC. 10 USDG held by the deployer for that bind's premium.",
+      "script": "scripts/permit-deposit.sh"
+    }
   },
   "books": [
     {
