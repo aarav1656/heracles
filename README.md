@@ -209,8 +209,10 @@ bound, matching the live on-chain quote (1,676.722158 USDG) to the last cent. Ag
   is a major lending protocol structurally exposed to the same gap this treaty prices.
 - **"Billion-dollar-plus days in Stock Token volume, 72% of it on weekends."** (Johann
   Kerbrat, SVP & GM Crypto and International, Robinhood, 2026-09-26,
-  https://x.com/JohannKerbrat/status/2103874953053622694) The weekend is not the tail case
-  for this asset class, it is the majority of flow.
+  https://x.com/JohannKerbrat/status/2103874953053622694) That is the market's own framing.
+  What Heracles measures is the gap itself: 504 recorded Friday-close to Monday-open weekends per
+  market, priced on chain, and the gUSDC vault's own book, which lost money on the gap in 7 of its
+  last 12 weekends, worst 2,035.10 USDC on 25 September 2026 (`scripts/gusdc_weekends.py`).
 
 ## Replay and quote
 
