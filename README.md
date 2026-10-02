@@ -380,11 +380,21 @@ liabilities subtraction in `Capacity.totalAssets()` turned
 Arbitrum Stylus (WASM) programs deactivate after 365 days unless re-activated; a lapsed
 program makes every `quote()` call revert, which would make every `bind()` fail (the
 pricer is only read at bind time, never at settle, so no funds ever lock). Reactivation
-is permissionless: run `cargo stylus deploy` again against the same bytecode (redeploys
-at a new address) or call `ArbWasm.activateProgram(address)` directly against the
-existing address before/after it lapses, paying the current activation fee. `pricer` is
-`immutable` on `Treaty`, so a lapsed program requires a full Treaty redeploy pointed at
-either the reactivated address or a fresh one; there is no admin-set pricer swap.
+is permissionless and keeps the address, so the Treaty's `immutable` pricer stays valid:
+`scripts/stylus-program.sh <program>` reads the ArbWasm precompile (`0x...71`) for the
+chain's Stylus version, the program's activated version and `programTimeLeft`, and
+simulates `activateProgram`; `--activate` sends it with the data fee the simulation quoted
+and asserts the program reads back active at the chain's version. At Arbitrum Sepolia block
+315,010,832 the Treaty's pricer `0xbe99...1f88` is Stylus version 3 with 361 days left and
+the six-table pricer `0x1674...7e37` has 364 days left; `activateProgram` on either reverts
+`ProgramUpToDate()`, and on the Treaty itself `ProgramNotWasm()`.
+
+The sequencer gate runs against Arbitrum One's real L2 Sequencer Uptime Status Feed
+[`0xFdB631F5EE196F0ed6FAa767959853A9F217697D`](https://arbiscan.io/address/0xFdB631F5EE196F0ed6FAa767959853A9F217697D)
+in `contracts/test/SequencerFeed.fork.t.sol`, pinned to Arbitrum One block 511,011,337:
+`latestRoundData()` reads answer 0 (up) since `startedAt` 1,779,307,607, so a bind clears
+the gate and stops at the bind deadline (`BadTiming`); with the feed reporting the sequencer
+down, or back up for under the one-hour grace, the same bind reverts `SequencerDown()`.
 
 ## Stylus
 
