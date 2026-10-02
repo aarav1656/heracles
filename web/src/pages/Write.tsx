@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useConnection } from 'wagmi';
 import { formatUnits } from 'viem';
-import { BOOKS, capacityAbi } from '../abi';
+import { BOOKS, PRICER_ADDRESS, capacityAbi } from '../abi';
 import { useBook, type VaultView } from '../hooks/useBook';
 import { useTx } from '../hooks/useTx';
 import { useDepositWithPermit } from '../hooks/useDepositWithPermit';
@@ -9,7 +9,8 @@ import { useOnChain } from '../components/Wallet';
 import { Stamp } from '../components/Stamp';
 import { Money } from '../components/Money';
 import { TxNote } from '../components/TxNote';
-import { fmtUsdg, parseUsdg } from '../lib/format';
+import { fmtUsdg, parseUsdg, short } from '../lib/format';
+import { explorer } from '../chain';
 import { explainError } from '../lib/revert';
 import { usePublicClient } from 'wagmi';
 import type { PublicClient } from 'viem';
@@ -132,7 +133,15 @@ export function Write() {
           <div className="exhibit-head">
             <h2 id="path-h" className="chart-title">A writer backing the example cover, every SPY weekend since 2016</h2>
           </div>
-          <p className="caveat">In-sample backtest, not a forecast. The pricer is fit to these same weekends, so the line ends above zero by construction; read it for the path, for how deep a bad month cuts.</p>
+          <p className="caveat">
+            The writer's running result on the example cover, long {usd0.format(REFERENCE.exposure)} of SPY with a {usd0.format(REFERENCE.retention)} retention
+            and a {usd0.format(REFERENCE.limit)} limit, across all {SPY_WEEKENDS.length} SPY weekends recorded from {fmtDay(SPY_WEEKENDS[0].friday)} to{' '}
+            {fmtDay(SPY_WEEKENDS[SPY_WEEKENDS.length - 1].friday)}, Friday close to Monday open (<span className="file">evidence/gap-tables/SPY.json</span>).
+            The premium is the Stylus pricer <a href={explorer.address(PRICER_ADDRESS)} target="_blank" rel="noreferrer">{short(PRICER_ADDRESS)}</a>'s
+            quote at the latest block, priced from these same weekends: their average payout, a load on the worst 5% and a capital charge on the
+            limit (<a href="https://github.com/aarav1656/heracles/blob/main/docs/pricing.md#model" target="_blank" rel="noreferrer">method</a>).
+            The line is the path a writer takes through them: each drawdown and the weekends that paid the most.
+          </p>
           <WriterPath />
         </section>
 
@@ -240,6 +249,7 @@ export function Write() {
 }
 
 const usd0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const SPY_WEEKENDS = TABLES[0].weekends;
 const k = (v: number) => `${v < 0 ? '−' : v > 0 ? '+' : ''}${usd0.format(Math.abs(Math.round(v / 1000)))}k`;
 
 /**
