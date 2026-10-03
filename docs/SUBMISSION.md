@@ -62,7 +62,7 @@ Built by aarav1656.
 
 ## Live app
 
-https://heracles-virid-seven.vercel.app
+https://heracles-cover.vercel.app
 
 - `/replay`: the weekend of 25 September 2026 run through the layer math. The side opposite Ostium's traders, whose PnL Ostium's junior buffer pays first, loses 10,910.41 on the gap, a 3,000 retention and 20,000 limit layer pays 7,910.41 (6,000.00 first-loss, 1,910.41 senior), and the Stylus pricer quotes 3,025.37 for it.
 - `/quote`: a risk lead's net weekend exposure, prefilled from the gTrade gUSDC vault's live book on Arbitrum One, priced by the deployed Stylus pricer with the tranche split and a plain-text quote to send.

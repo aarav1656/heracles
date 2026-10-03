@@ -7,7 +7,7 @@ The Monday gap cost gTrade's LP vault money on 7 of its last 12 weekends; the wo
 September 2026, cost 2,035.10 USDC (`scripts/gusdc_weekends.py`, read from Arbitrum One).
 Heracles prices that gap on chain, refuses open interest a vault cannot afford to cover, and pays
 the vault from the price feed when the gap lands. The landing page,
-https://heracles-virid-seven.vercel.app, shows it in a minute with no wallet: both guards, on
+https://heracles-cover.vercel.app, shows it in a minute with no wallet: both guards, on
 Arbitrum Sepolia and Robinhood Chain testnet, read live refusing 2,000,000 more NVDA short, each
 step of a live cover with its transaction, and the Stylus pricer giving the same answer on both
 chains.
@@ -23,7 +23,7 @@ A venue wires its vault in with two more contracts: `OIGuard` refuses open inter
 cover would cost more than the vault's budget, and `VaultCover` keeps the vault's book on chain and
 binds each week's layer on it (`/sdk` runs both live, and one script deploys your own).
 
-Live app: https://heracles-virid-seven.vercel.app (reads the book below from the chain; screenshots of the book, bind and write routes at 1440 and 390 px in `evidence/web-{book,bind,write}-{1440,390}.png`, and of `/replay` and `/quote` at 1440 px in `evidence/web-{replay,quote}-1440.png`).
+Live app: https://heracles-cover.vercel.app (reads the book below from the chain; screenshots of the book, bind and write routes at 1440 and 390 px in `evidence/web-{book,bind,write}-{1440,390}.png`, and of `/replay` and `/quote` at 1440 px in `evidence/web-{replay,quote}-1440.png`).
 
 ## Deployed, Arbitrum Sepolia (421614)
 
