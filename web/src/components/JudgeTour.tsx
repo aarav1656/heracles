@@ -152,7 +152,7 @@ export function JudgeTour() {
             <h3>A vault's book goes on chain</h3>
             <p>
               VaultCover <a href={explorer.address(VAULT_COVER_ADDRESS)} target="_blank" rel="noreferrer">{short(VAULT_COVER_ADDRESS)}</a> carries gUSDC's book from Arbitrum One:{' '}
-              {vc.data ? TICKERS.map((k, i) => (vc.data!.net[i] === 0n ? null : `${k} ${vc.data!.net[i] < 0n ? 'short' : 'long'} ${whole(Number(vc.data!.net[i]))}`)).filter(Boolean).join(', ') : 'reading…'}.
+              {vc.data ? TICKERS.map((k, i) => (vc.data!.net[i] === 0n ? null : `${k} ${vc.data!.net[i] < 0n ? 'short' : 'long'} ${whole(Number(vc.data!.net[i]))}`)).filter(Boolean).join(', ') : vc.isError ? `unavailable (${(vc.error as { shortMessage?: string }).shortMessage ?? vc.error.message})` : 'reading…'}.
             </p>
             <p className="txs">{LIVE_CYCLE.vaultCoverOpens.map((o) => <a key={o.tx} href={explorer.tx(o.tx)} target="_blank" rel="noreferrer">open {o.market}</a>)}</p>
           </li>

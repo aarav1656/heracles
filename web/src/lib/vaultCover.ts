@@ -4,6 +4,7 @@
 import { erc20Abi, type Hash, type PublicClient } from 'viem';
 import { OIGUARD_ADDRESS, VAULT_COVER_ADDRESS, VAULT_COVER_DEPLOY_BLOCK, oiGuardAbi, treatyAbi, vaultCoverAbi } from '../abi/generated';
 import { explainError, type Explained } from './revert';
+import { getContractEventsPaged } from './logs';
 
 export type BookMove = { kind: 'open' | 'close'; market: number; delta: bigint; net: bigint; premium?: bigint; tx: Hash; block: bigint };
 
@@ -59,8 +60,7 @@ export async function readVaultCover(client: PublicClient): Promise<VaultCoverRe
   } catch (e) {
     renew = { ok: false, ...explainError(e) };
   }
-  // ponytail: one getLogs from the deploy block; page it once the range outgrows the RPC's cap.
-  const logs = await client.getContractEvents({
+  const logs = await getContractEventsPaged(client, {
     address: VAULT_COVER_ADDRESS, abi: vaultCoverAbi, fromBlock: VAULT_COVER_DEPLOY_BLOCK, toBlock: block,
   });
   const moves: BookMove[] = [];

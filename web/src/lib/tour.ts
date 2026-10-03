@@ -4,6 +4,7 @@
 import { BaseError, ContractFunctionRevertedError, type PublicClient } from 'viem';
 import { BOOKS, LIVE_CYCLE, OIGUARD_ADDRESS, TREATY_ADDRESS, VAULT_COVER_ADDRESS, capacityAbi, oiGuardAbi, treatyAbi, vaultCoverAbi } from '../abi/generated';
 import { LAYER_STATES } from './treaty';
+import { getContractEventsPaged } from './logs';
 
 export const PROBE_SIZE = -2_000_000_000_000n; // 2,000,000 more NVDA short, book market 0
 
@@ -69,12 +70,7 @@ export async function readTour(client: PublicClient): Promise<TourRead> {
 /** Read on its own so a slow log range never holds back the figures above. */
 export async function readTourEvents(client: PublicClient): Promise<TourEvents> {
   const block = await client.getBlockNumber();
-  // A refused or slow log range must not blank the tour: the page then links the transactions recorded in deployments.
-  return client
-    .getContractEvents({ address: TREATY_ADDRESS, abi: treatyAbi, fromBlock: BigInt(LIVE_CYCLE.bindBlock), toBlock: block })
-    .then((logs) => {
-      const tx = (name: string) => logs.find((l) => l.eventName === name && 'id' in l.args && l.args.id === 0n)?.transactionHash ?? undefined;
-      return { referenceTx: tx('ReferenceSet'), fixTx: tx('MarketFixed'), settleTx: tx('Settled'), claimTx: tx('Claimed') };
-    })
-    .catch(() => ({}));
+  const logs = await getContractEventsPaged(client, { address: TREATY_ADDRESS, abi: treatyAbi, fromBlock: BigInt(LIVE_CYCLE.bindBlock), toBlock: block });
+  const tx = (name: string) => logs.find((l) => l.eventName === name && 'id' in l.args && l.args.id === 0n)?.transactionHash ?? undefined;
+  return { referenceTx: tx('ReferenceSet'), fixTx: tx('MarketFixed'), settleTx: tx('Settled'), claimTx: tx('Claimed') };
 }
