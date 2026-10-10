@@ -4,6 +4,8 @@ import { explorer } from '../chain';
 import { Money } from '../components/Money';
 import { fmtClock, fmtStamp, short } from '../lib/format';
 import replay from '../data/replay.json';
+import { WeekendStory } from '../components/WeekendStory';
+import { GuardDesk } from '../components/GuardDesk';
 
 const usd = (v: number) => v / 1e6;
 const n2 = (v: number) => usd(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -32,6 +34,8 @@ export function Replay() {
         <h1 className="title">Replay: weekend of {day(weekend.friday)}</h1>
         <p className="lede">Ostium's traders held this book through the weekend, and Ostium's junior buffer pays their PnL first, in full, before its offchain hedge settles. Here is what the gap cost the side opposite them, what a layer would have paid, and what the Stylus pricer quotes for that layer.</p>
       </header>
+
+      <WeekendStory />
 
       <div className="desk">
         <div className="main-col">
@@ -163,6 +167,8 @@ export function Replay() {
           </div>
         </aside>
       </div>
+
+      <GuardDesk />
     </>
   );
 }
