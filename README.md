@@ -25,6 +25,37 @@ binds each week's layer on it (`/sdk` runs both live, and one script deploys you
 
 Live app: https://heracles-cover.vercel.app (reads the book below from the chain; screenshots of the book, bind and write routes at 1440 and 390 px in `evidence/web-{book,bind,write}-{1440,390}.png`, and of `/replay` and `/quote` at 1440 px in `evidence/web-{replay,quote}-1440.png`).
 
+## World's Fair submission and prior-work disclosure
+
+Heracles is submitted to the Arbitrum track of Colosseum Solana World's Fair. It is not a new
+project. It was built for and shown at Arbitrum Open House (Dubai) on HackQuest:
+https://arbitrum-dubai.hackquest.io/projects/Heracles-UEyA4L, with the live app at
+https://heracles-cover.vercel.app.
+
+What existed before World's Fair (everything up to commit `1c42bf1`, 3 Oct 2026):
+
+- The `Treaty` contract, the four ERC-4626 writer vaults (USDG and USDC books), the Rust/Stylus
+  pricer (one-table and six-table builds) and their Arbitrum Sepolia deploys listed below.
+- `OIGuard` and `VaultCover`, deployed on Arbitrum Sepolia, and the guard on Robinhood Chain testnet.
+- The Foundry suite (unit, invariant, mutation and fork tests), the SDK, the keeper scripts and
+  the Arbitrum One runbook (no mainnet sends).
+- The web app: landing tour, /quote, /write, /bind, /book, /sdk and the first /replay.
+
+What is new for World's Fair (commits after `1c42bf1`, from 10 Oct 2026):
+
+- A rebuilt `/replay`: a three-act story of one weekend (the Friday book, the Monday gap, the
+  payout against the premium).
+- A live guard desk on `/replay` that simulates `VaultCover.open` against the deployed contracts on
+  Arbitrum Sepolia and stamps each proposed trade REFUSED or ACCEPTED from the chain's own answer.
+- This disclosure, a fresh test run and redeploy of the frontend, and a venue outreach draft
+  (`docs/outreach-draft.md`, not sent).
+
+No contract was redeployed for World's Fair; the addresses below are the Open House deploys.
+
+Test run, 10 Oct 2026: `forge test --no-match-path '*fork*'` passes 199 tests, 0 failed, 2 skipped
+(31 suites; pricing in `Pricer.t.sol`, payout and claims in `Treaty.t.sol`, guard refusal in
+`OIGuard.t.sol`), and `npm test` in `web/` passes 22 of 22.
+
 ## Deployed, Arbitrum Sepolia (421614)
 
 | Contract | Address | Role |
